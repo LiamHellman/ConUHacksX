@@ -135,14 +135,16 @@ export async function analyzeWithLLM(text, settings = {}) {
     model,
     input: [
       { role: "system", content: system },
-      { role: "user", content: text }
+      { role: "user", content: text },
     ],
     text: {
       format: {
         type: "json_schema",
-        json_schema: FALLACY_SCHEMA
-      }
-    }
+        name: "fallacy_analysis",
+        strict: true,
+        schema: FALLACY_SCHEMA.schema,
+      },
+    },
   });
 
   // The SDK returns a convenience string, but we want the parsed JSON
@@ -152,6 +154,16 @@ export async function analyzeWithLLM(text, settings = {}) {
 
   // hardening: clamp/repair spans + remove overlaps
   parsed.findings = clampFindingsToText(text, parsed.findings || []);
+  parsed.scores = {
+    fallacies: parsed.overall?.logicScore ?? 0,
+    bias: parsed.overall?.biasScore ?? 0,
+    factcheck: parsed.overall?.verifiabilityScore ?? 0,
+  };
 
-  return parsed;
+  parsed.findings = (parsed.findings || []).map((f) => ({
+    ...f,
+    type: "fallacy",       // must match your check key names
+    originalText: f.quote,   // if UI uses originalText anywhere
+  }));
+    return parsed;
 }
