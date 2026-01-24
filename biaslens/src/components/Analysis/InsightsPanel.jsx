@@ -137,10 +137,18 @@ export default function InsightsPanel({
               <p className="text-sm text-gray-400 mb-3 line-clamp-2">
                 {finding.explanation}
               </p>
-              <div className="flex items-center text-purple-400 text-sm">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation(); // prevent the parent card button click
+                  onSelectFinding(finding);
+                  setActiveTab('rewrite');
+                }}
+                className="flex items-center text-purple-400 text-sm hover:text-purple-300"
+              >
                 <span>View suggestion</span>
                 <ChevronRight className="w-4 h-4 ml-1" />
-              </div>
+              </button>
             </button>
           ))}
         </div>
