@@ -93,7 +93,7 @@ The transcription would capture all spoken content from the audio or video file,
 - Any spoken statistics or claims that can be fact-checked
 - Language patterns that may indicate bias
 
-This mock transcription demonstrates how the Factum analysis would work on media content. The same bias detection, logical fallacy identification, and fact-checking capabilities would apply to transcribed speech as they do to written documents.
+This mock transcription demonstrates how the Factify analysis would work on media content. The same bias detection, logical fallacy identification, and fact-checking capabilities would apply to transcribed speech as they do to written documents.
 
 Key points from this recording include discussions about workplace diversity, claims about industry statistics, and various persuasive arguments that warrant further analysis.`;
 

@@ -36,7 +36,7 @@ export default function Hero({ onGetStarted }) {
 
         {/* Subtext */}
         <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-          Factum analyzes your documents for hidden bias, logical fallacies, and unverified claims — 
+          Factify analyzes your documents for hidden bias, logical fallacies, and unverified claims — 
           helping you communicate with clarity, fairness, and credibility.
         </p>
 
@@ -77,7 +77,7 @@ export default function Hero({ onGetStarted }) {
             <h2 className="text-4xl font-bold text-white mb-6">Our Mission</h2>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
               We believe in a world where communication is fair, accurate, and inclusive. 
-              Factum empowers writers, educators, journalists, and organizations to identify 
+              Factify empowers writers, educators, journalists, and organizations to identify 
               hidden biases and misinformation in their content — fostering trust, understanding, 
               and equity in every conversation.
             </p>
