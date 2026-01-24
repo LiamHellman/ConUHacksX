@@ -1,30 +1,25 @@
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { AlertTriangle, Users, TrendingUp } from 'lucide-react';
 
 export default function Hero({ onGetStarted }) {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background gradient orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-pulse delay-1000" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-700/10 rounded-full blur-3xl" />
-      
-      {/* Grid pattern overlay */}
-      <div 
-        className="absolute inset-0 opacity-5"
-        style={{
-          backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px),
-                           linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px'
-        }}
-      />
+    <div>
+      <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Background gradient orbs */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-700/10 rounded-full blur-3xl" />
+        
+        {/* Grid pattern overlay */}
+        <div 
+          className="absolute inset-0 opacity-5"
+          style={{
+            backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px),
+                             linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px)`,
+            backgroundSize: '60px 60px'
+          }}
+        />
 
       <div className="relative z-10 max-w-5xl mx-auto px-8 text-center">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-dark-700/80 border border-dark-500/50 mb-8">
-          <Sparkles className="w-4 h-4 text-purple-400" />
-          <span className="text-sm text-gray-300">AI-Powered Document Analysis</span>
-        </div>
-
         {/* Main headline */}
         <h1 className="text-6xl lg:text-7xl font-bold leading-tight tracking-tight mb-6">
           <span className="text-white">Make </span>
@@ -45,17 +40,13 @@ export default function Hero({ onGetStarted }) {
           helping you communicate with clarity, fairness, and credibility.
         </p>
 
-        {/* CTA Buttons */}
-        <div className="flex items-center justify-center gap-4">
+        {/* CTA Button */}
+        <div className="flex items-center justify-center">
           <button
             onClick={onGetStarted}
-            className="group inline-flex items-center gap-3 px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-600/25 hover:shadow-purple-500/40 hover:scale-105"
+            className="px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-600/25 hover:shadow-purple-500/40 hover:scale-105"
           >
             Analyze a Document
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-          <button className="px-8 py-4 border border-dark-500 hover:border-purple-500/50 text-gray-300 hover:text-white font-medium rounded-xl transition-all duration-300 hover:bg-dark-700/50">
-            Learn More
           </button>
         </div>
 
@@ -74,8 +65,84 @@ export default function Hero({ onGetStarted }) {
         </div>
       </div>
 
-      {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-dark-950 to-transparent" />
-    </section>
+        {/* Bottom gradient fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-dark-950 to-transparent" />
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="bg-dark-950 py-24">
+        <div className="max-w-6xl mx-auto px-8">
+          {/* Mission */}
+          <div className="text-center mb-20">
+            <h2 className="text-4xl font-bold text-white mb-6">Our Mission</h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
+              We believe in a world where communication is fair, accurate, and inclusive. 
+              BiasLens empowers writers, educators, journalists, and organizations to identify 
+              hidden biases and misinformation in their content — fostering trust, understanding, 
+              and equity in every conversation.
+            </p>
+          </div>
+
+          {/* Facts Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+            <div className="p-8 bg-dark-800/50 rounded-2xl border border-dark-700 hover:border-purple-500/30 transition-all">
+              <div className="w-14 h-14 rounded-xl bg-pink-500/10 flex items-center justify-center mb-6">
+                <AlertTriangle className="w-7 h-7 text-pink-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">The Misinformation Crisis</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Studies show that false information spreads 6x faster than accurate news on social media. 
+                Over 60% of people have unknowingly shared misinformation online, contributing to a growing 
+                crisis of trust in digital communication.
+              </p>
+            </div>
+
+            <div className="p-8 bg-dark-800/50 rounded-2xl border border-dark-700 hover:border-purple-500/30 transition-all">
+              <div className="w-14 h-14 rounded-xl bg-amber-500/10 flex items-center justify-center mb-6">
+                <Users className="w-7 h-7 text-amber-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Impact of Biased Language</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Research reveals that biased language in job postings reduces applicant diversity by up to 40%. 
+                Subtle linguistic bias affects hiring, healthcare, education, and media — often without 
+                writers even realizing it.
+              </p>
+            </div>
+
+            <div className="p-8 bg-dark-800/50 rounded-2xl border border-dark-700 hover:border-purple-500/30 transition-all">
+              <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6">
+                <TrendingUp className="w-7 h-7 text-blue-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-3">Why It Matters</h3>
+              <p className="text-gray-400 leading-relaxed">
+                Inclusive and accurate communication builds stronger teams, more engaged audiences, and 
+                greater public trust. Organizations with bias-aware content see 35% higher engagement 
+                and improved reputation scores.
+              </p>
+            </div>
+          </div>
+
+          {/* Goals */}
+          <div className="bg-gradient-to-r from-purple-900/20 to-purple-800/10 rounded-2xl border border-purple-500/20 p-10">
+            <h3 className="text-2xl font-bold text-white mb-6 text-center">Our Goals</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              {[
+                'Make bias detection accessible to everyone, not just experts',
+                'Educate users on logical fallacies without judgment or shame',
+                'Promote fact-based discourse and verifiable claims',
+                'Build AI tools that are transparent, explainable, and fair'
+              ].map((goal, i) => (
+                <div key={i} className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-purple-400 font-bold">{i + 1}</span>
+                  </div>
+                  <p className="text-gray-300 leading-relaxed">{goal}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

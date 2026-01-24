@@ -1,11 +1,59 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, X, ClipboardPaste } from 'lucide-react';
+import { Upload, FileText, X, ClipboardPaste, Video, Music, Loader2 } from 'lucide-react';
 
-export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, pastedText }) {
+export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, pastedText, onMediaTranscribe }) {
   const [isDragging, setIsDragging] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textValue, setTextValue] = useState(pastedText || '');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [mediaFile, setMediaFile] = useState(null);
   const fileInputRef = useRef(null);
+
+  const textFileTypes = [
+    'text/plain',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  ];
+
+  const audioFileTypes = [
+    'audio/mpeg',
+    'audio/mp3',
+    'audio/wav',
+    'audio/ogg',
+    'audio/m4a',
+    'audio/webm'
+  ];
+
+  const videoFileTypes = [
+    'video/mp4',
+    'video/webm',
+    'video/ogg',
+    'video/quicktime',
+    'video/x-msvideo'
+  ];
+
+  const isTextFile = (file) => {
+    return textFileTypes.includes(file.type) || 
+           file.name.endsWith('.txt') || 
+           file.name.endsWith('.pdf') || 
+           file.name.endsWith('.docx');
+  };
+
+  const isAudioFile = (file) => {
+    return audioFileTypes.includes(file.type) || 
+           file.name.endsWith('.mp3') || 
+           file.name.endsWith('.wav') || 
+           file.name.endsWith('.ogg') ||
+           file.name.endsWith('.m4a');
+  };
+
+  const isVideoFile = (file) => {
+    return videoFileTypes.includes(file.type) || 
+           file.name.endsWith('.mp4') || 
+           file.name.endsWith('.webm') || 
+           file.name.endsWith('.mov') ||
+           file.name.endsWith('.avi');
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -26,15 +74,45 @@ export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, p
     }
   };
 
+  // Mock transcription function - replace with actual API call
+  const transcribeMedia = async (file) => {
+    setIsTranscribing(true);
+    setMediaFile(file);
+    
+    // Simulate transcription delay
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Mock transcribed text
+    const mockTranscription = `[Transcribed from ${file.name}]
+
+This is a sample transcription of the uploaded media file. In a production environment, this would be replaced with actual speech-to-text processing using services like OpenAI Whisper, Google Speech-to-Text, or AWS Transcribe.
+
+The transcription would capture all spoken content from the audio or video file, including:
+- Main dialogue and narration
+- Background conversations if audible
+- Any spoken statistics or claims that can be fact-checked
+- Language patterns that may indicate bias
+
+This mock transcription demonstrates how the BiasLens analysis would work on media content. The same bias detection, logical fallacy identification, and fact-checking capabilities would apply to transcribed speech as they do to written documents.
+
+Key points from this recording include discussions about workplace diversity, claims about industry statistics, and various persuasive arguments that warrant further analysis.`;
+
+    setIsTranscribing(false);
+    
+    if (onMediaTranscribe) {
+      onMediaTranscribe(file, mockTranscription);
+    } else {
+      onTextPaste(mockTranscription);
+    }
+  };
+
   const handleFile = (file) => {
-    const validTypes = [
-      'text/plain',
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    ];
-    if (validTypes.includes(file.type) || file.name.endsWith('.txt') || file.name.endsWith('.pdf') || file.name.endsWith('.docx')) {
+    if (isTextFile(file)) {
       onFileUpload(file);
       setShowTextInput(false);
+      setMediaFile(null);
+    } else if (isAudioFile(file) || isVideoFile(file)) {
+      transcribeMedia(file);
     }
   };
 
@@ -54,20 +132,55 @@ export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, p
     onFileUpload(null);
     onTextPaste('');
     setTextValue('');
+    setMediaFile(null);
+    setIsTranscribing(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const getFileIcon = () => {
+    if (mediaFile) {
+      if (isVideoFile(mediaFile)) return <Video className="w-6 h-6 text-purple-400" />;
+      if (isAudioFile(mediaFile)) return <Music className="w-6 h-6 text-purple-400" />;
+    }
+    return <FileText className="w-6 h-6 text-purple-400" />;
+  };
+
+  const getFileTypeLabel = () => {
+    if (mediaFile) {
+      if (isVideoFile(mediaFile)) return 'Video';
+      if (isAudioFile(mediaFile)) return 'Audio';
+    }
+    return 'Document';
   };
 
   return (
     <div className="h-full flex flex-col">
       <div className="px-5 py-4 border-b border-dark-700">
         <h2 className="text-lg font-semibold text-white">Input</h2>
-        <p className="text-sm text-gray-500 mt-1">Upload or paste your document</p>
+        <p className="text-sm text-gray-500 mt-1">Upload document, audio, or video</p>
       </div>
 
       <div className="flex-1 p-5 overflow-y-auto">
-        {!uploadedFile && !pastedText ? (
+        {isTranscribing ? (
+          /* Transcribing state */
+          <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4">
+                <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+              </div>
+              <h3 className="text-white font-medium mb-2">Transcribing Media</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Extracting text from {mediaFile?.name}
+              </p>
+              <div className="w-full bg-dark-700 rounded-full h-2 overflow-hidden">
+                <div className="bg-purple-500 h-full rounded-full animate-pulse" style={{ width: '60%' }} />
+              </div>
+              <p className="text-xs text-gray-500 mt-3">This may take a few moments...</p>
+            </div>
+          </div>
+        ) : !uploadedFile && !pastedText ? (
           <>
             {/* Drop zone */}
             <div
@@ -87,7 +200,7 @@ export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, p
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.pdf,.docx"
+                accept=".txt,.pdf,.docx,.mp3,.wav,.ogg,.m4a,.mp4,.webm,.mov,.avi"
                 onChange={handleFileInput}
                 className="hidden"
               />
@@ -106,9 +219,19 @@ export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, p
               <p className="text-white font-medium mb-2">
                 {isDragging ? 'Drop your file here' : 'Drag & drop your file'}
               </p>
-              <p className="text-sm text-gray-500">
-                Supports .txt, .pdf, .docx
+              <p className="text-sm text-gray-500 mb-3">
+                Documents: .txt, .pdf, .docx
               </p>
+              <div className="flex items-center justify-center gap-4 text-xs text-gray-600">
+                <span className="flex items-center gap-1">
+                  <Music className="w-3 h-3" />
+                  Audio
+                </span>
+                <span className="flex items-center gap-1">
+                  <Video className="w-3 h-3" />
+                  Video
+                </span>
+              </div>
 
               {isDragging && (
                 <div className="absolute inset-0 rounded-xl bg-purple-500/5 pointer-events-none" />
@@ -162,15 +285,17 @@ export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, p
           <div className="bg-dark-800 border border-dark-600 rounded-xl p-5">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                <FileText className="w-6 h-6 text-purple-400" />
+                {getFileIcon()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-white truncate">
-                  {uploadedFile ? uploadedFile.name : 'Pasted Text'}
+                  {uploadedFile ? uploadedFile.name : mediaFile ? mediaFile.name : 'Pasted Text'}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
                   {uploadedFile 
                     ? `${(uploadedFile.size / 1024).toFixed(1)} KB`
+                    : mediaFile
+                    ? `${getFileTypeLabel()} • Transcribed`
                     : `${pastedText.length} characters`
                   }
                 </p>
