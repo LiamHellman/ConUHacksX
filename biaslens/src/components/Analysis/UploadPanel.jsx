@@ -10,11 +10,14 @@ import {
   Youtube,
 } from "lucide-react";
 
-const API_URL = import.meta.env.PROD 
-  ? "https://factify-api.onrender.com" 
+const API_URL = import.meta.env.PROD
+  ? "https://factify-api.onrender.com"
   : "http://localhost:5174";
 
 export default function UploadPanel({
+  // NEW (preferred): multi-file callback
+  onFilesUpload,
+  // Back-compat: single-file callback
   onFileUpload,
   onTextPaste,
   uploadedFile,
@@ -27,7 +30,7 @@ export default function UploadPanel({
   const [textValue, setTextValue] = useState(pastedText || "");
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [mediaFile, setMediaFile] = useState(null);
-  const [youtubeUrl, setYoutubeUrl] = useState(""); // NEW: YT State
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const fileInputRef = useRef(null);
 
   const textFileTypes = [
@@ -53,34 +56,25 @@ export default function UploadPanel({
     "video/x-msvideo",
   ];
 
-  const isTextFile = (file) => {
-    return (
-      textFileTypes.includes(file.type) ||
-      file.name.endsWith(".txt") ||
-      file.name.endsWith(".pdf") ||
-      file.name.endsWith(".docx")
-    );
-  };
+  const isTextFile = (file) =>
+    textFileTypes.includes(file.type) ||
+    file.name.endsWith(".txt") ||
+    file.name.endsWith(".pdf") ||
+    file.name.endsWith(".docx");
 
-  const isAudioFile = (file) => {
-    return (
-      audioFileTypes.includes(file.type) ||
-      file.name.endsWith(".mp3") ||
-      file.name.endsWith(".wav") ||
-      file.name.endsWith(".ogg") ||
-      file.name.endsWith(".m4a")
-    );
-  };
+  const isAudioFile = (file) =>
+    audioFileTypes.includes(file.type) ||
+    file.name.endsWith(".mp3") ||
+    file.name.endsWith(".wav") ||
+    file.name.endsWith(".ogg") ||
+    file.name.endsWith(".m4a");
 
-  const isVideoFile = (file) => {
-    return (
-      videoFileTypes.includes(file.type) ||
-      file.name.endsWith(".mp4") ||
-      file.name.endsWith(".webm") ||
-      file.name.endsWith(".mov") ||
-      file.name.endsWith(".avi")
-    );
-  };
+  const isVideoFile = (file) =>
+    videoFileTypes.includes(file.type) ||
+    file.name.endsWith(".mp4") ||
+    file.name.endsWith(".webm") ||
+    file.name.endsWith(".mov") ||
+    file.name.endsWith(".avi");
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -92,18 +86,47 @@ export default function UploadPanel({
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFile(files[0]);
+  const enqueueTextFiles = (textFiles) => {
+    if (textFiles.length === 0) return;
+
+    // Preferred: parent handles array in one go
+    if (typeof onFilesUpload === "function") {
+      onFilesUpload(textFiles);
+      return;
+    }
+
+    // Back-compat: call single-file handler for each
+    if (typeof onFileUpload === "function") {
+      textFiles.forEach((f) => onFileUpload(f));
     }
   };
 
-  // Inside UploadPanel.jsx -> transcribeMedia function
-  // Inside UploadPanel.jsx
-  const transcribeMedia = async (file) => {
+  const handleFiles = (files) => {
+    const textFiles = [];
+    const batchId = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+    for (const file of files) {
+      if (isTextFile(file)) {
+        textFiles.push(file);
+      } else if (isAudioFile(file) || isVideoFile(file)) {
+        transcribeMedia(file, batchId);
+      }
+    }
+
+    enqueueTextFiles(textFiles);
+
+    setShowTextInput(false);
+    setMediaFile(null);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length > 0) handleFiles(files);
+  };
+
+  const transcribeMedia = async (file, batchId) => {
     setIsTranscribing(true);
     setMediaFile(file);
 
@@ -120,23 +143,22 @@ export default function UploadPanel({
       setIsTranscribing(false);
 
       if (onMediaTranscribe) {
-        // Determine type based on file properties
         const type = file.type.startsWith("video") ? "video" : "audio";
-        onMediaTranscribe(file, data.transcript, type);
+        onMediaTranscribe(file, data.transcript, type, batchId);
       }
     } catch (error) {
       console.error("Transcription Error:", error);
       setIsTranscribing(false);
     }
   };
-  // Inside UploadPanel.jsx
+
   const handleYoutubeSubmit = async () => {
     if (!youtubeUrl.trim()) return;
+    const batchId = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
     setIsTranscribing(true);
     setMediaFile({ name: `YouTube Video`, type: "video/youtube" });
 
     try {
-      console.log("Fetching YouTube transcript from:", `${API_URL}/api/youtube`);
       const response = await fetch(`${API_URL}/api/youtube`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,17 +169,15 @@ export default function UploadPanel({
         const errorText = await response.text();
         throw new Error(errorText || "YouTube transcription failed");
       }
-      
+
       const data = await response.json();
-      console.log("YouTube transcript received:", data.transcript?.slice(0, 100));
 
       if (onMediaTranscribe) {
         onMediaTranscribe(
-          {
-            name: `YouTube: ${youtubeUrl.split("v=")[1]?.slice(0, 8) || "Video"}`,
-            type: "video/youtube",
-          },
+          { name: `YouTube: ${youtubeUrl.split("v=")[1]?.slice(0, 8) || "Video"}`, type: "video/youtube" },
           data.transcript,
+          "youtube",
+          batchId
         );
       }
       setYoutubeUrl("");
@@ -169,37 +189,30 @@ export default function UploadPanel({
       setMediaFile(null);
     }
   };
-  const handleFile = (file) => {
-    if (isTextFile(file)) {
-      onFileUpload(file);
-      setShowTextInput(false);
-      setMediaFile(null);
-    } else if (isAudioFile(file) || isVideoFile(file)) {
-      transcribeMedia(file);
-    }
-  };
 
   const handleFileInput = (e) => {
-    if (e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
-    }
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) handleFiles(files);
+
+    // allow selecting the same file again later
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleTextSubmit = () => {
     if (textValue.trim()) {
       onTextPaste(textValue);
+      setTextValue("");
     }
   };
 
   const clearUpload = () => {
-    onFileUpload(null);
+    // With multi-doc, clearing is basically a UI reset; parent stores docs already.
+    if (typeof onFileUpload === "function") onFileUpload(null);
     onTextPaste("");
     setTextValue("");
     setMediaFile(null);
     setIsTranscribing(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const getFileIcon = () => {
@@ -210,14 +223,6 @@ export default function UploadPanel({
         return <Music className="w-6 h-6 text-purple-400" />;
     }
     return <FileText className="w-6 h-6 text-purple-400" />;
-  };
-
-  const getFileTypeLabel = () => {
-    if (mediaFile) {
-      if (isVideoFile(mediaFile)) return "Video";
-      if (isAudioFile(mediaFile)) return "Audio";
-    }
-    return "Document";
   };
 
   return (
@@ -231,7 +236,6 @@ export default function UploadPanel({
 
       <div className="flex-1 p-5 overflow-y-auto space-y-4">
         {isTranscribing ? (
-          /* Transcribing state (Your existing loader) */
           <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6">
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4">
@@ -253,7 +257,6 @@ export default function UploadPanel({
           </div>
         ) : !uploadedFile && !pastedText ? (
           <>
-            {/* NEW: YouTube Input Section */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-gray-400 uppercase">
                 Analyze YouTube
@@ -285,7 +288,6 @@ export default function UploadPanel({
               <div className="flex-1 h-px bg-dark-600" />
             </div>
 
-            {/* Drop zone (Your existing logic) */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -300,16 +302,18 @@ export default function UploadPanel({
               <input
                 ref={fileInputRef}
                 type="file"
+                multiple
                 accept=".txt,.pdf,.docx,audio/*,video/*"
                 onChange={handleFileInput}
                 className="hidden"
               />
               <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
               <p className="text-white font-medium mb-1">Upload File</p>
-              <p className="text-xs text-gray-500">PDF, MP3, MP4, etc.</p>
+              <p className="text-xs text-gray-500">
+                PDF, MP3, MP4, etc. (multi-select supported)
+              </p>
             </div>
 
-            {/* Text input toggle (Your existing logic) */}
             {!showTextInput ? (
               <button
                 onClick={() => setShowTextInput(true)}
@@ -344,7 +348,6 @@ export default function UploadPanel({
             )}
           </>
         ) : (
-          /* File preview (Your existing logic) */
           <div className="bg-dark-800 border border-dark-600 rounded-xl p-5">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
@@ -355,15 +358,15 @@ export default function UploadPanel({
                   {uploadedFile
                     ? uploadedFile.name
                     : mediaFile
-                      ? mediaFile.name
-                      : "Pasted Text"}
+                    ? mediaFile.name
+                    : "Pasted Text"}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
                   {uploadedFile
                     ? `${(uploadedFile.size / 1024).toFixed(1)} KB`
                     : mediaFile
-                      ? "Media Transcribed"
-                      : "Text Input"}
+                    ? "Media Transcribed"
+                    : "Text Input"}
                 </p>
               </div>
               <button
@@ -379,3 +382,4 @@ export default function UploadPanel({
     </div>
   );
 }
+

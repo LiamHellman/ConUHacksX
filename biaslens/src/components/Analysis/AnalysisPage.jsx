@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import UploadPanel from "./UploadPanel";
 import ControlBar from "./ControlBar";
 import DocumentViewer from "./DocumentViewer";
@@ -9,7 +9,7 @@ import { FileText, Youtube, Music, Video as VideoIcon } from "lucide-react";
 
 /**
  * Map UI toggle keys -> finding.type values coming from llm.js
- * (Your ControlBar uses `fallacies`, but llm.js outputs `type: "fallacy"`.)
+ * (ControlBar uses `fallacies`, but llm.js outputs `type: "fallacy"`.)
  */
 const CHECK_TO_TYPES = {
   bias: new Set(["bias"]),
@@ -36,17 +36,12 @@ function severityRank(sev) {
  *  - For each interval, picking the "best" covering finding by:
  *      severity DESC, confidence DESC, length DESC
  *  - Merging adjacent intervals that select the same finding
- *
- * This ensures:
- *  - Only one highlight per character (DocumentViewer needs this)
- *  - Disabling a category can reveal underlying segments from other categories
  */
 function resolveOverlapsIntoSegments(text, findings) {
   if (!text || !Array.isArray(findings) || findings.length === 0) return [];
 
   const n = text.length;
 
-  // Collect boundaries
   const boundaries = new Set([0, n]);
   for (const f of findings) {
     if (!f) continue;
@@ -60,16 +55,16 @@ function resolveOverlapsIntoSegments(text, findings) {
 
   const pts = Array.from(boundaries).sort((a, b) => a - b);
 
-  // Helper: best finding among candidates
   const pickBest = (cands) => {
     let best = null;
     let bestScore = -Infinity;
+
     for (const f of cands) {
       const sRank = severityRank(f.severity);
       const conf = typeof f.confidence === "number" ? f.confidence : 0;
       const len = Math.max(0, (f.end ?? 0) - (f.start ?? 0));
-      // weight severity heavily, then confidence, then length
       const score = sRank * 1000 + conf * 100 + len * 0.001;
+
       if (score > bestScore) {
         bestScore = score;
         best = f;
@@ -78,14 +73,12 @@ function resolveOverlapsIntoSegments(text, findings) {
     return best;
   };
 
-  // Build chosen segments
   const segments = [];
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i];
     const b = pts[i + 1];
     if (b <= a) continue;
 
-    // All findings that fully cover [a, b)
     const cands = findings.filter((f) => f.start <= a && f.end >= b);
     if (cands.length === 0) continue;
 
@@ -93,7 +86,6 @@ function resolveOverlapsIntoSegments(text, findings) {
     if (!best) continue;
 
     segments.push({
-      // Keep the same ID so selection from InsightsPanel still matches
       ...best,
       start: a,
       end: b,
@@ -103,7 +95,6 @@ function resolveOverlapsIntoSegments(text, findings) {
 
   if (segments.length === 0) return [];
 
-  // Merge adjacent segments with same id + type + severity (so you don’t create tons of tiny spans)
   const merged = [];
   let cur = segments[0];
 
@@ -116,11 +107,7 @@ function resolveOverlapsIntoSegments(text, findings) {
       nxt.start === cur.end;
 
     if (same) {
-      cur = {
-        ...cur,
-        end: nxt.end,
-        quote: text.slice(cur.start, nxt.end),
-      };
+      cur = { ...cur, end: nxt.end, quote: text.slice(cur.start, nxt.end) };
     } else {
       merged.push(cur);
       cur = nxt;
@@ -128,110 +115,240 @@ function resolveOverlapsIntoSegments(text, findings) {
   }
   merged.push(cur);
 
-  // Ensure sorted + non-overlapping
   merged.sort((x, y) => x.start - y.start);
-
   return merged;
+}
+
+function uid() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function makeDoc({ title, content, type }) {
+  return {
+    id: uid(),
+    title: title || "Untitled",
+    content: content || "",
+    type: type || "text",
+    results: null, // (single-analysis per doc for now)
+  };
+}
+
+/**
+ * Back-compat normalization:
+ * Old shape: { id, title, content, type, results }
+ * New shape: { id, title, docs: [doc...], activeDocId }
+ */
+function normalizeSession(item) {
+  if (!item) return null;
+  if (item.docs && Array.isArray(item.docs)) {
+    // ensure activeDocId exists
+    const docs = item.docs || [];
+    return {
+      ...item,
+      activeDocId: item.activeDocId || docs[0]?.id || null,
+    };
+  }
+
+  const doc = makeDoc({
+    title: item.title || "Document",
+    content: item.content || "",
+    type: item.type || "text",
+  });
+
+  // preserve old results on doc
+  doc.results = item.results ?? null;
+
+  return {
+    id: item.id ?? Date.now(),
+    title: item.title || "Session",
+    docs: [doc],
+    activeDocId: doc.id,
+  };
 }
 
 export default function AnalysisPage() {
   const [history, setHistory] = useState([]);
-  const [activeId, setActiveId] = useState(null);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const [activeDocId, setActiveDocId] = useState(null);
 
-  const [uploadedFile, setUploadedFile] = useState(null);
+  // Multi-upload queue (text files)
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+
   const [pastedText, setPastedText] = useState("");
-  const [documentContent, setDocumentContent] = useState("");
+
   const [checks, setChecks] = useState({
     bias: true,
     fallacies: true,
     tactic: true,
   });
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [results, setResults] = useState(null);
   const [selectedFinding, setSelectedFinding] = useState(null);
 
-  // --- PERSISTENCE: Load history ---
+  // ---- persistence: load ----
   useEffect(() => {
     const saved = localStorage.getItem("biaslens_history");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setHistory(parsed);
-      } catch (e) {
-        console.error("Failed to parse history", e);
+    if (!saved) return;
+
+    try {
+      const parsed = JSON.parse(saved);
+      const normalized = (parsed || []).map(normalizeSession).filter(Boolean);
+      setHistory(normalized);
+
+      // restore active session if possible
+      const first = normalized[0] || null;
+      if (first) {
+        setActiveSessionId(first.id);
+        setActiveDocId(first.activeDocId || first.docs?.[0]?.id || null);
       }
+    } catch (e) {
+      console.error("Failed to parse history", e);
     }
   }, []);
 
-  // --- PERSISTENCE: Save history ---
+  // ---- persistence: save ----
   useEffect(() => {
     if (history.length === 0) localStorage.removeItem("biaslens_history");
     else localStorage.setItem("biaslens_history", JSON.stringify(history));
   }, [history]);
 
-  const addToHistory = (title, text, type) => {
-    const newEntry = {
-      id: Date.now(),
-      title: title || "Untitled Analysis",
-      content: text,
-      type: type,
-      results: null,
+  const activeSession = useMemo(() => {
+    if (!activeSessionId) return null;
+    return history.find((h) => h.id === activeSessionId) || null;
+  }, [history, activeSessionId]);
+
+  const activeDoc = useMemo(() => {
+    if (!activeSession) return null;
+    const docs = activeSession.docs || [];
+    const id = activeDocId || activeSession.activeDocId || docs[0]?.id || null;
+    return docs.find((d) => d.id === id) || docs[0] || null;
+  }, [activeSession, activeDocId]);
+
+  const documentContent = activeDoc?.content || "";
+  const results = activeDoc?.results || null;
+
+  const mediaBatchToSessionRef = useRef(new Map());
+
+  function createSessionWithDocs({ title = "Session", docs = [] }) {
+    const sessionId = Date.now();
+
+    const session = {
+      id: sessionId,
+      title,
+      docs,
+      activeDocId: docs[0]?.id || null,
     };
-    setHistory((prev) => [newEntry, ...prev]);
-    setActiveId(newEntry.id);
-    setDocumentContent(text);
-    setResults(null);
+
+    setHistory((prev) => [session, ...prev]);
+    setActiveSessionId(sessionId);
+    setActiveDocId(session.activeDocId);
     setSelectedFinding(null);
-  };
 
-  const handleResume = (item) => {
-    setActiveId(item.id);
-    setDocumentContent(item.content);
-    setResults(item.results);
+    return sessionId;
+  }
+
+  function addDocToSession(sessionId, doc) {
+    setHistory((prev) =>
+      prev.map((s) => {
+        if (s.id !== sessionId) return s;
+        const next = normalizeSession(s);
+        const nextDocs = [...(next.docs || []), doc];
+        return {
+          ...next,
+          docs: nextDocs,
+          activeDocId: next.activeDocId || doc.id, // keep first doc active
+        };
+      })
+    );
+
+    // if user is currently viewing this session, ensure doc selection is sane
+    setActiveSessionId(sessionId);
+    setActiveDocId((cur) => cur || doc.id);
     setSelectedFinding(null);
-  };
+  }
 
+  // ---- handle multi-uploaded text files ----
   useEffect(() => {
-    if (uploadedFile) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        addToHistory(uploadedFile.name, e.target.result, "text");
-        setUploadedFile(null);
-      };
-      reader.readAsText(uploadedFile);
-    }
-  }, [uploadedFile]);
+    if (!uploadedFiles || uploadedFiles.length === 0) return;
 
+    const files = [...uploadedFiles];
+    const sessionId = createSessionWithDocs({ title: "Session", docs: [] });
+
+    (async () => {
+      for (const file of files) {
+        try {
+          const text = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+
+          const doc = makeDoc({
+            title: file.name,
+            content: String(text),
+            type: "text",
+          });
+
+          addDocToSession(sessionId, doc);
+        } catch (e) {
+          console.error("Failed to read file:", file?.name, e);
+        }
+      }
+
+      setUploadedFiles([]);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadedFiles]);
+
+  // ---- pasted text -> new doc ----
   useEffect(() => {
-    if (pastedText) {
-      addToHistory("Pasted Text", pastedText, "text");
-      setPastedText("");
-    }
+    if (!pastedText) return;
+
+    const doc = makeDoc({ title: "Pasted Text", content: pastedText, type: "text" });
+    createSessionWithDocs({ title: "Session", docs: [doc] });
+
+    setPastedText("");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pastedText]);
+
+  const handleResumeSession = (item) => {
+    const session = normalizeSession(item);
+    setActiveSessionId(session.id);
+    setActiveDocId(session.activeDocId || session.docs?.[0]?.id || null);
+    setSelectedFinding(null);
+  };
 
   const handleClearHistory = () => {
     setHistory([]);
-    setActiveId(null);
-    setDocumentContent("");
-    setResults(null);
+    setActiveSessionId(null);
+    setActiveDocId(null);
     setSelectedFinding(null);
     localStorage.removeItem("biaslens_history");
   };
 
   const handleAnalyze = async () => {
-    if (!documentContent) return;
+    if (!activeDoc?.content) return;
+
     setIsAnalyzing(true);
     try {
-      const data = await analyzeText(documentContent, {
+      const data = await analyzeText(activeDoc.content, {
         maxFindings: 10,
         temperature: 0.2,
       });
-      setResults(data);
 
+      // write results onto the active doc in history
       setHistory((prev) =>
-        prev.map((item) =>
-          item.id === activeId ? { ...item, results: data } : item
-        )
+        prev.map((s) => {
+          if (s.id !== activeSessionId) return s;
+          const next = normalizeSession(s);
+          return {
+            ...next,
+            docs: (next.docs || []).map((d) =>
+              d.id === activeDoc.id ? { ...d, results: data } : d
+            ),
+          };
+        })
       );
     } catch (e) {
       console.error(e);
@@ -241,14 +358,12 @@ export default function AnalysisPage() {
   };
 
   /**
-   * 1) Filter findings by enabled categories (so toggles remove INSIGHTS and eligible highlights)
-   * 2) Resolve overlaps into non-overlapping segments for DocumentViewer (so it renders correctly)
+   * Filter findings by enabled toggles (affects Findings + highlighting only)
    */
   const enabledFindings = useMemo(() => {
     const all = results?.findings ?? [];
     if (!Array.isArray(all) || all.length === 0) return [];
 
-    // Which types are enabled right now?
     const enabledTypes = new Set();
     for (const [checkKey, typeSet] of Object.entries(CHECK_TO_TYPES)) {
       if (checks[checkKey]) {
@@ -256,8 +371,6 @@ export default function AnalysisPage() {
       }
     }
 
-    // If you want factcheck toggle to ONLY affect the score and NOT any highlights,
-    // remove "factcheck"/"claim" from CHECK_TO_TYPES.factcheck above.
     return all.filter((f) => enabledTypes.has(f.type));
   }, [results, checks]);
 
@@ -265,14 +378,14 @@ export default function AnalysisPage() {
     return resolveOverlapsIntoSegments(documentContent, enabledFindings);
   }, [documentContent, enabledFindings]);
 
-  // If selected finding becomes disabled, clear selection
+  // Clear selection if it becomes disabled/hidden
   useEffect(() => {
     if (!selectedFinding) return;
     const stillVisible = enabledFindings.some((f) => f.id === selectedFinding.id);
     if (!stillVisible) setSelectedFinding(null);
   }, [enabledFindings, selectedFinding]);
 
-  // Wrap results for InsightsPanel so it shows only enabled findings
+  // Panel sees only enabled findings; Summary remains unaffected in InsightsPanel (per your change)
   const resultsForPanel = useMemo(() => {
     if (!results) return results;
     return { ...results, findings: enabledFindings };
@@ -282,35 +395,43 @@ export default function AnalysisPage() {
     <AnimatedContent className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
       <ControlBar
         checks={checks}
-        onToggleCheck={(key) =>
-          setChecks((prev) => ({ ...prev, [key]: !prev[key] }))
-        }
+        onToggleCheck={(key) => setChecks((prev) => ({ ...prev, [key]: !prev[key] }))}
         onAnalyze={handleAnalyze}
         isAnalyzing={isAnalyzing}
         hasContent={!!documentContent}
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* --- LEFT PANEL: Upload + History List --- */}
+        {/* LEFT: Upload + Sessions */}
         <div className="w-80 border-r border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full">
-          {/* Top fixed part: Upload Inputs */}
           <div className="flex-shrink-0 border-b border-dark-700/50">
             <UploadPanel
-              onFileUpload={setUploadedFile}
+              onFilesUpload={setUploadedFiles}
+              onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
               onTextPaste={setPastedText}
-              onMediaTranscribe={(file, text) =>
-                addToHistory(
-                  file.name,
-                  text,
-                  file.type === "video/youtube" ? "youtube" : "video"
-                )
-              }
-              uploadedFile={uploadedFile}
+              onMediaTranscribe={(file, text, type, batchId) => {
+                // 1) find/create the session for this batch
+                let sessionId = mediaBatchToSessionRef.current.get(batchId);
+
+                if (!sessionId) {
+                  sessionId = createSessionWithDocs({ title: "Session", docs: [] });
+                  mediaBatchToSessionRef.current.set(batchId, sessionId);
+                }
+
+                // 2) add a doc/tab into that session
+                const doc = makeDoc({
+                  title: file.name,
+                  content: text,
+                  type: type === "youtube" ? "youtube" : type, // video/audio/youtube
+                });
+
+                addDocToSession(sessionId, doc);
+              }}
+              uploadedFile={uploadedFiles?.[0] ?? null}
               pastedText={pastedText}
             />
           </div>
 
-          {/* Bottom scrollable part: History List */}
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <div className="px-5 py-6">
               <div className="flex items-center justify-between mb-4">
@@ -332,24 +453,28 @@ export default function AnalysisPage() {
 
               {history.length === 0 ? (
                 <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
-                  <p className="text-xs text-gray-600 italic">
-                    No recent analyses yet
-                  </p>
+                  <p className="text-xs text-gray-600 italic">No recent analyses yet</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {history.map((item) => {
+                    // session icon: use first doc type if present
+                    const session = normalizeSession(item);
+                    const firstDocType = session.docs?.[0]?.type || "text";
+
                     let Icon = FileText;
-                    if (item.type === "video") Icon = VideoIcon;
-                    if (item.type === "youtube") Icon = Youtube;
-                    if (item.type === "audio") Icon = Music;
+                    if (firstDocType === "video") Icon = VideoIcon;
+                    if (firstDocType === "youtube") Icon = Youtube;
+                    if (firstDocType === "audio") Icon = Music;
+
+                    const analyzedCount = (session.docs || []).filter((d) => d.results).length;
 
                     return (
                       <button
-                        key={item.id}
-                        onClick={() => handleResume(item)}
+                        key={session.id}
+                        onClick={() => handleResumeSession(session)}
                         className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${
-                          activeId === item.id
+                          activeSessionId === session.id
                             ? "bg-purple-500/10 border-purple-500/50 text-white"
                             : "bg-dark-800/40 border-dark-700 text-gray-400 hover:border-dark-600 hover:bg-dark-800"
                         }`}
@@ -357,20 +482,17 @@ export default function AnalysisPage() {
                         <Icon
                           size={16}
                           className={
-                            activeId === item.id
+                            activeSessionId === session.id
                               ? "text-purple-400"
                               : "text-gray-500 group-hover:text-gray-400"
                           }
                         />
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm truncate font-medium">
-                            {item.title}
+                          <span className="text-sm truncate font-medium">{session.title}</span>
+                          <span className="text-[10px] text-gray-500">
+                            {(session.docs || []).length} docs
+                            {analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}
                           </span>
-                          {item.results && (
-                            <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-tighter">
-                              Analyzed
-                            </span>
-                          )}
                         </div>
                       </button>
                     );
@@ -381,17 +503,57 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        {/* --- CENTER PANEL: Document Content --- */}
-        <div className="flex-1 bg-dark-800 min-w-0">
-          <DocumentViewer
-            content={documentContent}
-            findings={docFindings}
-            selectedFinding={selectedFinding}
-            onSelectFinding={setSelectedFinding}
-          />
+        {/* CENTER: Document tabs + DocumentViewer */}
+        <div className="flex-1 bg-dark-800 min-w-0 flex flex-col">
+          {activeSession?.docs?.length > 0 && (
+            <div className="px-4 py-2 border-b border-dark-700 bg-dark-900/40 flex gap-2 overflow-x-auto custom-scrollbar">
+              {activeSession.docs.map((doc) => {
+                const isActive = activeDoc?.id === doc.id;
+                const hasResults = !!doc.results;
+
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => {
+                      setActiveDocId(doc.id);
+                      // keep session-level activeDocId in sync for persistence
+                      setHistory((prev) =>
+                        prev.map((s) =>
+                          s.id === activeSessionId ? { ...normalizeSession(s), activeDocId: doc.id } : s
+                        )
+                      );
+                      setSelectedFinding(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm border whitespace-nowrap transition-all flex items-center gap-2 ${
+                      isActive
+                        ? "bg-purple-500/10 border-purple-500/40 text-white"
+                        : "bg-dark-800/40 border-dark-700 text-gray-400 hover:bg-dark-800 hover:border-dark-600"
+                    }`}
+                    title={doc.title}
+                  >
+                    <span className="max-w-[220px] truncate">{doc.title}</span>
+                    {hasResults && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        analyzed
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex-1 min-h-0">
+            <DocumentViewer
+              content={documentContent}
+              findings={docFindings}
+              selectedFinding={selectedFinding}
+              onSelectFinding={setSelectedFinding}
+            />
+          </div>
         </div>
 
-        {/* --- RIGHT PANEL: Analysis Insights --- */}
+        {/* RIGHT: Insights */}
         <div className="w-96 border-l border-dark-700 bg-dark-900 flex-shrink-0">
           <InsightsPanel
             results={resultsForPanel}
