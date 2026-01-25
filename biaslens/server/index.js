@@ -1,79 +1,42 @@
 // server/index.js
 import dotenv from "dotenv";
-dotenv.config();
-
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+
+// Load .env from server directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: `${__dirname}/../.env` });
+
 import fs from "fs";
 import path from "path";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
+import { YtTranscript } from "yt-transcript";
 import { analyzeWithLLM } from "./llm.js";
 
-// Custom YouTube transcript fetcher
+// YouTube transcript fetcher using yt-transcript
 async function fetchYouTubeTranscript(videoId) {
-  // First, fetch the video page to get caption tracks
-  const videoPageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-    }
-  });
+  const yt = new YtTranscript({ videoId });
+  const transcript = await yt.getTranscript();
   
-  const html = await videoPageResponse.text();
-  
-  // Extract captions data from the page
-  const captionMatch = html.match(/"captionTracks":(\[.*?\])/);
-  if (!captionMatch) {
-    throw new Error("No captions found for this video");
+  if (!transcript || transcript.length === 0) {
+    throw new Error("No transcript available for this video");
   }
   
-  let captionTracks;
-  try {
-    captionTracks = JSON.parse(captionMatch[1]);
-  } catch (e) {
-    throw new Error("Failed to parse caption data");
+  const text = transcript
+    .map(seg => seg.text || '')
+    .filter(t => t.trim())
+    .join(' ');
+  
+  if (!text) {
+    throw new Error("Could not extract transcript text");
   }
   
-  if (!captionTracks || captionTracks.length === 0) {
-    throw new Error("No caption tracks available");
-  }
-  
-  // Prefer English, fallback to first available
-  let captionUrl = captionTracks.find(t => t.languageCode === 'en')?.baseUrl 
-    || captionTracks[0]?.baseUrl;
-  
-  if (!captionUrl) {
-    throw new Error("No caption URL found");
-  }
-  
-  // Fetch the actual captions (XML format)
-  const captionResponse = await fetch(captionUrl);
-  const captionXml = await captionResponse.text();
-  
-  // Parse XML and extract text
-  const textMatches = captionXml.matchAll(/<text[^>]*>(.*?)<\/text>/g);
-  const texts = [];
-  for (const match of textMatches) {
-    // Decode HTML entities
-    let text = match[1]
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\n/g, ' ');
-    texts.push(text);
-  }
-  
-  return texts.join(' ');
+  return text;
 }
-
-// Setup Environment Variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Initialize App and OpenAI
 const app = express();

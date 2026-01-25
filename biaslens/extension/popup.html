@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=400, initial-scale=1.0">
+  <title>Factify</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">Factify</span>
+      </div>
+      <span class="tagline">AI-Powered Text Analysis</span>
+    </header>
+
+    <div class="instructions" id="instructions">
+      <p>Select text on any webpage, then click the Factify button that appears to analyze it.</p>
+    </div>
+
+    <div class="selected-text-container" id="selectedTextContainer" style="display: none;">
+      <label>Selected Text:</label>
+      <div class="selected-text" id="selectedText"></div>
+    </div>
+
+    <div class="options-section">
+      <label>Analysis Options:</label>
+      <div class="options-grid">
+        <button type="button" class="option-btn active" id="optBias" data-option="bias">
+          <span class="option-icon">🎯</span>
+          <span>Bias Detection</span>
+        </button>
+        <button type="button" class="option-btn active" id="optFallacy" data-option="fallacy">
+          <span class="option-icon">🧠</span>
+          <span>Logical Fallacies</span>
+        </button>
+        <button type="button" class="option-btn" id="optEthics" data-option="ethics">
+          <span class="option-icon">⚖️</span>
+          <span>Ethical Concerns</span>
+        </button>
+        <button type="button" class="option-btn" id="optTone" data-option="tone">
+          <span class="option-icon">💬</span>
+          <span>Tone Analysis</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="analyzeBtn" disabled>
+        <span class="btn-text">Analyze Selection</span>
+        <span class="btn-loader" style="display: none;"></span>
+      </button>
+    </div>
+
+    <div class="results-section" id="resultsSection" style="display: none;">
+      <div class="result-header">
+        <h3>Analysis Results</h3>
+        <button class="btn-close" id="closeResults">×</button>
+      </div>
+      
+      <div class="score-card" id="scoreCard">
+        <div class="score-circle">
+          <span class="score-value" id="scoreValue">--</span>
+        </div>
+        <span class="score-label">Credibility Score</span>
+      </div>
+
+      <div class="findings" id="findings"></div>
+
+      <div class="rewrite-section" id="rewriteSection" style="display: none;">
+        <h4>Suggested Rewrite</h4>
+        <div class="rewrite-text" id="rewriteText"></div>
+        <button class="btn btn-secondary" id="copyRewrite">Copy Rewrite</button>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <a href="https://factify.tech" target="_blank">Open Full App →</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
