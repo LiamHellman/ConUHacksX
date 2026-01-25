@@ -1,5 +1,6 @@
 // server/index.js
 import dotenv from "dotenv";
+import "dotenv/config";  // must be before other imports
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import fs from "fs";

@@ -10,6 +10,7 @@ export default function ControlBar({
   const toggles = [
     { key: 'bias', label: 'Bias', color: 'pink' },
     { key: 'fallacies', label: 'Logical Fallacies', color: 'amber' },
+    { key: 'tactic', label: 'Tactics', color: 'purple' },
     { key: 'factcheck', label: 'Fact Check', color: 'blue' },
   ];
 
@@ -25,7 +26,10 @@ export default function ControlBar({
       blue: isActive 
         ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' 
         : 'bg-dark-700 border-dark-600 text-gray-400 hover:border-blue-500/30 hover:text-blue-400',
-    };
+      purple: isActive
+        ? 'bg-purple-500/20 border-purple-500/50 text-purple-400'
+        : 'bg-dark-700 border-dark-600 text-gray-400 hover:border-purple-500/30 hover:text-purple-400',
+        };
     return colorMap[color];
   };
 

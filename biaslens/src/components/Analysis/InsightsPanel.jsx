@@ -32,6 +32,7 @@ export default function InsightsPanel({
     const styles = {
       bias: 'bg-pink-500/20 text-pink-400',
       fallacy: 'bg-amber-500/20 text-amber-400',
+      tactic: 'bg-purple-500/20 text-purple-400',
       factcheck: 'bg-blue-500/20 text-blue-400',
     };
     return styles[type] || 'bg-gray-500/20 text-gray-400';

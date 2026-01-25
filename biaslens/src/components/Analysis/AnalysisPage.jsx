@@ -23,6 +23,7 @@ export default function AnalysisPage() {
   const [checks, setChecks] = useState({
     bias: true,
     fallacies: true,
+    tactic: true,
     factcheck: true,
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);

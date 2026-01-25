@@ -53,17 +53,40 @@ export default function DocumentViewer({
     setHighlightedContent(segments);
   }, [content, findings]);
 
-  const getHighlightClass = (type, isSelected) => {
-    const baseClass = 'cursor-pointer transition-all duration-200 rounded px-0.5 -mx-0.5';
+  const getHighlightClass = (type, severity = 'low', isSelected) => {
+    const base = 'cursor-pointer transition-all duration-200 rounded px-0.5 -mx-0.5';
     const selected = isSelected ? 'ring-2 ring-offset-2 ring-offset-dark-800' : '';
-    
+
+    const sev = {
+      low:    { s: 'bg-opacity-100', v: 'bg-opacity-100' },    // unused placeholders
+      medium: { s: 'bg-opacity-100', v: 'bg-opacity-100' },
+      high:   { s: 'bg-opacity-100', v: 'bg-opacity-100' },
+    };
+
+    // Explicit classes so Tailwind definitely generates them
+    const pick = (low, med, high) => (severity === 'high' ? high : severity === 'medium' ? med : low);
+
     switch (type) {
-      case 'bias':
-        return `${baseClass} ${selected} bg-pink-500/20 border-b-2 border-pink-400 hover:bg-pink-500/30 ${isSelected ? 'ring-pink-400' : ''}`;
-      case 'fallacy':
-        return `${baseClass} ${selected} bg-amber-500/20 border-b-2 border-amber-400 hover:bg-amber-500/30 ${isSelected ? 'ring-amber-400' : ''}`;
-      case 'factcheck':
-        return `${baseClass} ${selected} bg-blue-500/20 border-b-2 border-blue-400 hover:bg-blue-500/30 ${isSelected ? 'ring-blue-400' : ''}`;
+      case 'bias': {
+        const bg = pick('bg-pink-500/15', 'bg-pink-500/30', 'bg-pink-500/45');
+        const hover = 'hover:bg-pink-500/10';
+        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-pink-400' : ''}`;
+      }
+      case 'fallacy': {
+        const bg = pick('bg-amber-500/15', 'bg-amber-500/30', 'bg-amber-500/45');
+        const hover = 'hover:bg-amber-500/10';
+        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-amber-400' : ''}`;
+      }
+      case 'tactic': {
+        const bg = pick('bg-purple-500/15', 'bg-purple-500/30', 'bg-purple-500/45');
+        const hover = 'hover:bg-purple-500/10';
+        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-purple-400' : ''}`;
+      }
+      case 'factcheck': {
+        const bg = pick('bg-blue-500/15', 'bg-blue-500/30', 'bg-blue-500/45');
+        const hover = 'hover:bg-blue-500/10';
+        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-blue-400' : ''}`;
+      }
       default:
         return '';
     }
@@ -101,6 +124,10 @@ export default function DocumentViewer({
               <span className="text-gray-400">Fallacy</span>
             </span>
             <span className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-purple-400" />
+              <span className="text-gray-400">Tactic</span>
+            </span>
+            <span className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-400" />
               <span className="text-gray-400">Claim</span>
             </span>
@@ -120,7 +147,8 @@ export default function DocumentViewer({
                 <span
                   key={idx}
                   className={getHighlightClass(
-                    segment.type, 
+                    segment.type,
+                    segment.finding?.severity,
                     selectedFinding?.id === segment.finding?.id
                   )}
                   onClick={() => onSelectFinding(segment.finding)}
