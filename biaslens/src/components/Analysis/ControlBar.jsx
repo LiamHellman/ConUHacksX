@@ -9,29 +9,36 @@ export default function ControlBar({
   isAnalyzing,
   hasContent 
 }) {
-  const dockItems = [
-    { 
-      icon: <AlertTriangle size={22} />, 
-      label: 'Bias Detection', 
-      onClick: () => onToggleCheck('bias'),
-      isActive: checks.bias,
-      className: 'dock-item--pink'
-    },
-    { 
-      icon: <Scale size={22} />, 
-      label: 'Logical Fallacies', 
-      onClick: () => onToggleCheck('fallacies'),
-      isActive: checks.fallacies,
-      className: 'dock-item--amber'
-    },
-    { 
-      icon: <Search size={22} />, 
-      label: 'Fact Check', 
-      onClick: () => onToggleCheck('factcheck'),
-      isActive: checks.factcheck,
-      className: 'dock-item--blue'
-    },
-  ];
+const dockItems = [
+  { 
+    icon: <AlertTriangle size={22} />, 
+    label: 'Bias Detection', 
+    onClick: () => onToggleCheck('bias'),
+    isActive: checks.bias,
+    className: 'dock-item--pink'
+  },
+  { 
+    icon: <Scale size={22} />, 
+    label: 'Logical Fallacies', 
+    onClick: () => onToggleCheck('fallacies'),
+    isActive: checks.fallacies,
+    className: 'dock-item--amber'
+  },
+  { 
+    icon: <Zap size={22} />, 
+    label: 'Tactics', 
+    onClick: () => onToggleCheck('tactic'),
+    isActive: checks.tactic,
+    className: 'dock-item--blue'       // tactics takes the old fact-check blue
+  },
+  { 
+    icon: <Search size={22} />, 
+    label: 'Fact Check', 
+    onClick: () => onToggleCheck('factcheck'),
+    isActive: checks.factcheck,
+    className: 'dock-item--green'    // fact-check becomes green
+  },
+];
 
   return (
     <div className="h-20 px-6 bg-dark-900 border-b border-dark-700 flex items-center justify-between overflow-visible">
