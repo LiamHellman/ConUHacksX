@@ -1,4 +1,4 @@
-import { AlertTriangle, Users, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Users, TrendingUp, Chrome, Download } from 'lucide-react';
 import { motion } from 'motion/react';
 import Plasma from '../Plasma/Plasma';
 import GlareHover from '../GlareHover/GlareHover';
@@ -94,7 +94,7 @@ export default function Hero({ onGetStarted }) {
 
         {/* CTA Button */}
         <motion.div 
-          className="flex items-center justify-center"
+          className="flex flex-col sm:flex-row items-center justify-center gap-4"
           initial={{ filter: 'blur(10px)', opacity: 0, y: 20 }}
           animate={{ filter: 'blur(0px)', opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7, ease: 'easeOut' }}
@@ -117,6 +117,28 @@ export default function Hero({ onGetStarted }) {
             >
               Analyze a Document
             </button>
+          </GlareHover>
+          
+          <GlareHover
+            width="auto"
+            height="auto"
+            background="transparent"
+            borderRadius="12px"
+            borderColor="transparent"
+            glareColor="#ffffff"
+            glareOpacity={0.2}
+            glareAngle={-30}
+            glareSize={300}
+            transitionDuration={800}
+          >
+            <a
+              href="/extension/factify-extension.zip"
+              download
+              className="flex items-center gap-2 px-8 py-4 bg-dark-800/80 hover:bg-dark-700 text-white font-semibold rounded-xl transition-all duration-300 border border-purple-500/30 hover:border-purple-500/50"
+            >
+              <Chrome className="w-5 h-5" />
+              Get Chrome Extension
+            </a>
           </GlareHover>
         </motion.div>
 

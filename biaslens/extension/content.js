@@ -1,0 +1,201 @@
+// Content script - runs on all pages
+let factifyButton = null;
+let resultsPanel = null;
+
+// Listen for text selection
+document.addEventListener('mouseup', (e) => {
+  // Small delay to let selection complete
+  setTimeout(() => {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+    
+    if (text && text.length > 10) {
+      showFactifyButton(e.clientX, e.clientY, text);
+    } else {
+      hideFactifyButton();
+    }
+  }, 10);
+});
+
+// Hide button when clicking elsewhere
+document.addEventListener('mousedown', (e) => {
+  if (factifyButton && !factifyButton.contains(e.target)) {
+    hideFactifyButton();
+  }
+});
+
+function showFactifyButton(x, y, text) {
+  hideFactifyButton();
+  
+  factifyButton = document.createElement('div');
+  factifyButton.id = 'factify-analyze-btn';
+  factifyButton.innerHTML = `
+    <span class="factify-icon">⚡</span>
+    <span class="factify-text">Analyze with Factify</span>
+  `;
+  
+  // Position near the selection
+  const scrollX = window.scrollX || document.documentElement.scrollLeft;
+  const scrollY = window.scrollY || document.documentElement.scrollTop;
+  
+  factifyButton.style.left = `${x + scrollX}px`;
+  factifyButton.style.top = `${y + scrollY + 10}px`;
+  
+  // Store the selected text
+  factifyButton.dataset.text = text;
+  
+  factifyButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const selectedText = factifyButton.dataset.text;
+    
+    // Store in chrome storage and open popup
+    chrome.storage.local.set({ selectedText }, () => {
+      // Send message to open popup or show inline results
+      chrome.runtime.sendMessage({ 
+        action: 'analyzeText', 
+        text: selectedText 
+      });
+    });
+    
+    hideFactifyButton();
+  });
+  
+  document.body.appendChild(factifyButton);
+  
+  // Ensure button is visible in viewport
+  const rect = factifyButton.getBoundingClientRect();
+  if (rect.right > window.innerWidth) {
+    factifyButton.style.left = `${window.innerWidth - rect.width - 20 + scrollX}px`;
+  }
+  if (rect.bottom > window.innerHeight) {
+    factifyButton.style.top = `${y + scrollY - rect.height - 10}px`;
+  }
+}
+
+function hideFactifyButton() {
+  if (factifyButton) {
+    factifyButton.remove();
+    factifyButton = null;
+  }
+}
+
+function showResultsPanel(loading, data, error) {
+  hideResultsPanel();
+  
+  resultsPanel = document.createElement('div');
+  resultsPanel.id = 'factify-results-panel';
+  
+  let contentHtml = '';
+  
+  if (loading) {
+    contentHtml = `
+      <div class="factify-loading">
+        <div class="factify-spinner"></div>
+        <div class="factify-loading-text">Analyzing text...</div>
+      </div>
+    `;
+  } else if (error) {
+    contentHtml = `
+      <div class="factify-finding">
+        <div class="factify-finding-text">Error: ${error}</div>
+      </div>
+    `;
+  } else if (data) {
+    const score = data.credibilityScore ?? data.score ?? '--';
+    
+    contentHtml = `
+      <div class="factify-score">
+        <div class="factify-score-circle">${typeof score === 'number' ? Math.round(score) : score}</div>
+        <div class="factify-score-label">Credibility Score</div>
+      </div>
+    `;
+    
+    if (data.biases && data.biases.length > 0) {
+      data.biases.forEach(bias => {
+        contentHtml += `
+          <div class="factify-finding bias">
+            <div class="factify-finding-type">Bias Detected</div>
+            <div class="factify-finding-text"><strong>${bias.type || 'Bias'}:</strong> ${bias.explanation || bias.description || bias}</div>
+          </div>
+        `;
+      });
+    }
+    
+    if (data.fallacies && data.fallacies.length > 0) {
+      data.fallacies.forEach(fallacy => {
+        contentHtml += `
+          <div class="factify-finding fallacy">
+            <div class="factify-finding-type">Logical Fallacy</div>
+            <div class="factify-finding-text"><strong>${fallacy.type || 'Fallacy'}:</strong> ${fallacy.explanation || fallacy.description || fallacy}</div>
+          </div>
+        `;
+      });
+    }
+    
+    if (data.ethicalConcerns && data.ethicalConcerns.length > 0) {
+      data.ethicalConcerns.forEach(concern => {
+        contentHtml += `
+          <div class="factify-finding">
+            <div class="factify-finding-type">Ethical Concern</div>
+            <div class="factify-finding-text">${concern.explanation || concern.description || concern}</div>
+          </div>
+        `;
+      });
+    }
+    
+    if (data.tone) {
+      contentHtml += `
+        <div class="factify-finding">
+          <div class="factify-finding-type">Tone Analysis</div>
+          <div class="factify-finding-text">${data.tone.description || data.tone}</div>
+        </div>
+      `;
+    }
+    
+    if (!data.biases?.length && !data.fallacies?.length && !data.ethicalConcerns?.length) {
+      contentHtml += `
+        <div class="factify-finding">
+          <div class="factify-finding-text">No significant issues detected. The text appears to be relatively neutral and well-reasoned.</div>
+        </div>
+      `;
+    }
+  }
+  
+  resultsPanel.innerHTML = `
+    <div class="factify-header">
+      <div class="factify-logo">
+        <span>⚡</span>
+        <span>Factify</span>
+      </div>
+      <button class="factify-close">&times;</button>
+    </div>
+    <div class="factify-content">
+      ${contentHtml}
+    </div>
+  `;
+  
+  document.body.appendChild(resultsPanel);
+  
+  // Close button handler
+  resultsPanel.querySelector('.factify-close').addEventListener('click', hideResultsPanel);
+}
+
+function hideResultsPanel() {
+  if (resultsPanel) {
+    resultsPanel.remove();
+    resultsPanel = null;
+  }
+}
+
+// Listen for messages from popup and background
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'getSelection') {
+    const selection = window.getSelection().toString().trim();
+    sendResponse({ text: selection });
+  } else if (request.action === 'showResults') {
+    showResultsPanel(request.loading, request.data, request.error);
+  }
+  return true;
+});

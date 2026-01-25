@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Factify Icons</title>
+</head>
+<body>
+  <h1>Factify Icon Generator</h1>
+  <p>Right-click each canvas and "Save image as" to save the icons.</p>
+  
+  <div style="display: flex; gap: 20px; margin-top: 20px;">
+    <div>
+      <canvas id="icon16" width="16" height="16"></canvas>
+      <p>icon16.png</p>
+    </div>
+    <div>
+      <canvas id="icon48" width="48" height="48"></canvas>
+      <p>icon48.png</p>
+    </div>
+    <div>
+      <canvas id="icon128" width="128" height="128"></canvas>
+      <p>icon128.png</p>
+    </div>
+  </div>
+
+  <script>
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      
+      // Background
+      ctx.fillStyle = '#0a0a0f';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.15);
+      ctx.fill();
+      
+      // Gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#8b5cf6');
+      gradient.addColorStop(0.5, '#3b82f6');
+      gradient.addColorStop(1, '#ec4899');
+      
+      // Lightning bolt
+      ctx.fillStyle = gradient;
+      ctx.font = `bold ${size * 0.6}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚡', size/2, size/2 + size*0.05);
+    }
+    
+    drawIcon(document.getElementById('icon16'));
+    drawIcon(document.getElementById('icon48'));
+    drawIcon(document.getElementById('icon128'));
+  </script>
+</body>
+</html>
