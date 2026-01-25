@@ -1,12 +1,12 @@
 // Content script - runs on all pages
+const API_URL = 'https://factify-api.onrender.com';
+
 let factifyButton = null;
 let resultsPanel = null;
-let isProcessingClick = false;
 
 // Listen for text selection
 document.addEventListener('mouseup', (e) => {
-  // Don't show button if we just clicked the factify button or results panel
-  if (isProcessingClick) return;
+  // Don't show button if clicking on our elements
   if (factifyButton && factifyButton.contains(e.target)) return;
   if (resultsPanel && resultsPanel.contains(e.target)) return;
   
@@ -17,15 +17,15 @@ document.addEventListener('mouseup', (e) => {
     
     if (text && text.length > 10) {
       showFactifyButton(e.clientX, e.clientY, text);
-    } else {
+    } else if (!resultsPanel) {
       hideFactifyButton();
     }
   }, 10);
 });
 
-// Hide button when clicking elsewhere
+// Hide button when clicking elsewhere (but not on results panel)
 document.addEventListener('mousedown', (e) => {
-  if (factifyButton && !factifyButton.contains(e.target)) {
+  if (factifyButton && !factifyButton.contains(e.target) && !(resultsPanel && resultsPanel.contains(e.target))) {
     hideFactifyButton();
   }
 });
@@ -53,27 +53,38 @@ function showFactifyButton(x, y, text) {
   factifyButton.addEventListener('mousedown', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    isProcessingClick = true;
   });
   
-  factifyButton.addEventListener('click', (e) => {
+  factifyButton.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     
     const selectedText = factifyButton.dataset.text;
-    
-    // Send message to background to analyze
-    chrome.runtime.sendMessage({ 
-      action: 'analyzeText', 
-      text: selectedText 
-    });
-    
     hideFactifyButton();
     
-    // Reset flag after a short delay
-    setTimeout(() => {
-      isProcessingClick = false;
-    }, 100);
+    // Show loading panel
+    showResultsPanel(true, null, null);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          text: selectedText,
+          settings: {
+            detectBias: true,
+            detectFallacies: true
+          }
+        })
+      });
+      
+      if (!response.ok) throw new Error('Analysis failed');
+      
+      const data = await response.json();
+      showResultsPanel(false, data, null);
+    } catch (error) {
+      showResultsPanel(false, null, error.message);
+    }
   });
   
   document.body.appendChild(factifyButton);
