@@ -12,62 +12,62 @@ import multer from "multer";
 import OpenAI from "openai";
 import { analyzeWithLLM } from "./llm.js";
 
-// Custom YouTube transcript fetcher
+// Custom YouTube transcript fetcher using Innertube API
 async function fetchYouTubeTranscript(videoId) {
-  // First, fetch the video page to get caption tracks
-  const videoPageResponse = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+  // Use YouTube's internal API to get transcript
+  const response = await fetch('https://www.youtube.com/youtubei/v1/get_transcript?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
+    method: 'POST',
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-    }
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    },
+    body: JSON.stringify({
+      context: {
+        client: {
+          clientName: 'WEB',
+          clientVersion: '2.20240101.00.00'
+        }
+      },
+      params: Buffer.from(`\n\x0b${videoId}`).toString('base64')
+    })
   });
-  
-  const html = await videoPageResponse.text();
-  
-  // Extract captions data from the page
-  const captionMatch = html.match(/"captionTracks":(\[.*?\])/);
-  if (!captionMatch) {
-    throw new Error("No captions found for this video");
+
+  if (!response.ok) {
+    throw new Error(`YouTube API error: ${response.status}`);
   }
+
+  const data = await response.json();
   
-  let captionTracks;
-  try {
-    captionTracks = JSON.parse(captionMatch[1]);
-  } catch (e) {
-    throw new Error("Failed to parse caption data");
+  // Extract transcript from response
+  const transcriptRenderer = data?.actions?.[0]?.updateEngagementPanelAction?.content?.transcriptRenderer;
+  const segments = transcriptRenderer?.content?.transcriptSearchPanelRenderer?.body?.transcriptSegmentListRenderer?.initialSegments
+    || transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups;
+
+  if (!segments || segments.length === 0) {
+    // Try alternative path for different response format
+    const altSegments = data?.actions?.[0]?.updateEngagementPanelAction?.content?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups;
+    if (!altSegments || altSegments.length === 0) {
+      throw new Error("No transcript segments found");
+    }
   }
-  
-  if (!captionTracks || captionTracks.length === 0) {
-    throw new Error("No caption tracks available");
-  }
-  
-  // Prefer English, fallback to first available
-  let captionUrl = captionTracks.find(t => t.languageCode === 'en')?.baseUrl 
-    || captionTracks[0]?.baseUrl;
-  
-  if (!captionUrl) {
-    throw new Error("No caption URL found");
-  }
-  
-  // Fetch the actual captions (XML format)
-  const captionResponse = await fetch(captionUrl);
-  const captionXml = await captionResponse.text();
-  
-  // Parse XML and extract text
-  const textMatches = captionXml.matchAll(/<text[^>]*>(.*?)<\/text>/g);
+
+  // Extract text from segments
   const texts = [];
-  for (const match of textMatches) {
-    // Decode HTML entities
-    let text = match[1]
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\n/g, ' ');
-    texts.push(text);
-  }
+  const segs = segments || data?.actions?.[0]?.updateEngagementPanelAction?.content?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups || [];
   
+  for (const segment of segs) {
+    const cue = segment?.transcriptSegmentRenderer || segment?.transcriptCueGroupRenderer?.cues?.[0]?.transcriptCueRenderer;
+    if (cue?.snippet?.runs) {
+      texts.push(cue.snippet.runs.map(r => r.text).join(''));
+    } else if (cue?.cue?.simpleText) {
+      texts.push(cue.cue.simpleText);
+    }
+  }
+
+  if (texts.length === 0) {
+    throw new Error("Could not extract transcript text");
+  }
+
   return texts.join(' ');
 }
 
