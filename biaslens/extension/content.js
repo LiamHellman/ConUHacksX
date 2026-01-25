@@ -154,10 +154,11 @@ function showResultsPanel(loading, data, error) {
         'bias': 'Bias Detected',
         'tactic': 'Persuasion Tactic'
       };
-      data.findings.forEach(finding => {
+      data.findings.forEach((finding, index) => {
         const category = finding.category || 'general';
+        const findingId = finding.id || `finding-${index}`;
         contentHtml += `
-          <div class="factify-finding ${category}">
+          <div class="factify-finding ${category}" data-finding-id="${findingId}">
             <div class="factify-finding-type">${categoryLabels[category] || 'Finding'}</div>
             <div class="factify-finding-text"><strong>${finding.label || finding.categoryId || category}:</strong> ${finding.explanation}</div>
             ${finding.quote ? `<div class="factify-finding-quote">"${finding.quote}"</div>` : ''}
@@ -220,6 +221,91 @@ function showResultsPanel(loading, data, error) {
   
   // Close button handler
   resultsPanel.querySelector('.factify-close').addEventListener('click', hideResultsPanel);
+  
+  // Make panel draggable
+  makeDraggable(resultsPanel);
+  
+  // Add click handlers to findings to scroll to highlights on page
+  addFindingClickHandlers();
+}
+
+// Add click handlers to findings in the panel to scroll to highlights
+function addFindingClickHandlers() {
+  if (!resultsPanel) return;
+  
+  resultsPanel.querySelectorAll('.factify-finding[data-finding-id]').forEach(findingEl => {
+    findingEl.addEventListener('click', () => {
+      const findingId = findingEl.dataset.findingId;
+      scrollToHighlight(findingId);
+    });
+  });
+}
+
+// Scroll to and highlight a highlight span on the page
+function scrollToHighlight(findingId) {
+  const highlightEl = document.querySelector(`.factify-highlight[data-finding-id="${findingId}"]`);
+  if (!highlightEl) return;
+  
+  // Scroll into view
+  highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+  // Flash effect
+  const originalBg = highlightEl.style.background;
+  highlightEl.style.background = 'rgba(139, 92, 246, 0.5)';
+  highlightEl.style.boxShadow = '0 0 15px rgba(139, 92, 246, 0.6)';
+  
+  setTimeout(() => {
+    highlightEl.style.background = originalBg;
+    highlightEl.style.boxShadow = '';
+  }, 1500);
+}
+
+// Make the results panel draggable
+function makeDraggable(panel) {
+  const header = panel.querySelector('.factify-header');
+  let isDragging = false;
+  let startX, startY, startLeft, startTop;
+  
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('factify-close')) return;
+    
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const rect = panel.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+    
+    // Remove right positioning, switch to left
+    panel.style.right = 'auto';
+    panel.style.left = startLeft + 'px';
+    panel.style.top = startTop + 'px';
+    
+    e.preventDefault();
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    
+    let newLeft = startLeft + dx;
+    let newTop = startTop + dy;
+    
+    // Keep panel within viewport
+    const rect = panel.getBoundingClientRect();
+    newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - rect.width));
+    newTop = Math.max(0, Math.min(newTop, window.innerHeight - rect.height));
+    
+    panel.style.left = newLeft + 'px';
+    panel.style.top = newTop + 'px';
+  });
+  
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
 }
 
 function hideResultsPanel() {
@@ -272,12 +358,13 @@ function applyHighlights(findings) {
   }
   
   // For each finding, try to find and highlight the quote
-  findings.forEach(finding => {
+  findings.forEach((finding, index) => {
     if (!finding.quote || finding.quote.length < 5) return;
     
     const category = finding.category || 'tactic';
     const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
     const searchText = finding.quote.trim();
+    const findingId = finding.id || `finding-${index}`;
     
     // Search through text nodes
     for (let i = 0; i < textNodes.length; i++) {
@@ -296,6 +383,7 @@ function applyHighlights(findings) {
         const span = document.createElement('span');
         span.className = 'factify-highlight';
         span.dataset.category = category;
+        span.dataset.findingId = findingId;
         span.dataset.label = finding.label || finding.categoryId || category;
         span.style.cssText = `
           background: ${colors.bg};
@@ -310,6 +398,13 @@ function applyHighlights(findings) {
         // Tooltip on hover
         span.title = `${finding.label || category}: ${finding.explanation}`;
         
+        // Click handler to scroll to finding in panel
+        span.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          scrollToFinding(findingId);
+        });
+        
         // Create new structure
         const fragment = document.createDocumentFragment();
         if (before) fragment.appendChild(document.createTextNode(before));
@@ -323,6 +418,30 @@ function applyHighlights(findings) {
       }
     }
   });
+}
+
+// Scroll to and highlight a finding in the results panel
+function scrollToFinding(findingId) {
+  if (!resultsPanel) return;
+  
+  const findingEl = resultsPanel.querySelector(`[data-finding-id="${findingId}"]`);
+  if (!findingEl) return;
+  
+  // Remove previous highlighting
+  resultsPanel.querySelectorAll('.factify-finding.highlighted').forEach(el => {
+    el.classList.remove('highlighted');
+  });
+  
+  // Add highlighting
+  findingEl.classList.add('highlighted');
+  
+  // Scroll into view
+  findingEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+  // Remove highlight after a delay
+  setTimeout(() => {
+    findingEl.classList.remove('highlighted');
+  }, 2000);
 }
 
 // Listen for messages from popup and background

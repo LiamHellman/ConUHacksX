@@ -73,8 +73,10 @@
   position: fixed;
   top: 20px;
   right: 20px;
-  width: 350px;
-  max-height: 80vh;
+  width: 380px;
+  min-width: 300px;
+  min-height: 200px;
+  max-height: 90vh;
   background: #0a0a0f;
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 12px;
@@ -83,6 +85,9 @@
   overflow: hidden;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   animation: factify-slide-in 0.3s ease-out;
+  resize: both;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes factify-slide-in {
@@ -98,6 +103,7 @@
 
 #factify-results-panel .factify-header {
   display: flex;
+  cursor: move;
   align-items: center;
   justify-content: space-between;
   padding: 16px;
@@ -133,9 +139,21 @@
 
 #factify-results-panel .factify-content {
   padding: 16px;
-  max-height: calc(80vh - 60px);
+  flex: 1;
   overflow-y: auto;
   color: white;
+}
+
+/* Highlighted finding in panel */
+#factify-results-panel .factify-finding.highlighted {
+  box-shadow: 0 0 0 2px #8b5cf6, 0 0 15px rgba(139, 92, 246, 0.4);
+  transform: scale(1.02);
+}
+
+/* Resize handle styling */
+#factify-results-panel::-webkit-resizer {
+  background: linear-gradient(135deg, transparent 50%, rgba(139, 92, 246, 0.5) 50%);
+  border-radius: 0 0 12px 0;
 }
 
 #factify-results-panel .factify-score {
@@ -173,6 +191,8 @@
   padding: 12px;
   margin-bottom: 8px;
   border-left: 3px solid #8b5cf6;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  cursor: pointer;
 }
 
 #factify-results-panel .factify-finding.bias {
