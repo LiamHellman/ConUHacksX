@@ -118,13 +118,14 @@ export default function UploadPanel({
       const data = await response.json();
 
       // We take the real transcript from OpenAI and use it
+      // We take the real transcript from OpenAI and use it
       const transcript = data.transcript;
-
       setIsTranscribing(false);
 
       // This updates the documentContent in AnalysisPage.jsx
       if (onMediaTranscribe) {
-        onMediaTranscribe(file, realTranscription);
+        // FIX: Changed realTranscription to transcript
+        onMediaTranscribe(file, transcript);
       }
     } catch (error) {
       console.error("Transcription Error:", error);
