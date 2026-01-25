@@ -554,7 +554,7 @@ export default function AnalysisPage() {
         </div>
 
         {/* RIGHT: Insights */}
-        <div className="w-96 border-l border-dark-700 bg-dark-900 flex-shrink-0">
+        <div className="flex-1 min-w-0 border-l border-dark-700 bg-dark-900">
           <InsightsPanel
             results={resultsForPanel}
             checks={checks}
