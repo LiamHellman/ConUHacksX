@@ -426,6 +426,7 @@ const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
     return { ...results, findings: enabledFindings };
   }, [results, enabledFindings]);
 
+  // The following return must be inside the AnalysisPage function, not at the top level
   return (
     <AnimatedContent className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
       <ControlBar
