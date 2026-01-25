@@ -78,14 +78,14 @@ export default function DocumentViewer({
         return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-amber-400' : ''}`;
       }
       case 'tactic': {
-        const bg = pick('bg-purple-500/15', 'bg-purple-500/30', 'bg-purple-500/45');
-        const hover = 'hover:bg-purple-500/10';
-        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-purple-400' : ''}`;
-      }
-      case 'factcheck': {
         const bg = pick('bg-blue-500/15', 'bg-blue-500/30', 'bg-blue-500/45');
         const hover = 'hover:bg-blue-500/10';
         return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-blue-400' : ''}`;
+      }
+      case 'factcheck': {
+        const bg = pick('bg-emerald-500/15', 'bg-emerald-500/30', 'bg-emerald-500/45');
+        const hover = 'hover:bg-emerald-500/10';
+        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-emerald-400' : ''}`;
       }
       default:
         return '';
