@@ -16,7 +16,6 @@ export default function InsightsPanel({
   const tabs = [
     { key: 'summary', label: 'Summary', icon: BarChart3 },
     { key: 'findings', label: 'Findings', icon: List },
-    { key: 'rewrite', label: 'Rewrite', icon: RefreshCw },
   ];
 
   const getSeverityBadge = (severity) => {
@@ -166,11 +165,6 @@ export default function InsightsPanel({
     </div>
   );
 
-  const renderRewrite = () => (
-    <div className="p-5 text-gray-500 text-sm">
-      Rewrite functionality can go here.
-    </div>
-  );
 
   if (isAnalyzing) return renderLoading();
   if (!results) return renderEmptyState();
@@ -199,7 +193,6 @@ export default function InsightsPanel({
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {activeTab === 'summary' && renderSummary()}
         {activeTab === 'findings' && renderFindings()}
-        {activeTab === 'rewrite' && renderRewrite()}
       </div>
     </div>
   );
