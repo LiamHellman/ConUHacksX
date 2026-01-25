@@ -199,10 +199,13 @@ export default function Hero({ onGetStarted }) {
                 <AlertTriangle className="w-7 h-7 text-pink-400" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-3">
-                Explainable Results
+                The Misinformation Crisis
               </h3>
               <p className="text-gray-400 leading-relaxed">
-                Every highlight shows why it matters
+                Studies show that if you repeat a fallacy enough times, people
+                will start to rate it as more truthful, even if they know it's
+                logically flawed. Some studies show that the "truth rating" can
+                increase by 20-30% with repetition alone.
               </p>
             </div>
 
@@ -211,10 +214,13 @@ export default function Hero({ onGetStarted }) {
                 <Users className="w-7 h-7 text-amber-400" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-3">
-                Confidence Weighted Analysis
+                Impact of Biased Language
               </h3>
               <p className="text-gray-400 leading-relaxed">
-                No absolutes just transparent signals
+                Research reveals that biased language in job postings reduces
+                applicant diversity by up to 40%. Subtle linguistic bias affects
+                hiring, healthcare, education, and media without writers even
+                realizing it.
               </p>
             </div>
 
@@ -223,10 +229,13 @@ export default function Hero({ onGetStarted }) {
                 <TrendingUp className="w-7 h-7 text-blue-400" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-3">
-                Privacy First by Design
+                Why It Matters
               </h3>
               <p className="text-gray-400 leading-relaxed">
-                Your documents stay yours
+                Clear and honest communication is the foundation of intellectual
+                discourse. Progress can be made when participants can exchange
+                ideas openly. When discussions are robbed of honesty and
+                clarity, they devolve into debates where winning trumps truth.
               </p>
             </div>
           </div>
