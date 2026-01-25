@@ -150,9 +150,9 @@ export default function Hero({ onGetStarted }) {
           {/* Stats */}
           <div className="mt-20 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
             {[
-              { value: "15+", label: "Bias Categories" },
-              { value: "25+", label: "Fallacy Types" },
-              { value: "99%", label: "Accuracy Rate" },
+              { value: "Explainable Results+", label: "Every highlight shows why it matters" },
+              { value: "Confidence Weighted Analysis", label: "No absolutes just transparent signals" },
+              { value: "Privacy First by Design", label: "Your documents stay yours" },
             ].map((stat, i) => (
               <motion.div
                 key={i}
