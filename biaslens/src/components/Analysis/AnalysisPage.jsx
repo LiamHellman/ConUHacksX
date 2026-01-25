@@ -31,16 +31,9 @@ function severityRank(sev) {
   }
 }
 
-/**
- * Given overlapping findings, produce a NON-overlapping list suitable for DocumentViewer.
- * We do this by:
- *  - Partitioning text into boundary intervals (all starts/ends)
- *  - For each interval, picking the "best" covering finding by:
- *      severity DESC, confidence DESC, length DESC
-
-export default function AnalysisPage() {
 export default function AnalysisPage() {
   // (keep all hooks and logic above this)
+  // ...all hooks and logic above...
   return (
     <AnimatedContent className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
       <ControlBar
@@ -89,7 +82,6 @@ export default function AnalysisPage() {
             />
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {/* ...existing code... */}
             {history.length === 0 ? (
               <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
                 <p className="text-xs text-gray-600 italic">No recent analyses yet</p>
@@ -105,9 +97,119 @@ export default function AnalysisPage() {
                   if (firstDocType === "audio") Icon = Music;
                   const analyzedCount = (session.docs || []).filter((d) => d.results).length;
                   const isActive = activeSessionId === session.id;
-                   *      severity DESC, confidence DESC, length DESC
+                  const docCount = (session.docs || []).length;
+                  const displayTitle =
+                    docCount === 1 ? (session.docs?.[0]?.title || session.title) : session.title;
+                  return (
+                    <button
+                      key={session.id}
+                      onClick={() => handleResumeSession(session)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${
+                        isActive
+                          ? "text-white"
+                          : "bg-dark-800/40 border-dark-700 text-gray-400 hover:border-dark-600 hover:bg-dark-800"
+                      }`}
+                      style={
+                        isActive
+                          ? {
+                              backgroundColor: brandBg(0.10),
+                              borderColor: brandFg(0.50),
+                            }
+                          : undefined
+                      }
+                    >
+                      <Icon
+                        size={16}
+                        className={isActive ? "" : "text-gray-500 group-hover:text-gray-400"}
+                        style={isActive ? { color: brandFg(0.95) } : undefined}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm truncate font-medium">{displayTitle}</span>
+                        {docCount > 1 && (
+                          <span className="text-[10px] text-gray-500">
+                            {docCount} docs
+                            {analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
 
-}
+        {/* CENTER: Document tabs + DocumentViewer */}
+        <div className="bg-dark-800 min-w-0 flex flex-col">
+          {activeSession?.docs?.length > 0 && (
+            <div className="px-4 py-2 border-b border-dark-700 bg-dark-900/40 flex gap-2 overflow-x-auto custom-scrollbar">
+              {activeSession.docs.map((doc) => {
+                const isActive = activeDoc?.id === doc.id;
+                const hasResults = !!doc.results;
+                return (
+                  <button
+                    key={doc.id}
+                    onClick={() => {
+                      setActiveDocId(doc.id);
+                      setHistory((prev) =>
+                        prev.map((s) =>
+                          s.id === activeSessionId
+                            ? { ...normalizeSession(s), activeDocId: doc.id }
+                            : s
+                        )
+                      );
+                      setSelectedFinding(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-sm border whitespace-nowrap transition-all flex items-center gap-2 ${
+                      isActive
+                        ? "text-white"
+                        : "bg-dark-800/40 border-dark-700 text-gray-400 hover:bg-dark-800 hover:border-dark-600"
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: brandBg(0.10),
+                            borderColor: brandBg(0.40),
+                          }
+                        : undefined
+                    }
+                    title={doc.title}
+                  >
+                    <span className="max-w-[220px] truncate">{doc.title}</span>
+                    {hasResults && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        analyzed
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <div className="flex-1 min-h-0">
+            <DocumentViewer
+              content={documentContent}
+              spans={docSpans}
+              selectedFinding={selectedFinding}
+              onSelectFinding={handleSelectFinding}
+            />
+          </div>
+        </div>
+
+        {/* RIGHT: Insights */}
+        <div className="min-w-0 border-l border-dark-700 bg-dark-900 flex flex-col">
+          <InsightsPanel
+            results={resultsForPanel}
+            checks={checks}
+            selectedFinding={selectedFinding}
+            onSelectFinding={handleSelectFinding}
+            isAnalyzing={isAnalyzing}
+          />
+        </div>
+      </Split>
+    </AnimatedContent>
+  );
   const [activeDocId, setActiveDocId] = useState(null);
 
   // Multi-upload queue (text files)
@@ -356,203 +458,3 @@ export default function AnalysisPage() {
     return { ...results, findings: enabledFindings };
   }, [results, enabledFindings]);
 
-  return (
-    <AnimatedContent className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
-      <ControlBar
-        checks={checks}
-        onToggleCheck={(key) => setChecks((prev) => ({ ...prev, [key]: !prev[key] }))}
-        onAnalyze={handleAnalyze}
-        isAnalyzing={isAnalyzing}
-        hasContent={!!documentContent}
-      />
-
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT: Upload + Sessions */}
-        <div className="w-80 border-r border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full">
-          <div className="flex-shrink-0 border-b border-dark-700/50">
-            <UploadPanel
-              onFilesUpload={setUploadedFiles}
-              onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
-              onTextPaste={setPastedText}
-              onMediaTranscribe={(file, text, type, batchId) => {
-                let entry = mediaBatchToSessionRef.current.get(batchId);
-
-                // First media doc in this batch: create singleton-titled session (file name)
-                if (!entry) {
-                  const firstTitle = file.name;
-                  const sessionId = createSessionWithDocs({ title: firstTitle, docs: [] });
-                  entry = { sessionId, count: 0, firstTitle, upgraded: false };
-                  mediaBatchToSessionRef.current.set(batchId, entry);
-                }
-
-                entry.count += 1;
-
-                // Second doc confirms it's a batch: upgrade title to "firstTitle …" once
-                if (entry.count === 2 && !entry.upgraded) {
-                  renameSession(entry.sessionId, `${entry.firstTitle} …`);
-                  entry.upgraded = true;
-                }
-
-                const doc = makeDoc({
-                  title: file.name,
-                  content: text,
-                  type: type === "youtube" ? "youtube" : type,
-                });
-
-                addDocToSession(entry.sessionId, doc);
-              }}
-              uploadedFile={uploadedFiles?.[0] ?? null}
-              pastedText={pastedText}
-            />
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="px-5 py-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: brandFg(1) }}
-                  />
-                  Recent Sessions
-                </h3>
-
-                {history.length > 0 && (
-                  <button
-                    onClick={handleClearHistory}
-                    className="text-[10px] text-gray-500 hover:text-gray-300 uppercase tracking-widest"
-                    title="Clear history"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              {history.length === 0 ? (
-                <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
-                  <p className="text-xs text-gray-600 italic">No recent analyses yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {history.map((item) => {
-                    const session = normalizeSession(item);
-                    const firstDocType = session.docs?.[0]?.type || "text";
-
-                    let Icon = FileText;
-                    if (firstDocType === "video") Icon = VideoIcon;
-                    if (firstDocType === "youtube") Icon = Youtube;
-                    if (firstDocType === "audio") Icon = Music;
-
-                    const analyzedCount = (session.docs || []).filter((d) => d.results).length;
-
-                    const isActive = activeSessionId === session.id;
-                    const docCount = (session.docs || []).length;
-
-                    // For single-doc sessions, show the file name; for batch sessions, show session.title (first file + ellipsis)
-                    const displayTitle =
-                      docCount === 1 ? (session.docs?.[0]?.title || session.title) : session.title;
-
-                    return (
-                      <button
-                        key={session.id}
-                        onClick={() => handleResumeSession(session)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${
-                          isActive
-                            ? "text-white"
-                            : "bg-dark-800/40 border-dark-700 text-gray-400 hover:border-dark-600 hover:bg-dark-800"
-                        }`}
-                        style={
-                          isActive
-                            ? {
-                                backgroundColor: brandBg(0.10),
-                                borderColor: brandBg(0.50),
-                              }
-                            : undefined
-                        }
-                      >
-                        <Icon
-                          size={16}
-                          className={isActive ? "" : "text-gray-500 group-hover:text-gray-400"}
-                          style={isActive ? { color: brandFg(0.95) } : undefined}
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm truncate font-medium">{displayTitle}</span>
-
-                          {/* Only show doc count line for batch sessions */}
-                          {docCount > 1 && (
-                            <span className="text-[10px] text-gray-500">
-                              {docCount} docs
-                              {analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* CENTER: Document tabs + DocumentViewer */}
-        <div className="flex-1 bg-dark-800 min-w-0 flex flex-col">
-          {activeSession?.docs?.length > 0 && (
-            <div className="px-4 py-2 border-b border-dark-700 bg-dark-900/40 flex gap-2 overflow-x-auto custom-scrollbar">
-              {activeSession.docs.map((doc) => {
-                const isActive = activeDoc?.id === doc.id;
-                const hasResults = !!doc.results;
-
-                return (
-                  <button
-                    key={doc.id}
-                    onClick={() => {
-                      setActiveDocId(doc.id);
-                      setHistory((prev) =>
-                        prev.map((s) =>
-                          s.id === activeSessionId
-                            ? { ...normalizeSession(s), activeDocId: doc.id }
-                            : s
-                        )
-                      );
-                      setSelectedFinding(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-sm border whitespace-nowrap transition-all flex items-center gap-2 ${
-                      isActive
-                        ? "text-white"
-                        : "bg-dark-800/40 border-dark-700 text-gray-400 hover:bg-dark-800 hover:border-dark-600"
-                    }`}
-                    style={
-                      isActive
-                        ? {
-                            backgroundColor: brandBg(0.10),
-                            borderColor: brandBg(0.40),
-                          }
-                        : undefined
-                    }
-                    title={doc.title}
-                  >
-                    <span className="max-w-[220px] truncate">{doc.title}</span>
-                    {hasResults && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        analyzed
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="flex-1 min-h-0">
-            <DocumentViewer
-              content={documentContent}
-              spans={docSpans}
-              selectedFinding={selectedFinding}
-              onSelectFinding={handleSelectFinding}
-            />
-          </div>
-        </div>
-      </Split>
-    </AnimatedContent>
-  );
