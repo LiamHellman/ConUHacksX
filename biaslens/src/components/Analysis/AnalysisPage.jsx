@@ -15,8 +15,6 @@ const CHECK_TO_TYPES = {
   bias: new Set(["bias"]),
   fallacies: new Set(["fallacy"]),
   tactic: new Set(["tactic"]),
-  // factcheck is a score-only toggle in your current schema; no highlights unless you add a `factcheck` finding type
-  factcheck: new Set(["factcheck", "claim"]),
 };
 
 function severityRank(sev) {
@@ -147,7 +145,6 @@ export default function AnalysisPage() {
     bias: true,
     fallacies: true,
     tactic: true,
-    factcheck: true,
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState(null);
