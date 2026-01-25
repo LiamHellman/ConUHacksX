@@ -14,12 +14,13 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { fetchTranscript } from "yt-transcript";
+import { YtTranscript } from "yt-transcript";
 import { analyzeWithLLM } from "./llm.js";
 
 // YouTube transcript fetcher using yt-transcript
 async function fetchYouTubeTranscript(videoId) {
-  const transcript = await fetchTranscript(videoId);
+  const yt = new YtTranscript({ videoId });
+  const transcript = await yt.getTranscript();
   
   if (!transcript || transcript.length === 0) {
     throw new Error("No transcript available for this video");
