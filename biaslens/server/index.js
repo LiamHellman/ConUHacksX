@@ -14,22 +14,19 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { Innertube } from "youtubei.js";
+import { fetchTranscript } from "yt-transcript";
 import { analyzeWithLLM } from "./llm.js";
 
-// YouTube transcript fetcher using youtubei.js
+// YouTube transcript fetcher using yt-transcript
 async function fetchYouTubeTranscript(videoId) {
-  const youtube = await Innertube.create();
-  const info = await youtube.getInfo(videoId);
-  const transcriptData = await info.getTranscript();
+  const transcript = await fetchTranscript(videoId);
   
-  if (!transcriptData?.transcript?.content?.body?.initial_segments) {
+  if (!transcript || transcript.length === 0) {
     throw new Error("No transcript available for this video");
   }
   
-  const segments = transcriptData.transcript.content.body.initial_segments;
-  const text = segments
-    .map(seg => seg.snippet?.text || '')
+  const text = transcript
+    .map(seg => seg.text || '')
     .filter(t => t.trim())
     .join(' ');
   
