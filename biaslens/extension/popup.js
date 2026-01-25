@@ -16,8 +16,7 @@ const copyRewriteBtn = document.getElementById('copyRewrite');
 // Options
 const optBias = document.getElementById('optBias');
 const optFallacy = document.getElementById('optFallacy');
-const optEthics = document.getElementById('optEthics');
-const optTone = document.getElementById('optTone');
+const optTactic = document.getElementById('optTactic');
 
 let currentSelectedText = '';
 
@@ -25,8 +24,7 @@ let currentSelectedText = '';
 const defaultOptions = {
   bias: true,
   fallacy: true,
-  ethics: false,
-  tone: false
+  tactic: true
 };
 
 // Initialize popup
@@ -69,8 +67,7 @@ async function loadOptions() {
   // Apply saved state to buttons
   optBias.classList.toggle('active', options.bias);
   optFallacy.classList.toggle('active', options.fallacy);
-  optEthics.classList.toggle('active', options.ethics);
-  optTone.classList.toggle('active', options.tone);
+  optTactic.classList.toggle('active', options.tactic);
 }
 
 // Save options to storage
@@ -78,15 +75,14 @@ async function saveOptions() {
   const options = {
     bias: optBias.classList.contains('active'),
     fallacy: optFallacy.classList.contains('active'),
-    ethics: optEthics.classList.contains('active'),
-    tone: optTone.classList.contains('active')
+    tactic: optTactic.classList.contains('active')
   };
   await chrome.storage.local.set({ factifyOptions: options });
 }
 
 // Set up click handlers for option buttons
 function setupOptionButtons() {
-  [optBias, optFallacy, optEthics, optTone].forEach(btn => {
+  [optBias, optFallacy, optTactic].forEach(btn => {
     btn.addEventListener('click', () => {
       btn.classList.toggle('active');
       saveOptions();
@@ -119,8 +115,7 @@ analyzeBtn.addEventListener('click', async () => {
     const settings = {
       detectBias: optBias.classList.contains('active'),
       detectFallacies: optFallacy.classList.contains('active'),
-      detectEthicalConcerns: optEthics.classList.contains('active'),
-      analyzeTone: optTone.classList.contains('active')
+      detectTactics: optTactic.classList.contains('active')
     };
     
     const response = await fetch(`${API_URL}/api/analyze`, {

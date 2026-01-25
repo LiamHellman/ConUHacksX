@@ -333,31 +333,7 @@ function removeHighlights() {
 function applyHighlights(findings) {
   if (!findings || findings.length === 0) return;
   
-  // Get all text nodes in the body
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        // Skip our own elements and script/style tags
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, script, style, noscript')) {
-          return NodeFilter.FILTER_REJECT;
-        }
-        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    }
-  );
-  
-  const textNodes = [];
-  let node;
-  while (node = walker.nextNode()) {
-    textNodes.push(node);
-  }
-  
-  // For each finding, try to find and highlight the quote
+  // For each finding, try multiple search strategies
   findings.forEach((finding, index) => {
     if (!finding.quote || finding.quote.length < 5) return;
     
@@ -366,58 +342,187 @@ function applyHighlights(findings) {
     const searchText = finding.quote.trim();
     const findingId = finding.id || `finding-${index}`;
     
-    // Search through text nodes
-    for (let i = 0; i < textNodes.length; i++) {
-      const textNode = textNodes[i];
-      if (!textNode.parentNode) continue; // Already processed
-      
-      const text = textNode.textContent;
-      const index = text.toLowerCase().indexOf(searchText.toLowerCase());
-      
-      if (index !== -1) {
-        // Found the text, split and wrap
-        const before = text.substring(0, index);
-        const match = text.substring(index, index + searchText.length);
-        const after = text.substring(index + searchText.length);
-        
-        const span = document.createElement('span');
-        span.className = 'factify-highlight';
-        span.dataset.category = category;
-        span.dataset.findingId = findingId;
-        span.dataset.label = finding.label || finding.categoryId || category;
-        span.style.cssText = `
-          background: ${colors.bg};
-          border-bottom: 2px solid ${colors.border};
-          padding: 1px 2px;
-          border-radius: 2px;
-          cursor: pointer;
-          transition: background 0.2s;
-        `;
-        span.textContent = match;
-        
-        // Tooltip on hover
-        span.title = `${finding.label || category}: ${finding.explanation}`;
-        
-        // Click handler to scroll to finding in panel
-        span.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          scrollToFinding(findingId);
-        });
-        
-        // Create new structure
-        const fragment = document.createDocumentFragment();
-        if (before) fragment.appendChild(document.createTextNode(before));
-        fragment.appendChild(span);
-        if (after) fragment.appendChild(document.createTextNode(after));
-        
-        textNode.parentNode.replaceChild(fragment, textNode);
-        highlights.push(span);
-        
-        break; // Only highlight first occurrence
-      }
+    // Try to find and highlight using multiple strategies
+    let found = false;
+    
+    // Strategy 1: Exact match using TreeWalker
+    found = tryHighlightExact(searchText, category, colors, findingId, finding);
+    
+    // Strategy 2: If not found, try with normalized whitespace
+    if (!found) {
+      const normalizedSearch = searchText.replace(/\s+/g, ' ');
+      found = tryHighlightNormalized(normalizedSearch, category, colors, findingId, finding);
+    }
+    
+    // Strategy 3: If still not found, try partial match (first 50 chars)
+    if (!found && searchText.length > 50) {
+      const partialSearch = searchText.substring(0, 50).trim();
+      found = tryHighlightExact(partialSearch, category, colors, findingId, finding);
+    }
+    
+    // Strategy 4: Try finding by keywords
+    if (!found) {
+      tryHighlightByKeywords(searchText, category, colors, findingId, finding);
     }
   });
+}
+
+// Try exact match highlighting
+function tryHighlightExact(searchText, category, colors, findingId, finding) {
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    if (!node.parentNode) continue;
+    
+    const text = node.textContent;
+    const lowerText = text.toLowerCase();
+    const lowerSearch = searchText.toLowerCase();
+    const matchIndex = lowerText.indexOf(lowerSearch);
+    
+    if (matchIndex !== -1) {
+      highlightTextNode(node, matchIndex, searchText.length, category, colors, findingId, finding);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Try matching with normalized whitespace
+function tryHighlightNormalized(searchText, category, colors, findingId, finding) {
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    if (!node.parentNode) continue;
+    
+    const text = node.textContent;
+    const normalizedText = text.replace(/\s+/g, ' ').toLowerCase();
+    const lowerSearch = searchText.toLowerCase();
+    
+    if (normalizedText.includes(lowerSearch)) {
+      // Find the approximate position in original text
+      const matchIndex = normalizedText.indexOf(lowerSearch);
+      // Estimate original length (may vary due to whitespace)
+      highlightTextNode(node, matchIndex, searchText.length, category, colors, findingId, finding);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Try to find by extracting keywords and matching
+function tryHighlightByKeywords(searchText, category, colors, findingId, finding) {
+  // Extract significant words (longer than 4 chars)
+  const words = searchText.split(/\s+/).filter(w => w.length > 4);
+  if (words.length < 2) return false;
+  
+  // Take first few significant words to search for
+  const keyPhrase = words.slice(0, 3).join(' ').toLowerCase();
+  
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    if (!node.parentNode) continue;
+    
+    const text = node.textContent.toLowerCase();
+    
+    // Check if all key words are present
+    const allWordsPresent = words.slice(0, 3).every(w => text.includes(w.toLowerCase()));
+    if (allWordsPresent) {
+      // Highlight from first word to reasonable length
+      const firstWordIdx = text.indexOf(words[0].toLowerCase());
+      if (firstWordIdx !== -1) {
+        const highlightLen = Math.min(searchText.length, node.textContent.length - firstWordIdx);
+        highlightTextNode(node, firstWordIdx, highlightLen, category, colors, findingId, finding);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Helper to highlight a portion of a text node
+function highlightTextNode(textNode, startIndex, length, category, colors, findingId, finding) {
+  const text = textNode.textContent;
+  const endIndex = Math.min(startIndex + length, text.length);
+  
+  const before = text.substring(0, startIndex);
+  const match = text.substring(startIndex, endIndex);
+  const after = text.substring(endIndex);
+  
+  const span = document.createElement('span');
+  span.className = 'factify-highlight';
+  span.dataset.category = category;
+  span.dataset.findingId = findingId;
+  span.dataset.label = finding.label || finding.categoryId || category;
+  span.style.cssText = `
+    background: ${colors.bg};
+    border-bottom: 2px solid ${colors.border};
+    padding: 1px 2px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.2s;
+  `;
+  span.textContent = match;
+  span.title = `${finding.label || category}: ${finding.explanation}`;
+  
+  span.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    scrollToFinding(findingId);
+  });
+  
+  const fragment = document.createDocumentFragment();
+  if (before) fragment.appendChild(document.createTextNode(before));
+  fragment.appendChild(span);
+  if (after) fragment.appendChild(document.createTextNode(after));
+  
+  textNode.parentNode.replaceChild(fragment, textNode);
+  highlights.push(span);
 }
 
 // Scroll to and highlight a finding in the results panel
