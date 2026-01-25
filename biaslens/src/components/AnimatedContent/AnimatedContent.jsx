@@ -66,19 +66,3 @@ const AnimatedContent = ({
 };
 
 export default AnimatedContent;
-    delay,
-    disappearAfter,
-    disappearDuration,
-    disappearEase,
-    onComplete,
-    onDisappearanceComplete
-  ]);
-
-  return (
-    <div ref={ref} className={className} style={{ visibility: 'hidden' }} {...props}>
-      {children}
-    </div>
-  );
-};
-
-export default AnimatedContent;
