@@ -33,7 +33,7 @@ export default function InsightsPanel({
       bias: 'bg-pink-500/20 text-pink-400',
       fallacy: 'bg-amber-500/20 text-amber-400',
       tactic: 'bg-blue-500/20 text-blue-400',
-      factcheck: 'bg-emerald-500/20 text-emerald-400',
+      factcheck: 'bg-purple-500/20 text-emerald-400',
     };
     return styles[type] || 'bg-gray-500/20 text-gray-400';
   };
@@ -66,26 +66,34 @@ export default function InsightsPanel({
     <div className="p-5 space-y-4">
       {checks.bias && (
         <ScoreCard
-          label="Bias Score"
+          label="Neutrality"
           score={results?.scores?.bias ?? 0}
           color="pink"
-          description="Lower scores indicate less biased language"
+          description="Higher scores indicate biased language"
         />
       )}
       {checks.fallacies && (
         <ScoreCard
-          label="Logic Score"
+          label="Soundness"
           score={results?.scores?.fallacies ?? 0}
           color="amber"
-          description="Higher scores indicate sounder reasoning"
+          description="Higher scores indicate fallacious reasoning"
+        />
+      )}
+      {checks.tactic && (
+        <ScoreCard
+          label="Transparency"
+          score={results?.scores?.tactic ?? 0}
+          color="blue"
+          description="Higher scores indicate more persuasive tactics"
         />
       )}
       {checks.factcheck && (
         <ScoreCard
           label="Verifiability"
           score={results?.scores?.factcheck ?? 0}
-          color="blue"
-          description="Higher scores indicate more verifiable claims"
+          color="purple"
+          description="Higher scores indicate more unreliable claims"
         />
       )}
       

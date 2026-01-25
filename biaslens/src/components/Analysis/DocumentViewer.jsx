@@ -83,9 +83,9 @@ export default function DocumentViewer({
         return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-blue-400' : ''}`;
       }
       case 'factcheck': {
-        const bg = pick('bg-emerald-500/15', 'bg-emerald-500/30', 'bg-emerald-500/45');
-        const hover = 'hover:bg-emerald-500/10';
-        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-emerald-400' : ''}`;
+        const bg = pick('bg-purple-500/15', 'bg-purple-500/30', 'bg-purple-500/45');
+        const hover = 'hover:bg-purple-500/10';
+        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-purple-400' : ''}`;
       }
       default:
         return '';
@@ -124,11 +124,11 @@ export default function DocumentViewer({
               <span className="text-gray-400">Fallacy</span>
             </span>
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-purple-400" />
+              <span className="w-3 h-3 rounded-full bg-blue-400" />
               <span className="text-gray-400">Tactic</span>
             </span>
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-blue-400" />
+              <span className="w-3 h-3 rounded-full bg-purple-400" />
               <span className="text-gray-400">Claim</span>
             </span>
           </div>

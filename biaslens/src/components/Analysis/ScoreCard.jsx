@@ -1,30 +1,43 @@
-export default function ScoreCard({ label, score, color, description }) {
+import { useEffect, useMemo, useState } from "react";
+
+export default function ScoreCard({ label, score, color, description, max = 100 }) {
   const colorStyles = {
-    pink: {
-      stroke: '#f472b6',
-      bg: 'bg-pink-500/10',
-      text: 'text-pink-400',
-    },
-    amber: {
-      stroke: '#fbbf24',
-      bg: 'bg-amber-500/10',
-      text: 'text-amber-400',
-    },
-    blue: {
-      stroke: '#60a5fa',
-      bg: 'bg-blue-500/10',
-      text: 'text-blue-400',
-    },
-    purple: {
-      stroke: '#a78bfa',
-      bg: 'bg-purple-500/10',
-      text: 'text-purple-400',
-    },
+    pink: { stroke: "#f472b6", bg: "bg-pink-500/10", text: "text-pink-400" },
+    amber: { stroke: "#fbbf24", bg: "bg-amber-500/10", text: "text-amber-400" },
+    blue: { stroke: "#60a5fa", bg: "bg-blue-500/10", text: "text-blue-400" },
+    purple: { stroke: "#a78bfa", bg: "bg-purple-500/10", text: "text-purple-400" },
   };
 
   const styles = colorStyles[color] || colorStyles.purple;
-  const circumference = 2 * Math.PI * 36;
-  const progress = ((100 - score) / 100) * circumference;
+
+  // Circle geometry
+  const r = 36;
+  const circumference = 2 * Math.PI * r;
+
+  // Normalize + (optional) auto-scale 0–10 => 0–100
+  const normalized = useMemo(() => {
+    let v = Number(score);
+    if (!Number.isFinite(v)) v = 0;
+
+    // Heuristic: if you pass 0–10 while max is 100, treat as 0–10 and scale up
+    // (This matches the screenshot issue: 5/7/8/4 were being treated as 5%.)
+    if (max === 100 && v >= 0 && v <= 10) v = v * 10;
+
+    v = Math.max(0, Math.min(max, v));
+    return v;
+  }, [score, max]);
+
+  // Animate the fill procedurally by animating the value -> dashoffset
+  const [animatedValue, setAnimatedValue] = useState(0);
+
+  useEffect(() => {
+    // Start from the previous value; CSS transition handles the smooth fill.
+    // If you want it to "replay" from 0 every time, setAnimatedValue(0) first.
+    setAnimatedValue(normalized);
+  }, [normalized]);
+
+  const fraction = max > 0 ? animatedValue / max : 0; // 0..1
+  const dashOffset = circumference * (1 - fraction);  // 0 => full, C => empty
 
   return (
     <div className={`p-5 rounded-xl ${styles.bg} border border-dark-600`}>
@@ -36,7 +49,7 @@ export default function ScoreCard({ label, score, color, description }) {
             <circle
               cx="40"
               cy="40"
-              r="36"
+              r={r}
               stroke="currentColor"
               strokeWidth="6"
               fill="none"
@@ -46,20 +59,21 @@ export default function ScoreCard({ label, score, color, description }) {
             <circle
               cx="40"
               cy="40"
-              r="36"
+              r={r}
               stroke={styles.stroke}
               strokeWidth="6"
               fill="none"
               strokeLinecap="round"
               strokeDasharray={circumference}
-              strokeDashoffset={progress}
-              className="transition-all duration-1000 ease-out"
+              strokeDashoffset={dashOffset}
+              className="transition-[stroke-dashoffset] duration-700 ease-out"
             />
           </svg>
+
           {/* Score text */}
           <div className="absolute inset-0 flex items-center justify-center">
             <span className={`text-xl font-bold ${styles.text}`}>
-              {score}
+              {Math.round(normalized)}
             </span>
           </div>
         </div>
