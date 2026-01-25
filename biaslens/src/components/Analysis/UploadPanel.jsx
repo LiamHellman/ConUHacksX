@@ -10,6 +10,10 @@ import {
   Youtube,
 } from "lucide-react";
 
+const API_URL = import.meta.env.PROD 
+  ? "https://factify-api.onrender.com" 
+  : "http://localhost:5174";
+
 export default function UploadPanel({
   onFileUpload,
   onTextPaste,
@@ -107,7 +111,7 @@ export default function UploadPanel({
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:5174/api/upload", {
+      const response = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData,
       });
@@ -131,7 +135,7 @@ export default function UploadPanel({
     setIsTranscribing(true);
 
     try {
-      const response = await fetch("http://localhost:5174/api/youtube", {
+      const response = await fetch(`${API_URL}/api/youtube`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: youtubeUrl }),

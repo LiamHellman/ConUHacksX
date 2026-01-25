@@ -1,17 +1,15 @@
 // server/index.js
 import dotenv from "dotenv";
-import "dotenv/config"; // must be before other imports
+dotenv.config();
+
 import { fileURLToPath } from "url";
-import { dirname, join, resolve } from "path";
-import { dirname, join, resolve } from "path";
+import { dirname } from "path";
 import fs from "fs";
 import path from "path";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { execFile } from "child_process";
-import { promisify } from "util";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { analyzeWithLLM } from "./llm.js";
@@ -42,7 +40,6 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 
 // --- ROUTE: Audio/Video Transcription (Whisper) ---
-// --- ROUTE: Audio/Video Transcription (Whisper) ---
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   let tempPathWithExt = null;
   try {
@@ -60,7 +57,6 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     return res.json({ transcript: transcription.text });
   } catch (err) {
     console.error("OpenAI Whisper Error:", err.message);
-    console.error("OpenAI Whisper Error:", err.message);
     return res.status(500).send("Transcription failed");
   } finally {
     if (tempPathWithExt && fs.existsSync(tempPathWithExt))
@@ -72,29 +68,28 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 // --- ROUTE: YouTube Transcription (yt-dlp + Whisper) ---
 app.post("/api/youtube", async (req, res) => {
   const timestamp = Date.now();
-  // Using path.resolve to handle Windows spaces/OneDrive paths correctly
   const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
-  const exePath = path.resolve(__dirname, "yt-dlp.exe");
-
+  
   try {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: "No URL provided" });
 
-    console.log(`🚀 Executing local yt-dlp...`);
+    console.log(`🚀 Processing YouTube URL: ${url}`);
 
-    // Arguments array avoids shell injection and path issues
+    // Use yt-dlp from PATH or local executable
+    const ytdlpCmd = process.platform === 'win32' 
+      ? path.resolve(__dirname, "yt-dlp.exe")
+      : "yt-dlp";
+
     const args = [
       "-x",
-      "--audio-format",
-      "mp3",
+      "--audio-format", "mp3",
       "--force-overwrites",
-      "-o",
-      tempPath,
+      "-o", tempPath,
       url,
     ];
 
-    // windowsVerbatimArguments helps with complex Windows file paths
-    await execFilePromise(exePath, args, { windowsVerbatimArguments: true });
+    await execFilePromise(ytdlpCmd, args);
 
     console.log("✅ Download complete. Sending to OpenAI Whisper...");
 
@@ -110,57 +105,10 @@ app.post("/api/youtube", async (req, res) => {
   } catch (error) {
     console.error("❌ YouTube Route Error:", error.stderr || error.message);
     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    res
-      .status(500)
-      .json({ error: "YouTube processing failed.", details: error.message });
-  }
-});
-
-// --- ROUTE: Text Analysis (LLM) ---
-// --- ROUTE: YouTube Transcription (yt-dlp + Whisper) ---
-app.post("/api/youtube", async (req, res) => {
-  const timestamp = Date.now();
-  // Using path.resolve to handle Windows spaces/OneDrive paths correctly
-  const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
-  const exePath = path.resolve(__dirname, "yt-dlp.exe");
-
-  try {
-    const { url } = req.body;
-    if (!url) return res.status(400).json({ error: "No URL provided" });
-
-    console.log(`🚀 Executing local yt-dlp...`);
-
-    // Arguments array avoids shell injection and path issues
-    const args = [
-      "-x",
-      "--audio-format",
-      "mp3",
-      "--force-overwrites",
-      "-o",
-      tempPath,
-      url,
-    ];
-
-    // windowsVerbatimArguments helps with complex Windows file paths
-    await execFilePromise(exePath, args, { windowsVerbatimArguments: true });
-
-    console.log("✅ Download complete. Sending to OpenAI Whisper...");
-
-    const transcription = await client.audio.transcriptions.create({
-      file: fs.createReadStream(tempPath),
-      model: "whisper-1",
+    res.status(500).json({ 
+      error: "YouTube processing failed.", 
+      details: error.message 
     });
-
-    // Cleanup the downloaded MP3
-    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-
-    return res.json({ transcript: transcription.text });
-  } catch (error) {
-    console.error("❌ YouTube Route Error:", error.stderr || error.message);
-    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    res
-      .status(500)
-      .json({ error: "YouTube processing failed.", details: error.message });
   }
 });
 
@@ -182,8 +130,7 @@ app.post("/api/analyze", async (req, res) => {
 });
 
 // Start Server
-// Start Server
-const port = process.env.API_PORT || 5174;
+const port = process.env.PORT || process.env.API_PORT || 5174;
 app.listen(port, () => {
   const uploadsDir = path.resolve(__dirname, "uploads");
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
