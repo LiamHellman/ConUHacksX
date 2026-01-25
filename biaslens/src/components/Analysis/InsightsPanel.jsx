@@ -62,7 +62,7 @@ export default function InsightsPanel({
 
   // IMPORTANT CHANGE: Summary no longer depends on checks.
   const renderSummary = () => (
-    <div className="p-5 space-y-4">
+    <div className="flex-1 overflow-y-auto p-5 space-y-4">
       <ScoreCard
         label="Neutrality"
         score={results?.scores?.bias ?? 0}
@@ -108,7 +108,7 @@ export default function InsightsPanel({
   );
 
   const renderFindings = () => (
-    <div className="p-5">
+    <div className="flex-1 overflow-y-auto p-5">
       {!results?.findings || results.findings.length === 0 ? (
         <div className="text-center py-12">
           <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
