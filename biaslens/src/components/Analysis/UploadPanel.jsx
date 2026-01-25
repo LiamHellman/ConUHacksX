@@ -240,7 +240,7 @@ export default function UploadPanel({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.pdf,.docx,.mp3,.wav,.ogg,.m4a,.mp4,.webm,.mov,.avi"
+                accept=".txt,.pdf,.docx,.mp3,.wav,.ogg,.m4a,.mp4,.webm,.mov,.avi,audio/*,video/*"
                 onChange={handleFileInput}
                 className="hidden"
               />
