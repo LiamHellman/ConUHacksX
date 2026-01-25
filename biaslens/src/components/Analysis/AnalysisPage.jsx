@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import UploadPanel from './UploadPanel';
-import ControlBar from './ControlBar';
-import DocumentViewer from './DocumentViewer';
-import InsightsPanel from './InsightsPanel';
+import { useState, useEffect } from "react";
+import UploadPanel from "./UploadPanel";
+import ControlBar from "./ControlBar";
+import DocumentViewer from "./DocumentViewer";
+import InsightsPanel from "./InsightsPanel";
 import { analyzeText } from "../../api/analyze";
 
 // Mock analysis function - replace with actual API call
@@ -18,8 +18,8 @@ const runAnalysis = async () => {
 
 export default function AnalysisPage() {
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [pastedText, setPastedText] = useState('');
-  const [documentContent, setDocumentContent] = useState('');
+  const [pastedText, setPastedText] = useState("");
+  const [documentContent, setDocumentContent] = useState("");
   const [checks, setChecks] = useState({
     bias: true,
     fallacies: true,
@@ -48,16 +48,16 @@ export default function AnalysisPage() {
   }, [pastedText]);
 
   const handleToggleCheck = (key) => {
-    setChecks(prev => ({ ...prev, [key]: !prev[key] }));
+    setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleAnalyze = async () => {
     if (!documentContent) return;
-    
+
     setIsAnalyzing(true);
     setResults(null);
     setSelectedFinding(null);
-    
+
     try {
       const data = await analyzeText(documentContent, {
         maxFindings: 10,
@@ -83,6 +83,7 @@ export default function AnalysisPage() {
         checks={checks}
         onToggleCheck={handleToggleCheck}
         onAnalyze={handleAnalyze}
+        onMediaTranscribe={(file, text) => setDocumentContent(text)}
         isAnalyzing={isAnalyzing}
         hasContent={!!documentContent}
       />
@@ -94,6 +95,7 @@ export default function AnalysisPage() {
           <UploadPanel
             onFileUpload={setUploadedFile}
             onTextPaste={setPastedText}
+            onMediaTranscribe={(file, text) => setDocumentContent(text)}
             uploadedFile={uploadedFile}
             pastedText={pastedText}
           />
