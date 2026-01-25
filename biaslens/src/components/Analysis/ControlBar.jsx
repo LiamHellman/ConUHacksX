@@ -1,4 +1,4 @@
-import { Zap, AlertTriangle, Scale, Search } from 'lucide-react';
+import { Zap, AlertTriangle, Scale, Search, AlertOctagon, Brain } from 'lucide-react';
 import GlareHover from '../GlareHover/GlareHover';
 import Dock from '../Dock/Dock';
 
@@ -11,7 +11,7 @@ export default function ControlBar({
 }) {
 const dockItems = [
   { 
-    icon: <AlertTriangle size={22} />, 
+    icon: <Brain size={22} />, 
     label: 'Bias Detection', 
     onClick: () => onToggleCheck('bias'),
     isActive: checks.bias,
@@ -25,7 +25,7 @@ const dockItems = [
     className: 'dock-item--amber'
   },
   { 
-    icon: <Zap size={22} />, 
+    icon: <AlertTriangle size={22} />, 
     label: 'Tactics', 
     onClick: () => onToggleCheck('tactic'),
     isActive: checks.tactic,
