@@ -457,4 +457,5 @@ export default function AnalysisPage() {
     if (!results) return results;
     return { ...results, findings: enabledFindings };
   }, [results, enabledFindings]);
+}
 
