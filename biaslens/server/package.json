@@ -11,7 +11,7 @@
     "express": "^5.2.1",
     "multer": "^2.0.2",
     "openai": "^6.16.0",
-    "youtube-transcript": "^1.2.1"
+    "youtube-captions-scraper": "^2.0.1"
   },
   "engines": {
     "node": ">=18"

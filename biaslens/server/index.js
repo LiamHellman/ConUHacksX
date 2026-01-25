@@ -10,7 +10,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { YoutubeTranscript } from "youtube-transcript";
+import { getSubtitles } from "youtube-captions-scraper";
 import { analyzeWithLLM } from "./llm.js";
 
 // Setup Environment Variables
@@ -77,13 +77,23 @@ app.post("/api/youtube", async (req, res) => {
     }
     const videoId = videoIdMatch[1];
 
-    // Fetch transcript using youtube-transcript
-    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    // Try to get English captions first, then auto-generated
+    let captions;
+    try {
+      captions = await getSubtitles({ videoID: videoId, lang: 'en' });
+    } catch (e) {
+      // Try auto-generated English captions
+      try {
+        captions = await getSubtitles({ videoID: videoId, lang: 'en', auto: true });
+      } catch (e2) {
+        throw new Error("No captions available for this video");
+      }
+    }
     
-    // Combine all transcript segments into one string
-    const transcript = transcriptItems.map(item => item.text).join(" ");
+    // Combine all caption segments into one string
+    const transcript = captions.map(item => item.text).join(" ");
 
-    console.log("✅ Transcript fetched successfully");
+    console.log("✅ Transcript fetched successfully, length:", transcript.length);
 
     return res.json({ transcript });
   } catch (error) {
