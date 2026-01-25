@@ -5,6 +5,7 @@ import ControlBar from "./ControlBar";
 import DocumentViewer from "./DocumentViewer";
 import InsightsPanel from "./InsightsPanel";
 import AnimatedContent from "../AnimatedContent/AnimatedContent";
+import Split from "react-split";
 import { analyzeText } from "../../api/analyze";
 import { FileText, Youtube, Music, Video as VideoIcon } from "lucide-react";
 
@@ -36,147 +37,77 @@ function severityRank(sev) {
  *  - Partitioning text into boundary intervals (all starts/ends)
  *  - For each interval, picking the "best" covering finding by:
  *      severity DESC, confidence DESC, length DESC
- *  - Merging adjacent intervals that select the same finding-set
- */
-function buildHighlightSpans(text, findings) {
-  if (!text || !Array.isArray(findings) || findings.length === 0) return [];
-
-  const n = text.length;
-
-  const boundaries = new Set([0, n]);
-  for (const f of findings) {
-    if (!f) continue;
-    const s = Math.max(0, Math.min(n, f.start));
-    const e = Math.max(0, Math.min(n, f.end));
-    if (e > s) {
-      boundaries.add(s);
-      boundaries.add(e);
-    }
-  }
-
-  const pts = Array.from(boundaries).sort((a, b) => a - b);
-
-  const pickBest = (cands) => {
-    let best = null;
-    let bestScore = -Infinity;
-
-    for (const f of cands) {
-      const sRank = severityRank(f.severity);
-      const conf = typeof f.confidence === "number" ? f.confidence : 0;
-      const len = Math.max(0, (f.end ?? 0) - (f.start ?? 0));
-      const score = sRank * 1000 + conf * 100 + len * 0.001;
-      if (score > bestScore) {
-        bestScore = score;
-        best = f;
-      }
-    }
-    return best;
-  };
-
-  // Build raw spans
-  const spans = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i];
-    const b = pts[i + 1];
-    if (b <= a) continue;
-
-    const active = findings.filter((f) => f.start <= a && f.end >= b);
-    if (active.length === 0) continue;
-
-    // Stable key so we can merge adjacent spans with same active set
-    const key = active
-      .map((f) => f.id)
-      .sort()
-      .join("|");
-
-    spans.push({
-      start: a,
-      end: b,
-      quote: text.slice(a, b),
-      findings: active,
-      primary: pickBest(active),
-      _key: key,
-    });
-  }
-
-  if (spans.length === 0) return [];
-
-  // Merge adjacent spans if the active finding-set is identical
-  const merged = [];
-  let cur = spans[0];
-
-  for (let i = 1; i < spans.length; i++) {
-    const nxt = spans[i];
-    if (nxt.start === cur.end && nxt._key === cur._key) {
-      cur = {
-        ...cur,
-        end: nxt.end,
-        quote: text.slice(cur.start, nxt.end),
-      };
-    } else {
-      merged.push(cur);
-      cur = nxt;
-    }
-  }
-  merged.push(cur);
-
-  return merged.map(({ _key, ...rest }) => rest);
-}
-
-function uid() {
-  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
-function makeDoc({ title, content, type }) {
-  return {
-    id: uid(),
-    title: title || "Untitled",
-    content: content || "",
-    type: type || "text",
-    results: null, // (single-analysis per doc for now)
-  };
-}
-
-/**
- * Back-compat normalization:
- * Old shape: { id, title, content, type, results }
- * New shape: { id, title, docs: [doc...], activeDocId }
- */
-function normalizeSession(item) {
-  if (!item) return null;
-  if (item.docs && Array.isArray(item.docs)) {
-    const docs = item.docs || [];
-    return {
-      ...item,
-      activeDocId: item.activeDocId || docs[0]?.id || null,
-    };
-  }
-
-  const doc = makeDoc({
-    title: item.title || "Document",
-    content: item.content || "",
-    type: item.type || "text",
-  });
-
-  doc.results = item.results ?? null;
-
-  return {
-    id: item.id ?? Date.now(),
-    seq: typeof item.seq === "number" ? item.seq : null, // retained for back-compat
-    title: item.title || "Session",
-    docs: [doc],
-    activeDocId: doc.id,
-  };
-}
-
-// Small helpers for theme-driven accents (OKLab-derived RGB via CSS vars)
-const BRAND_RGB = "var(--brand, var(--type-factcheck, 168 85 247))"; // fallback to violet-ish if missing
-const brandBg = (a) => `rgb(${BRAND_RGB} / ${a})`;
-const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
 
 export default function AnalysisPage() {
-  const [history, setHistory] = useState([]);
-  const [activeSessionId, setActiveSessionId] = useState(null);
+export default function AnalysisPage() {
+  // (keep all hooks and logic above this)
+  return (
+    <AnimatedContent className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
+      <ControlBar
+        checks={checks}
+        onToggleCheck={(key) => setChecks((prev) => ({ ...prev, [key]: !prev[key] }))}
+        onAnalyze={handleAnalyze}
+        isAnalyzing={isAnalyzing}
+        hasContent={!!documentContent}
+      />
+      <Split
+        className="flex-1 flex overflow-hidden"
+        sizes={[20, 50, 30]}
+        minSize={[200, 300, 250]}
+        expandToMin={true}
+        gutterSize={8}
+        direction="horizontal"
+        style={{ display: 'flex', width: '100%', height: '100%' }}
+      >
+        {/* LEFT: Upload + Sessions */}
+        <div className="border-r border-dark-700 bg-dark-900 flex flex-col h-full min-w-0">
+          <div className="flex-shrink-0 border-b border-dark-700/50">
+            <UploadPanel
+              onFilesUpload={setUploadedFiles}
+              onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
+              onTextPaste={setPastedText}
+              onMediaTranscribe={(file, text, type, batchId) => {
+                let entry = mediaBatchToSessionRef.current.get(batchId);
+                if (!entry) {
+                  const firstTitle = file.name;
+                  const sessionId = createSessionWithDocs({ title: firstTitle, docs: [] });
+                  entry = { sessionId, count: 0, firstTitle, upgraded: false };
+                  mediaBatchToSessionRef.current.set(batchId, entry);
+                }
+                entry.count += 1;
+                if (entry.count === 2 && !entry.upgraded) {
+                  entry.upgraded = true;
+                  renameSession(entry.sessionId, `${entry.firstTitle} …`);
+                }
+                const doc = makeDoc({
+                  title: file.name,
+                  content: text,
+                  type,
+                });
+                addDocToSession(entry.sessionId, doc);
+              }}
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            {/* ...existing code... */}
+            {history.length === 0 ? (
+              <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
+                <p className="text-xs text-gray-600 italic">No recent analyses yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {history.map((item) => {
+                  const session = normalizeSession(item);
+                  const firstDocType = session.docs?.[0]?.type || "text";
+                  let Icon = FileText;
+                  if (firstDocType === "video") Icon = VideoIcon;
+                  if (firstDocType === "youtube") Icon = Youtube;
+                  if (firstDocType === "audio") Icon = Music;
+                  const analyzedCount = (session.docs || []).filter((d) => d.results).length;
+                  const isActive = activeSessionId === session.id;
+                   *      severity DESC, confidence DESC, length DESC
+
+}
   const [activeDocId, setActiveDocId] = useState(null);
 
   // Multi-upload queue (text files)
@@ -622,18 +553,6 @@ export default function AnalysisPage() {
             />
           </div>
         </div>
-
-        {/* RIGHT: Insights */}
-        <div className="flex-1 min-w-0 border-l border-dark-700 bg-dark-900">
-          <InsightsPanel
-            results={resultsForPanel}
-            checks={checks}
-            selectedFinding={selectedFinding}
-            onSelectFinding={handleSelectFinding}
-            isAnalyzing={isAnalyzing}
-          />
-        </div>
-      </div>
+      </Split>
     </AnimatedContent>
   );
-}
