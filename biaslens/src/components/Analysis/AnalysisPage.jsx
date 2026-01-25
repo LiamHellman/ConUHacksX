@@ -6,17 +6,6 @@ import InsightsPanel from './InsightsPanel';
 import AnimatedContent from '../AnimatedContent/AnimatedContent';
 import { analyzeText } from "../../api/analyze";
 
-// Mock analysis function - replace with actual API call
-const runAnalysis = async () => {
-  setIsAnalyzing(true);
-  try {
-    const data = await analyzeText(documentContent, { maxFindings: 10 });
-    setResults(data);
-  } finally {
-    setIsAnalyzing(false);
-  }
-};
-
 export default function AnalysisPage() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [pastedText, setPastedText] = useState("");
@@ -63,7 +52,7 @@ export default function AnalysisPage() {
     try {
       const data = await analyzeText(documentContent, {
         maxFindings: 10,
-        // enabledFallacies: [...],
+        temperature: 0.2,
       });
       setResults(data);
     } catch (e) {

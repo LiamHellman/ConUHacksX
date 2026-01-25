@@ -137,28 +137,58 @@ function clampFindingsToText(text, findings) {
 
 export async function analyzeWithLLM(text, settings = {}) {
   const maxFindings = Math.max(1, Math.min(Number(settings.maxFindings ?? 10), 12));
+  const temperature = Math.max(0, Math.min(Number(settings.temperature ?? 0.2), 1));
 
   const system = [
-    "You analyze text for (1) logical fallacies, (2) cognitive biases, and (3) manipulative rhetoric/persuasion tactics.",
-    "Return ONLY a JSON object that matches the provided schema.",
-    "SCORING (IMPORTANT): All overall scores MUST be integers from 0 to 100.",
-    "All scores MUST follow the same direction: higher is ALWAYS better; lower is ALWAYS worse.",
-    "Meaning of each score (higher = better):",
-    "- fallacyScore (Logic Quality): 0 = reasoning is dominated by fallacies/contradictions; 100 = logically rigorous with minimal fallacies.",
-    "- biasScore (Neutrality): 0 = highly biased/loaded/one-sided language; 100 = neutral, balanced, careful wording.",
-    "- tacticScore (Transparency): 0 = heavy persuasive/manipulative rhetoric; 100 = plain, transparent communication with minimal persuasive tactics.",
-    "- verifiabilityScore (Verifiability): 0 = vague, unfalsifiable, unsupported; 100 = specific, checkable, well-supported claims.",
-    "Use the full range; do not compress to 1–10 or multiples of 10.",
+    "You are an expert critical-reasoning auditor. Your job is to find issues in text across three categories:",
+    "(A) logical fallacies (errors in reasoning), (B) cognitive biases (one-sided framing/interpretation),",
+    "(C) manipulative rhetoric / persuasion tactics (pressure, emotional loading, framing tricks).",
+    "",
+    "OUTPUT RULES:",
+    "- Return ONLY a JSON object that matches the provided JSON schema exactly (no extra keys, no markdown).",
+    "- All indices are CHARACTER indices into the exact input string.",
+    "- For every finding: quote MUST equal text.slice(start, end) exactly.",
+    "- Do not output overlapping spans. If multiple issues apply to the same region, pick the most important one,",
+    "  and keep the quote as short as possible while still evidencing the issue.",
+    `- Return at most ${maxFindings} findings total across ALL categories.`,
+    "",
+    "SCORING (0–100, integers): Higher is ALWAYS better; lower is ALWAYS worse.",
+    "- fallacyScore (Logic Quality): 0 dominated by fallacies/contradictions; 100 logically rigorous.",
+    "- biasScore (Neutrality): 0 highly loaded/one-sided; 100 balanced, careful, fair.",
+    "- tacticScore (Transparency): 0 manipulative/pressuring; 100 plain, non-manipulative.",
+    "- verifiabilityScore (Verifiability): 0 vague/unfalsifiable/unsupported; 100 specific/checkable/sourced.",
+    "Use the full range 0–100. Do NOT compress to 1–10. Do NOT default to multiples of 10.",
     "Rubric: 0–20 poor, 21–40 weak, 41–60 mixed, 61–80 strong, 81–100 excellent.",
-    "Return the scores as integers; avoid rounding to tens unless truly appropriate.",
-    "All indices are CHARACTER indices into the exact input string.",
-    "For each finding: quote MUST equal text.slice(start, end) exactly.",
-    "Do not produce overlapping spans.",
-    `Return at most ${maxFindings} findings total across ALL categories.`,
-    "Try to include a balanced mix across fallacy/bias/tactic when present, but do not invent findings.",
-    "Severity should reflect impact on reasoning/manipulation: low, medium, high.",
-    "If uncertain, return fewer findings with lower confidence."
-  ].join(" ");
+    "",
+    "FINDINGS REQUIREMENTS:",
+    "- Only flag what is actually present in the text. Do not invent missing context.",
+    "- Prefer higher precision over volume. If uncertain, lower confidence and/or omit.",
+    "- Severity is impact: low (minor), medium (meaningful), high (dominant/critical).",
+    "- Confidence is probability you are correct (0 to 1).",
+    "",
+    "SEVERITY CALIBRATION (IMPORTANT):",
+    "- low: subtle framing, mild overstatement, minor rhetorical loading, or weak inference; limited impact.",
+    "- medium: clearly present and meaningfully affects interpretation or reasoning.",
+    "- high: a dominant driver of the argument; strong distortion/manipulation.",
+    "- Aim for a realistic mix: include at least 1 low severity finding when any mild issues exist.",
+    "- High severity should be rare unless the text is overwhelmingly manipulative (typically <= 2 highs).",
+    "",
+    "CATEGORY + IDS:",
+    "- category must be one of: fallacy | bias | tactic.",
+    "- categoryId must be a stable snake_case identifier, e.g.:",
+    "  fallacy: straw_man, ad_hominem, false_dilemma, hasty_generalization, circular_reasoning, post_hoc, red_herring,",
+    "          slippery_slope, appeal_to_authority, appeal_to_emotion, equivocation, no_true_scotsman, false_cause,",
+    "          composition_division, begging_the_question",
+    "  bias: confirmation_bias, availability_heuristic, anchoring, survivorship_bias, fundamental_attribution_error,",
+    "        in_group_bias, negativity_bias, halo_effect, framing_effect, sunk_cost_fallacy, optimism_bias, just_world_hypothesis",
+    "  tactic: loaded_language, fear_appeal, guilt_trip, false_urgency, bandwagon, scapegoating, cherry_picking,",
+    "          whataboutism, sealioning, moving_goalposts, vague_weasel_words, thought_terminating_cliche",
+    "- If none fit, create a reasonable snake_case id (but do not over-fragment).",
+    "",
+    "PROCESS (follow internally, do not output):",
+    "1) Ensure a mix across categories when present, but do not force balance.",
+    "2) Choose minimal non-overlapping spans that demonstrate each issue.",
+  ].join(' ');
 
   // Use a configurable model so you can swap quickly if needed
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -166,6 +196,7 @@ export async function analyzeWithLLM(text, settings = {}) {
   // Using the Responses API; structured outputs are configured via text.format. :contentReference[oaicite:2]{index=2}
   const resp = await getClient().responses.create({
     model,
+    temperature,
     input: [
       { role: "system", content: system },
       { role: "user", content: text },
