@@ -34,9 +34,6 @@ export default function Header({ showAnalysis, onBackToHome }) {
             About
           </a>
         )}
-        <button className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white border border-dark-500 hover:border-purple-500/50 rounded-lg transition-all">
-          Sign In
-        </button>
       </nav>
     </header>
   );

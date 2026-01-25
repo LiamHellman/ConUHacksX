@@ -1,0 +1,115 @@
+.dock-outer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.dock-panel {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: fit-content;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  background-color: rgba(15, 10, 25, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  padding: 0.5rem 0.75rem;
+  backdrop-filter: blur(10px);
+  overflow: visible;
+}
+
+.dock-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background-color: rgba(30, 25, 45, 0.9);
+  border: 1px solid rgba(100, 100, 120, 0.3);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.2),
+    0 2px 4px -1px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dock-item:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.dock-item--active {
+  background-color: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow:
+    0 4px 6px -1px rgba(139, 92, 246, 0.2),
+    0 0 20px rgba(139, 92, 246, 0.15);
+}
+
+.dock-item--active.dock-item--pink {
+  background-color: rgba(236, 72, 153, 0.2);
+  border-color: rgba(236, 72, 153, 0.6);
+  box-shadow:
+    0 4px 6px -1px rgba(236, 72, 153, 0.2),
+    0 0 20px rgba(236, 72, 153, 0.15);
+}
+
+.dock-item--active.dock-item--amber {
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow:
+    0 4px 6px -1px rgba(245, 158, 11, 0.2),
+    0 0 20px rgba(245, 158, 11, 0.15);
+}
+
+.dock-item--active.dock-item--blue {
+  background-color: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow:
+    0 4px 6px -1px rgba(59, 130, 246, 0.2),
+    0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+.dock-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a1a1aa;
+  transition: color 0.2s ease;
+}
+
+.dock-item:hover .dock-icon,
+.dock-item--active .dock-icon {
+  color: #fff;
+}
+
+.dock-item--active.dock-item--pink .dock-icon {
+  color: #f472b6;
+}
+
+.dock-item--active.dock-item--amber .dock-icon {
+  color: #fbbf24;
+}
+
+.dock-item--active.dock-item--blue .dock-icon {
+  color: #60a5fa;
+}
+
+.dock-label {
+  position: absolute;
+  top: -2rem;
+  left: 50%;
+  width: max-content;
+  white-space: nowrap;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background-color: rgba(15, 10, 25, 0.95);
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fff;
+  transform: translateX(-50%);
+  backdrop-filter: blur(10px);
+  z-index: 50;
+}

@@ -3,6 +3,7 @@ import UploadPanel from './UploadPanel';
 import ControlBar from './ControlBar';
 import DocumentViewer from './DocumentViewer';
 import InsightsPanel from './InsightsPanel';
+import AnimatedContent from '../AnimatedContent/AnimatedContent';
 import { analyzeText } from "../../api/analyze";
 
 // Mock analysis function - replace with actual API call
@@ -77,7 +78,19 @@ export default function AnalysisPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
+    <AnimatedContent
+      distance={100}
+      direction="vertical"
+      reverse={false}
+      duration={0.8}
+      ease="power3.out"
+      initialOpacity={0}
+      animateOpacity
+      scale={1}
+      threshold={0.1}
+      delay={0}
+      className="h-[calc(100vh-64px)] flex flex-col bg-dark-950"
+    >
       {/* Control bar */}
       <ControlBar
         checks={checks}
@@ -120,6 +133,6 @@ export default function AnalysisPage() {
           />
         </div>
       </div>
-    </div>
+    </AnimatedContent>
   );
 }
