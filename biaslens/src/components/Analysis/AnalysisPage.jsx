@@ -162,6 +162,7 @@ function normalizeSession(item) {
 
   return {
     id: item.id ?? Date.now(),
+    seq: typeof item.seq === "number" ? item.seq : null, // retained for back-compat
     title: item.title || "Session",
     docs: [doc],
     activeDocId: doc.id,
@@ -238,6 +239,10 @@ export default function AnalysisPage() {
   const documentContent = activeDoc?.content || "";
   const results = activeDoc?.results || null;
 
+  /**
+   * Media batch tracking:
+   * batchId -> { sessionId, count, firstTitle, upgraded }
+   */
   const mediaBatchToSessionRef = useRef(new Map());
 
   function createSessionWithDocs({ title = "Session", docs = [] }) {
@@ -256,6 +261,14 @@ export default function AnalysisPage() {
     setSelectedFinding(null);
 
     return sessionId;
+  }
+
+  function renameSession(sessionId, newTitle) {
+    setHistory((prev) =>
+      prev.map((s) =>
+        s.id === sessionId ? { ...normalizeSession(s), title: newTitle } : s
+      )
+    );
   }
 
   function addDocToSession(sessionId, doc) {
@@ -282,7 +295,10 @@ export default function AnalysisPage() {
     if (!uploadedFiles || uploadedFiles.length === 0) return;
 
     const files = [...uploadedFiles];
-    const sessionId = createSessionWithDocs({ title: "Session", docs: [] });
+    const firstName = files[0]?.name || "Session";
+    const sessionTitle = files.length > 1 ? `${firstName} …` : firstName;
+
+    const sessionId = createSessionWithDocs({ title: sessionTitle, docs: [] });
 
     (async () => {
       for (const file of files) {
@@ -316,7 +332,7 @@ export default function AnalysisPage() {
     if (!pastedText) return;
 
     const doc = makeDoc({ title: "Pasted Text", content: pastedText, type: "text" });
-    createSessionWithDocs({ title: "Session", docs: [doc] });
+    createSessionWithDocs({ title: doc.title, docs: [doc] });
 
     setPastedText("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -362,7 +378,9 @@ export default function AnalysisPage() {
           const next = normalizeSession(s);
           return {
             ...next,
-            docs: (next.docs || []).map((d) => (d.id === activeDoc.id ? { ...d, results: data } : d)),
+            docs: (next.docs || []).map((d) =>
+              d.id === activeDoc.id ? { ...d, results: data } : d
+            ),
           };
         })
       );
@@ -426,11 +444,22 @@ export default function AnalysisPage() {
               onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
               onTextPaste={setPastedText}
               onMediaTranscribe={(file, text, type, batchId) => {
-                let sessionId = mediaBatchToSessionRef.current.get(batchId);
+                let entry = mediaBatchToSessionRef.current.get(batchId);
 
-                if (!sessionId) {
-                  sessionId = createSessionWithDocs({ title: "Session", docs: [] });
-                  mediaBatchToSessionRef.current.set(batchId, sessionId);
+                // First media doc in this batch: create singleton-titled session (file name)
+                if (!entry) {
+                  const firstTitle = file.name;
+                  const sessionId = createSessionWithDocs({ title: firstTitle, docs: [] });
+                  entry = { sessionId, count: 0, firstTitle, upgraded: false };
+                  mediaBatchToSessionRef.current.set(batchId, entry);
+                }
+
+                entry.count += 1;
+
+                // Second doc confirms it's a batch: upgrade title to "firstTitle …" once
+                if (entry.count === 2 && !entry.upgraded) {
+                  renameSession(entry.sessionId, `${entry.firstTitle} …`);
+                  entry.upgraded = true;
                 }
 
                 const doc = makeDoc({
@@ -439,7 +468,7 @@ export default function AnalysisPage() {
                   type: type === "youtube" ? "youtube" : type,
                 });
 
-                addDocToSession(sessionId, doc);
+                addDocToSession(entry.sessionId, doc);
               }}
               uploadedFile={uploadedFiles?.[0] ?? null}
               pastedText={pastedText}
@@ -486,6 +515,11 @@ export default function AnalysisPage() {
                     const analyzedCount = (session.docs || []).filter((d) => d.results).length;
 
                     const isActive = activeSessionId === session.id;
+                    const docCount = (session.docs || []).length;
+
+                    // For single-doc sessions, show the file name; for batch sessions, show session.title (first file + ellipsis)
+                    const displayTitle =
+                      docCount === 1 ? (session.docs?.[0]?.title || session.title) : session.title;
 
                     return (
                       <button
@@ -511,11 +545,15 @@ export default function AnalysisPage() {
                           style={isActive ? { color: brandFg(0.95) } : undefined}
                         />
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm truncate font-medium">{session.title}</span>
-                          <span className="text-[10px] text-gray-500">
-                            {(session.docs || []).length} docs
-                            {analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}
-                          </span>
+                          <span className="text-sm truncate font-medium">{displayTitle}</span>
+
+                          {/* Only show doc count line for batch sessions */}
+                          {docCount > 1 && (
+                            <span className="text-[10px] text-gray-500">
+                              {docCount} docs
+                              {analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}
+                            </span>
+                          )}
                         </div>
                       </button>
                     );
