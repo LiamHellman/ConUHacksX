@@ -10,11 +10,8 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { execFile } from "child_process";
-import { promisify } from "util";
+import { YoutubeTranscript } from "youtube-transcript";
 import { analyzeWithLLM } from "./llm.js";
-
-const execFilePromise = promisify(execFile);
 
 // Setup Environment Variables
 const __filename = fileURLToPath(import.meta.url);
@@ -65,48 +62,34 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   }
 });
 
-// --- ROUTE: YouTube Transcription (yt-dlp + Whisper) ---
+// --- ROUTE: YouTube Transcription (using captions) ---
 app.post("/api/youtube", async (req, res) => {
-  const timestamp = Date.now();
-  const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
-  
   try {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: "No URL provided" });
 
-    console.log(`🚀 Processing YouTube URL: ${url}`);
+    console.log(`🚀 Fetching YouTube captions for: ${url}`);
 
-    // Use yt-dlp from PATH or local executable
-    const ytdlpCmd = process.platform === 'win32' 
-      ? path.resolve(__dirname, "yt-dlp.exe")
-      : "yt-dlp";
+    // Extract video ID from URL
+    const videoIdMatch = url.match(/(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (!videoIdMatch) {
+      return res.status(400).json({ error: "Invalid YouTube URL" });
+    }
+    const videoId = videoIdMatch[1];
 
-    const args = [
-      "-x",
-      "--audio-format", "mp3",
-      "--force-overwrites",
-      "-o", tempPath,
-      url,
-    ];
+    // Fetch transcript using youtube-transcript
+    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    
+    // Combine all transcript segments into one string
+    const transcript = transcriptItems.map(item => item.text).join(" ");
 
-    await execFilePromise(ytdlpCmd, args);
+    console.log("✅ Transcript fetched successfully");
 
-    console.log("✅ Download complete. Sending to OpenAI Whisper...");
-
-    const transcription = await client.audio.transcriptions.create({
-      file: fs.createReadStream(tempPath),
-      model: "whisper-1",
-    });
-
-    // Cleanup the downloaded MP3
-    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-
-    return res.json({ transcript: transcription.text });
+    return res.json({ transcript });
   } catch (error) {
-    console.error("❌ YouTube Route Error:", error.stderr || error.message);
-    if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+    console.error("❌ YouTube Route Error:", error.message);
     res.status(500).json({ 
-      error: "YouTube processing failed.", 
+      error: "YouTube transcription failed. Video may not have captions.", 
       details: error.message 
     });
   }
