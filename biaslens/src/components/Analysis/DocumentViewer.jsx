@@ -127,10 +127,6 @@ export default function DocumentViewer({
               <span className="w-3 h-3 rounded-full bg-blue-400" />
               <span className="text-gray-400">Tactic</span>
             </span>
-            <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-purple-400" />
-              <span className="text-gray-400">Claim</span>
-            </span>
           </div>
         )}
       </div>
