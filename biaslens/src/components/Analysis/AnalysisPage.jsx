@@ -660,4 +660,3 @@ const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
       </div>
     </AnimatedContent>
   );
-}
