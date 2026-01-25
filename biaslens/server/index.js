@@ -1,6 +1,6 @@
 // server/index.js
 import dotenv from "dotenv";
-import "dotenv/config";  // must be before other imports
+dotenv.config(); // Load from current directory or environment
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import fs from "fs";
@@ -11,17 +11,21 @@ import multer from "multer";
 import OpenAI from "openai";
 import { analyzeWithLLM } from "./llm.js";
 
-// 1. Setup Environment Variables (Teammate's logic)
+// Setup directory references
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: join(__dirname, "..", ".env") });
 
-// 2. Initialize App and OpenAI
+// Initialize App and OpenAI
 const app = express();
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ dest: "uploads/" });
 
-app.use(cors());
+// CORS - allow your frontend domain
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://factify.tech', 'https://www.factify.tech'],
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 app.use(express.json({ limit: "2mb" }));
 
 // 4. ROUTE: Audio/Video Transcription (Whisper)
