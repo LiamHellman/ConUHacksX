@@ -10,79 +10,30 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
+import { Innertube } from "youtubei.js";
 import { analyzeWithLLM } from "./llm.js";
 
-// Custom YouTube transcript fetcher
+// YouTube transcript fetcher using youtubei.js
 async function fetchYouTubeTranscript(videoId) {
-  // Fetch the video page to extract caption info
-  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const response = await fetch(watchUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
-      'Cookie': 'CONSENT=YES+'
-    }
-  });
+  const youtube = await Innertube.create();
+  const info = await youtube.getInfo(videoId);
+  const transcriptData = await info.getTranscript();
   
-  const html = await response.text();
-  
-  // Look for playerCaptionsTracklistRenderer which contains caption URLs
-  const captionsMatch = html.match(/"playerCaptionsTracklistRenderer":\s*(\{[^}]+\})/);
-  
-  // Also try to find captions in the ytInitialPlayerResponse
-  const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/);
-  
-  let captionUrl = null;
-  
-  if (playerResponseMatch) {
-    try {
-      // Find the captions section more carefully
-      const prText = playerResponseMatch[1];
-      const captionTracksMatch = prText.match(/"captionTracks":\s*(\[[^\]]+\])/);
-      
-      if (captionTracksMatch) {
-        const tracks = JSON.parse(captionTracksMatch[1]);
-        // Find English or first available
-        const track = tracks.find(t => t.languageCode === 'en' || t.vssId?.includes('.en')) || tracks[0];
-        if (track?.baseUrl) {
-          captionUrl = track.baseUrl;
-        }
-      }
-    } catch (e) {
-      console.log("Parse error:", e.message);
-    }
+  if (!transcriptData?.transcript?.content?.body?.initial_segments) {
+    throw new Error("No transcript available for this video");
   }
   
-  if (!captionUrl) {
-    throw new Error("No captions available for this video");
-  }
+  const segments = transcriptData.transcript.content.body.initial_segments;
+  const text = segments
+    .map(seg => seg.snippet?.text || '')
+    .filter(t => t.trim())
+    .join(' ');
   
-  // Fetch the caption XML
-  const captionResponse = await fetch(captionUrl);
-  const xml = await captionResponse.text();
-  
-  // Extract text from XML
-  const texts = [];
-  const regex = /<text[^>]*>([^<]*)<\/text>/g;
-  let match;
-  while ((match = regex.exec(xml)) !== null) {
-    let text = match[1]
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&nbsp;/g, ' ')
-      .trim();
-    if (text) texts.push(text);
-  }
-  
-  if (texts.length === 0) {
+  if (!text) {
     throw new Error("Could not extract transcript text");
   }
   
-  return texts.join(' ');
+  return text;
 }
 
 // Setup Environment Variables
