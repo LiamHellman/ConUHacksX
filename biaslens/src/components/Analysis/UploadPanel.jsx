@@ -7,7 +7,12 @@ import {
   Video,
   Music,
   Loader2,
+  Youtube,
 } from "lucide-react";
+
+const API_URL = import.meta.env.PROD 
+  ? "https://factify-api.onrender.com" 
+  : "http://localhost:5174";
 
 export default function UploadPanel({
   onFileUpload,
@@ -15,12 +20,14 @@ export default function UploadPanel({
   uploadedFile,
   pastedText,
   onMediaTranscribe,
+  onHistoryUpdate,
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textValue, setTextValue] = useState(pastedText || "");
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [mediaFile, setMediaFile] = useState(null);
+  const [youtubeUrl, setYoutubeUrl] = useState(""); // NEW: YT State
   const fileInputRef = useRef(null);
 
   const textFileTypes = [
@@ -95,6 +102,7 @@ export default function UploadPanel({
   };
 
   // Inside UploadPanel.jsx -> transcribeMedia function
+  // Inside UploadPanel.jsx
   const transcribeMedia = async (file) => {
     setIsTranscribing(true);
     setMediaFile(file);
@@ -103,37 +111,64 @@ export default function UploadPanel({
     formData.append("file", file);
 
     try {
-      // UPDATED PORT TO 5174
-      // Send the file to the backend on the correct port
-      const response = await fetch("http://localhost:5174/api/upload", {
+      const response = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Transcription failed");
-      }
-
       const data = await response.json();
-
-      // We take the real transcript from OpenAI and use it
-      // We take the real transcript from OpenAI and use it
-      const transcript = data.transcript;
       setIsTranscribing(false);
 
-      // This updates the documentContent in AnalysisPage.jsx
       if (onMediaTranscribe) {
-        // FIX: Changed realTranscription to transcript
-        onMediaTranscribe(file, transcript);
+        // Determine type based on file properties
+        const type = file.type.startsWith("video") ? "video" : "audio";
+        onMediaTranscribe(file, data.transcript, type);
       }
     } catch (error) {
       console.error("Transcription Error:", error);
-      alert("Failed to transcribe. Is the server on port 5174?");
       setIsTranscribing(false);
     }
   };
+  // Inside UploadPanel.jsx
+  const handleYoutubeSubmit = async () => {
+    if (!youtubeUrl.trim()) return;
+    setIsTranscribing(true);
+    setMediaFile({ name: `YouTube Video`, type: "video/youtube" });
 
+    try {
+      console.log("Fetching YouTube transcript from:", `${API_URL}/api/youtube`);
+      const response = await fetch(`${API_URL}/api/youtube`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: youtubeUrl }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "YouTube transcription failed");
+      }
+      
+      const data = await response.json();
+      console.log("YouTube transcript received:", data.transcript?.slice(0, 100));
+
+      if (onMediaTranscribe) {
+        onMediaTranscribe(
+          {
+            name: `YouTube: ${youtubeUrl.split("v=")[1]?.slice(0, 8) || "Video"}`,
+            type: "video/youtube",
+          },
+          data.transcript,
+        );
+      }
+      setYoutubeUrl("");
+    } catch (error) {
+      console.error("YT Error:", error);
+      alert("Failed to get YouTube transcript: " + error.message);
+    } finally {
+      setIsTranscribing(false);
+      setMediaFile(null);
+    }
+  };
   const handleFile = (file) => {
     if (isTextFile(file)) {
       onFileUpload(file);
@@ -190,13 +225,13 @@ export default function UploadPanel({
       <div className="px-5 py-4 border-b border-dark-700">
         <h2 className="text-lg font-semibold text-white">Input</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Upload document, audio, or video
+          Upload document, audio, video or YouTube link
         </p>
       </div>
 
-      <div className="flex-1 p-5 overflow-y-auto">
+      <div className="flex-1 p-5 overflow-y-auto space-y-4">
         {isTranscribing ? (
-          /* Transcribing state */
+          /* Transcribing state (Your existing loader) */
           <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6">
             <div className="flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4">
@@ -214,85 +249,71 @@ export default function UploadPanel({
                   style={{ width: "60%" }}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-3">
-                This may take a few moments...
-              </p>
             </div>
           </div>
         ) : !uploadedFile && !pastedText ? (
           <>
-            {/* Drop zone */}
+            {/* NEW: YouTube Input Section */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase">
+                Analyze YouTube
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="https://youtube.com/..."
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-dark-800 border border-dark-600 focus:border-red-500 rounded-lg text-sm text-white outline-none transition-all"
+                  />
+                </div>
+                <button
+                  onClick={handleYoutubeSubmit}
+                  disabled={!youtubeUrl.trim()}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-dark-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Load
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 my-2">
+              <div className="flex-1 h-px bg-dark-600" />
+              <span className="text-[10px] text-gray-600 uppercase">OR</span>
+              <div className="flex-1 h-px bg-dark-600" />
+            </div>
+
+            {/* Drop zone (Your existing logic) */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`
-                relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
-                transition-all duration-300 group
-                ${
-                  isDragging
-                    ? "border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20"
-                    : "border-dark-500 hover:border-purple-500/50 hover:bg-dark-700/50"
-                }
-              `}
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                isDragging
+                  ? "border-purple-500 bg-purple-500/10"
+                  : "border-dark-500 hover:border-purple-500/50"
+              }`}
             >
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".txt,.pdf,.docx,.mp3,.wav,.ogg,.m4a,.mp4,.webm,.mov,.avi"
+                accept=".txt,.pdf,.docx,audio/*,video/*"
                 onChange={handleFileInput}
                 className="hidden"
               />
-
-              <div
-                className={`
-                w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center
-                transition-all duration-300
-                ${
-                  isDragging
-                    ? "bg-purple-500/20 text-purple-400"
-                    : "bg-dark-700 text-gray-400 group-hover:bg-purple-500/10 group-hover:text-purple-400"
-                }
-              `}
-              >
-                <Upload className="w-8 h-8" />
-              </div>
-
-              <p className="text-white font-medium mb-2">
-                {isDragging ? "Drop your file here" : "Drag & drop your file"}
-              </p>
-              <p className="text-sm text-gray-500 mb-3">
-                Documents: .txt, .pdf, .docx
-              </p>
-              <div className="flex items-center justify-center gap-4 text-xs text-gray-600">
-                <span className="flex items-center gap-1">
-                  <Music className="w-3 h-3" />
-                  Audio
-                </span>
-                <span className="flex items-center gap-1">
-                  <Video className="w-3 h-3" />
-                  Video
-                </span>
-              </div>
-
-              {isDragging && (
-                <div className="absolute inset-0 rounded-xl bg-purple-500/5 pointer-events-none" />
-              )}
+              <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
+              <p className="text-white font-medium mb-1">Upload File</p>
+              <p className="text-xs text-gray-500">PDF, MP3, MP4, etc.</p>
             </div>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-dark-600" />
-              <span className="text-sm text-gray-500">or</span>
-              <div className="flex-1 h-px bg-dark-600" />
-            </div>
-
-            {/* Text input toggle */}
+            {/* Text input toggle (Your existing logic) */}
             {!showTextInput ? (
               <button
                 onClick={() => setShowTextInput(true)}
-                className="w-full flex items-center justify-center gap-2 py-4 border border-dark-500 hover:border-purple-500/50 rounded-xl text-gray-400 hover:text-purple-400 transition-all duration-300"
+                className="w-full flex items-center justify-center gap-2 py-4 border border-dark-500 hover:border-purple-500/50 rounded-xl text-gray-400 hover:text-purple-400 transition-all"
               >
                 <ClipboardPaste className="w-5 h-5" />
                 <span>Paste text directly</span>
@@ -302,20 +323,19 @@ export default function UploadPanel({
                 <textarea
                   value={textValue}
                   onChange={(e) => setTextValue(e.target.value)}
-                  placeholder="Paste your text here..."
-                  className="w-full h-48 px-4 py-3 bg-dark-800 border border-dark-600 focus:border-purple-500 rounded-xl text-white placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
+                  placeholder="Paste text..."
+                  className="w-full h-48 px-4 py-3 bg-dark-800 border border-dark-600 focus:border-purple-500 rounded-xl text-white resize-none outline-none"
                 />
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowTextInput(false)}
-                    className="flex-1 py-3 border border-dark-500 hover:border-dark-400 rounded-lg text-gray-400 hover:text-white transition-colors"
+                    className="flex-1 py-2 border border-dark-500 rounded-lg text-gray-400"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleTextSubmit}
-                    disabled={!textValue.trim()}
-                    className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-dark-600 disabled:text-gray-500 rounded-lg text-white font-medium transition-colors"
+                    className="flex-1 py-2 bg-purple-600 rounded-lg text-white"
                   >
                     Use Text
                   </button>
@@ -324,7 +344,7 @@ export default function UploadPanel({
             )}
           </>
         ) : (
-          /* File preview */
+          /* File preview (Your existing logic) */
           <div className="bg-dark-800 border border-dark-600 rounded-xl p-5">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
@@ -342,25 +362,17 @@ export default function UploadPanel({
                   {uploadedFile
                     ? `${(uploadedFile.size / 1024).toFixed(1)} KB`
                     : mediaFile
-                      ? `${getFileTypeLabel()} • Transcribed`
-                      : `${pastedText.length} characters`}
+                      ? "Media Transcribed"
+                      : "Text Input"}
                 </p>
               </div>
               <button
                 onClick={clearUpload}
-                className="p-2 hover:bg-dark-700 rounded-lg text-gray-400 hover:text-white transition-colors"
+                className="p-2 text-gray-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
-            {pastedText && (
-              <div className="mt-4 pt-4 border-t border-dark-600">
-                <p className="text-sm text-gray-400 line-clamp-4">
-                  {pastedText}
-                </p>
-              </div>
-            )}
           </div>
         )}
       </div>

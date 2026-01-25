@@ -1,42 +1,49 @@
 // server/index.js
 import dotenv from "dotenv";
-import "dotenv/config";  // must be before other imports
+dotenv.config();
+
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname } from "path";
 import fs from "fs";
 import path from "path";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
+import { YoutubeTranscript } from "youtube-transcript";
 import { analyzeWithLLM } from "./llm.js";
 
-// 1. Setup Environment Variables (Teammate's logic)
+// Setup Environment Variables
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-dotenv.config({ path: join(__dirname, "..", ".env") });
 
-// 2. Initialize App and OpenAI
+// Initialize App and OpenAI
 const app = express();
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ dest: "uploads/" });
 
-app.use(cors());
+// CORS - allow your frontend domain
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://factify.tech",
+      "https://www.factify.tech",
+    ],
+    methods: ["GET", "POST"],
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "2mb" }));
 
-// 4. ROUTE: Audio/Video Transcription (Whisper)
+// --- ROUTE: Audio/Video Transcription (Whisper) ---
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   let tempPathWithExt = null;
-
   try {
     if (!req.file) return res.status(400).send("No file uploaded");
 
-    // FIX: Multer saves files without extensions (e.g., 'abc123').
-    // OpenAI Whisper requires an extension (e.g., '.mp3') to work.
     const ext = path.extname(req.file.originalname);
     tempPathWithExt = `${req.file.path}${ext}`;
-
-    // Rename the temporary file to include the extension
     fs.renameSync(req.file.path, tempPathWithExt);
 
     const transcription = await client.audio.transcriptions.create({
@@ -46,17 +53,49 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     return res.json({ transcript: transcription.text });
   } catch (err) {
-    console.error("OpenAI Whisper Error:", err.response?.data || err.message);
+    console.error("OpenAI Whisper Error:", err.message);
     return res.status(500).send("Transcription failed");
   } finally {
-    // CLEANUP: Delete the temp files from your server after processing
     if (tempPathWithExt && fs.existsSync(tempPathWithExt))
       fs.unlinkSync(tempPathWithExt);
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
   }
 });
 
-// 5. ROUTE: Text Analysis (LLM)
+// --- ROUTE: YouTube Transcription (using captions) ---
+app.post("/api/youtube", async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: "No URL provided" });
+
+    console.log(`🚀 Fetching YouTube captions for: ${url}`);
+
+    // Extract video ID from URL
+    const videoIdMatch = url.match(/(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (!videoIdMatch) {
+      return res.status(400).json({ error: "Invalid YouTube URL" });
+    }
+    const videoId = videoIdMatch[1];
+
+    // Fetch transcript using youtube-transcript
+    const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId);
+    
+    // Combine all transcript segments into one string
+    const transcript = transcriptItems.map(item => item.text).join(" ");
+
+    console.log("✅ Transcript fetched successfully");
+
+    return res.json({ transcript });
+  } catch (error) {
+    console.error("❌ YouTube Route Error:", error.message);
+    res.status(500).json({ 
+      error: "YouTube transcription failed. Video may not have captions.", 
+      details: error.message 
+    });
+  }
+});
+
+// --- ROUTE: Text Analysis (LLM) ---
 app.post("/api/analyze", async (req, res) => {
   try {
     const text = typeof req.body?.text === "string" ? req.body.text : "";
@@ -64,9 +103,7 @@ app.post("/api/analyze", async (req, res) => {
 
     if (!text.trim()) return res.status(400).send("Missing 'text'");
 
-    // Normalize line endings to prevent character count issues
     const normalized = text.replace(/\r\n/g, "\n");
-
     const result = await analyzeWithLLM(normalized, settings);
     return res.json(result);
   } catch (err) {
@@ -75,10 +112,10 @@ app.post("/api/analyze", async (req, res) => {
   }
 });
 
-// 6. Start Server
-// We are using 5174 as the default to match your working terminal output
-const port = process.env.API_PORT || 5174;
+// Start Server
+const port = process.env.PORT || process.env.API_PORT || 5174;
 app.listen(port, () => {
-  if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
+  const uploadsDir = path.resolve(__dirname, "uploads");
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
   console.log(`🚀 API running on http://localhost:${port}`);
 });
