@@ -415,8 +415,6 @@ function applyHighlights(findings) {
     console.log('[Factify] Could not find text for finding', index, '- quote:', searchText.substring(0, 60));
   });
 }
-  });
-}
 
 // Build a map of the page text for searching
 function getPageTextMap() {
