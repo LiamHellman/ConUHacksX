@@ -107,8 +107,11 @@ function hideFactifyButton() {
   }
 }
 
-function showResultsPanel(loading, data, error) {
+function showResultsPanel(loading, data, error, filters = null) {
   hideResultsPanel();
+  
+  // Default filters if not provided
+  const activeFilters = filters || { bias: true, fallacy: true, tactic: true };
   
   resultsPanel = document.createElement('div');
   resultsPanel.id = 'factify-results-panel';
@@ -154,7 +157,17 @@ function showResultsPanel(loading, data, error) {
         'bias': 'Bias Detected',
         'tactic': 'Persuasion Tactic'
       };
-      data.findings.forEach((finding, index) => {
+      
+      // Filter findings based on active filters
+      const filteredFindings = data.findings.filter(finding => {
+        const category = finding.category || 'general';
+        if (category === 'bias' && !activeFilters.bias) return false;
+        if (category === 'fallacy' && !activeFilters.fallacy) return false;
+        if (category === 'tactic' && !activeFilters.tactic) return false;
+        return true;
+      });
+      
+      filteredFindings.forEach((finding, index) => {
         const category = finding.category || 'general';
         const findingId = finding.id || `finding-${index}`;
         contentHtml += `
@@ -165,6 +178,19 @@ function showResultsPanel(loading, data, error) {
           </div>
         `;
       });
+      
+      // Apply highlights only for filtered findings
+      if (filteredFindings.length > 0) {
+        applyHighlights(filteredFindings);
+      }
+      
+      if (filteredFindings.length === 0) {
+        contentHtml += `
+          <div class="factify-finding">
+            <div class="factify-finding-text">No issues found for the selected categories.</div>
+          </div>
+        `;
+      }
     }
     
     // Also handle legacy format
@@ -196,11 +222,6 @@ function showResultsPanel(loading, data, error) {
           <div class="factify-finding-text">No significant issues detected. The text appears to be relatively neutral and well-reasoned.</div>
         </div>
       `;
-    }
-    
-    // Apply highlights to the page
-    if (data.findings && data.findings.length > 0) {
-      applyHighlights(data.findings);
     }
   }
   
@@ -558,7 +579,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const selection = window.getSelection().toString().trim();
     sendResponse({ text: selection });
   } else if (request.action === 'showResults') {
-    showResultsPanel(request.loading, request.data, request.error);
+    showResultsPanel(request.loading, request.data, request.error, request.filters);
   }
   return true;
 });

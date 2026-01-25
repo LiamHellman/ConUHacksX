@@ -1,6 +1,13 @@
 // Background service worker
 const API_URL = 'https://factify-api.onrender.com';
 
+// Default options
+const defaultOptions = {
+  bias: true,
+  fallacy: true,
+  tactic: true
+};
+
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'analyzeText') {
@@ -27,6 +34,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 async function showInlineResults(tabId, text) {
+  // Get saved filter options
+  const result = await chrome.storage.local.get(['factifyOptions']);
+  const options = result.factifyOptions || defaultOptions;
+  
   // First show loading state
   chrome.tabs.sendMessage(tabId, {
     action: 'showResults',
@@ -40,10 +51,9 @@ async function showInlineResults(tabId, text) {
       body: JSON.stringify({ 
         text,
         settings: {
-          detectBias: true,
-          detectFallacies: true,
-          detectEthicalConcerns: true,
-          analyzeTone: true
+          detectBias: options.bias,
+          detectFallacies: options.fallacy,
+          detectTactics: options.tactic
         }
       })
     });
@@ -55,7 +65,8 @@ async function showInlineResults(tabId, text) {
     chrome.tabs.sendMessage(tabId, {
       action: 'showResults',
       loading: false,
-      data
+      data,
+      filters: options
     });
     
   } catch (error) {
