@@ -1,9 +1,24 @@
 // Content script - runs on all pages
 let factifyButton = null;
 let resultsPanel = null;
+let isProcessingClick = false;
 
 // Listen for text selection
 document.addEventListener('mouseup', (e) => {
+  // Ignore if we just clicked the button
+  if (isProcessingClick) {
+    isProcessingClick = false;
+    return;
+  }
+  
+  // Ignore clicks on our own elements
+  if (factifyButton && factifyButton.contains(e.target)) {
+    return;
+  }
+  if (resultsPanel && resultsPanel.contains(e.target)) {
+    return;
+  }
+  
   // Small delay to let selection complete
   setTimeout(() => {
     const selection = window.getSelection();
@@ -48,18 +63,21 @@ function showFactifyButton(x, y, text) {
     e.preventDefault();
     e.stopPropagation();
     
+    isProcessingClick = true;
     const selectedText = factifyButton.dataset.text;
     
-    // Store in chrome storage and open popup
+    // Clear the selection to prevent re-triggering
+    window.getSelection().removeAllRanges();
+    
+    hideFactifyButton();
+    
+    // Store in chrome storage and trigger analysis
     chrome.storage.local.set({ selectedText }, () => {
-      // Send message to open popup or show inline results
       chrome.runtime.sendMessage({ 
         action: 'analyzeText', 
         text: selectedText 
       });
     });
-    
-    hideFactifyButton();
   });
   
   document.body.appendChild(factifyButton);
