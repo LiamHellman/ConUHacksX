@@ -1,10 +1,17 @@
 // server/llm.js
 import OpenAI from "openai";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let client = null;
 
-const FALLACY_SCHEMA = {
-  name: "fallacy_analysis",
+function getClient() {
+  if (!client) {
+    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return client;
+}
+
+const ARGUMENT_SCHEMA = {
+  name: "argument_analysis",
   strict: true,
   schema: {
     type: "object",
@@ -14,10 +21,11 @@ const FALLACY_SCHEMA = {
       overall: {
         type: "object",
         additionalProperties: false,
-        required: ["logicScore", "biasScore", "verifiabilityScore"],
+        required: ["fallacyScore", "biasScore", "tacticScore", "verifiabilityScore"],
         properties: {
-          logicScore: { type: "integer", minimum: 0, maximum: 100 },
+          fallacyScore: { type: "integer", minimum: 0, maximum: 100 },
           biasScore: { type: "integer", minimum: 0, maximum: 100 },
+          tacticScore: { type: "integer", minimum: 0, maximum: 100 },
           verifiabilityScore: { type: "integer", minimum: 0, maximum: 100 }
         }
       },
@@ -29,27 +37,40 @@ const FALLACY_SCHEMA = {
           additionalProperties: false,
           required: [
             "id",
-            "fallacyId",
+            "category",
+            "categoryId",
             "label",
             "severity",
             "confidence",
             "start",
             "end",
             "quote",
-            "explanation",
-            "suggestion"
+            "explanation"
           ],
           properties: {
             id: { type: "string" },
-            fallacyId: { type: "string" }, // e.g., "ad_hominem", "strawman"
-            label: { type: "string" },     // human-friendly
+
+            // category determines tabs + highlight color in UI
+            category: { type: "string", enum: ["fallacy", "bias", "tactic"] },
+
+            // e.g. "straw_man", "confirmation_bias", "loaded_language"
+            categoryId: { type: "string" },
+
+            // human-friendly label
+            label: { type: "string" },
+
+            // drives highlight intensity
             severity: { type: "string", enum: ["low", "medium", "high"] },
+
             confidence: { type: "number", minimum: 0, maximum: 1 },
             start: { type: "integer", minimum: 0 },
             end: { type: "integer", minimum: 0 },
+
+            // MUST match text.slice(start, end)
             quote: { type: "string" },
-            explanation: { type: "string" },
-            suggestion: { type: "string" }
+
+            // why it was flagged
+            explanation: { type: "string" }
           }
         }
       }
@@ -118,12 +139,24 @@ export async function analyzeWithLLM(text, settings = {}) {
   const maxFindings = Math.max(1, Math.min(Number(settings.maxFindings ?? 10), 12));
 
   const system = [
-    "You are a logical fallacy detector.",
+    "You analyze text for (1) logical fallacies, (2) cognitive biases, and (3) manipulative rhetoric/persuasion tactics.",
     "Return ONLY a JSON object that matches the provided schema.",
+    "SCORING (IMPORTANT): All overall scores MUST be integers from 0 to 100.",
+    "All scores MUST follow the same direction: higher is ALWAYS better; lower is ALWAYS worse.",
+    "Meaning of each score (higher = better):",
+    "- fallacyScore (Logic Quality): 0 = reasoning is dominated by fallacies/contradictions; 100 = logically rigorous with minimal fallacies.",
+    "- biasScore (Neutrality): 0 = highly biased/loaded/one-sided language; 100 = neutral, balanced, careful wording.",
+    "- tacticScore (Transparency): 0 = heavy persuasive/manipulative rhetoric; 100 = plain, transparent communication with minimal persuasive tactics.",
+    "- verifiabilityScore (Verifiability): 0 = vague, unfalsifiable, unsupported; 100 = specific, checkable, well-supported claims.",
+    "Use the full range; do not compress to 1–10 or multiples of 10.",
+    "Rubric: 0–20 poor, 21–40 weak, 41–60 mixed, 61–80 strong, 81–100 excellent.",
+    "Return the scores as integers; avoid rounding to tens unless truly appropriate.",
     "All indices are CHARACTER indices into the exact input string.",
     "For each finding: quote MUST equal text.slice(start, end) exactly.",
     "Do not produce overlapping spans.",
-    `Return at most ${maxFindings} findings.`,
+    `Return at most ${maxFindings} findings total across ALL categories.`,
+    "Try to include a balanced mix across fallacy/bias/tactic when present, but do not invent findings.",
+    "Severity should reflect impact on reasoning/manipulation: low, medium, high.",
     "If uncertain, return fewer findings with lower confidence."
   ].join(" ");
 
@@ -131,18 +164,20 @@ export async function analyzeWithLLM(text, settings = {}) {
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   // Using the Responses API; structured outputs are configured via text.format. :contentReference[oaicite:2]{index=2}
-  const resp = await client.responses.create({
+  const resp = await getClient().responses.create({
     model,
     input: [
       { role: "system", content: system },
-      { role: "user", content: text }
+      { role: "user", content: text },
     ],
     text: {
       format: {
         type: "json_schema",
-        json_schema: FALLACY_SCHEMA
-      }
-    }
+        name: "argument_analysis",
+        strict: true,
+        schema: ARGUMENT_SCHEMA.schema,
+      },
+    },
   });
 
   // The SDK returns a convenience string, but we want the parsed JSON
@@ -152,6 +187,29 @@ export async function analyzeWithLLM(text, settings = {}) {
 
   // hardening: clamp/repair spans + remove overlaps
   parsed.findings = clampFindingsToText(text, parsed.findings || []);
+
+  parsed.scores = {
+    // keep existing keys so ScoreCards/ControlBar logic doesn’t break
+    fallacies: parsed.overall?.fallacyScore ?? 0,
+    bias: parsed.overall?.biasScore ?? 0,
+    tactic: parsed.overall?.tacticScore ?? 0,
+    factcheck: parsed.overall?.verifiabilityScore ?? 0,
+  };
+
+  parsed.findings = (parsed.findings || []).map((f) => ({
+    ...f,
+
+    // UI expects `type` for highlighting; map it from category
+    type: f.category,
+
+    // UI sometimes expects originalText
+    originalText: f.quote,
+
+    // Back-compat helpers (optional but useful for InsightsPanel rendering)
+    fallacyId: f.category === "fallacy" ? f.categoryId : undefined,
+    biasId: f.category === "bias" ? f.categoryId : undefined,
+    tacticId: f.category === "tactic" ? f.categoryId : undefined,
+  }));
 
   return parsed;
 }

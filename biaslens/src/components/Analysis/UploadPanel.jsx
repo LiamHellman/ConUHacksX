@@ -1,58 +1,78 @@
-import { useState, useRef } from 'react';
-import { Upload, FileText, X, ClipboardPaste, Video, Music, Loader2 } from 'lucide-react';
+import { useState, useRef } from "react";
+import {
+  Upload,
+  FileText,
+  X,
+  ClipboardPaste,
+  Video,
+  Music,
+  Loader2,
+} from "lucide-react";
 
-export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, pastedText, onMediaTranscribe }) {
+export default function UploadPanel({
+  onFileUpload,
+  onTextPaste,
+  uploadedFile,
+  pastedText,
+  onMediaTranscribe,
+}) {
   const [isDragging, setIsDragging] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
-  const [textValue, setTextValue] = useState(pastedText || '');
+  const [textValue, setTextValue] = useState(pastedText || "");
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [mediaFile, setMediaFile] = useState(null);
   const fileInputRef = useRef(null);
 
   const textFileTypes = [
-    'text/plain',
-    'application/pdf',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    "text/plain",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ];
 
   const audioFileTypes = [
-    'audio/mpeg',
-    'audio/mp3',
-    'audio/wav',
-    'audio/ogg',
-    'audio/m4a',
-    'audio/webm'
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/ogg",
+    "audio/m4a",
+    "audio/webm",
   ];
 
   const videoFileTypes = [
-    'video/mp4',
-    'video/webm',
-    'video/ogg',
-    'video/quicktime',
-    'video/x-msvideo'
+    "video/mp4",
+    "video/webm",
+    "video/ogg",
+    "video/quicktime",
+    "video/x-msvideo",
   ];
 
   const isTextFile = (file) => {
-    return textFileTypes.includes(file.type) || 
-           file.name.endsWith('.txt') || 
-           file.name.endsWith('.pdf') || 
-           file.name.endsWith('.docx');
+    return (
+      textFileTypes.includes(file.type) ||
+      file.name.endsWith(".txt") ||
+      file.name.endsWith(".pdf") ||
+      file.name.endsWith(".docx")
+    );
   };
 
   const isAudioFile = (file) => {
-    return audioFileTypes.includes(file.type) || 
-           file.name.endsWith('.mp3') || 
-           file.name.endsWith('.wav') || 
-           file.name.endsWith('.ogg') ||
-           file.name.endsWith('.m4a');
+    return (
+      audioFileTypes.includes(file.type) ||
+      file.name.endsWith(".mp3") ||
+      file.name.endsWith(".wav") ||
+      file.name.endsWith(".ogg") ||
+      file.name.endsWith(".m4a")
+    );
   };
 
   const isVideoFile = (file) => {
-    return videoFileTypes.includes(file.type) || 
-           file.name.endsWith('.mp4') || 
-           file.name.endsWith('.webm') || 
-           file.name.endsWith('.mov') ||
-           file.name.endsWith('.avi');
+    return (
+      videoFileTypes.includes(file.type) ||
+      file.name.endsWith(".mp4") ||
+      file.name.endsWith(".webm") ||
+      file.name.endsWith(".mov") ||
+      file.name.endsWith(".avi")
+    );
   };
 
   const handleDragOver = (e) => {
@@ -74,35 +94,43 @@ export default function UploadPanel({ onFileUpload, onTextPaste, uploadedFile, p
     }
   };
 
-  // Mock transcription function - replace with actual API call
+  // Inside UploadPanel.jsx -> transcribeMedia function
   const transcribeMedia = async (file) => {
     setIsTranscribing(true);
     setMediaFile(file);
-    
-    // Simulate transcription delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Mock transcribed text
-    const mockTranscription = `[Transcribed from ${file.name}]
 
-This is a sample transcription of the uploaded media file. In a production environment, this would be replaced with actual speech-to-text processing using services like OpenAI Whisper, Google Speech-to-Text, or AWS Transcribe.
+    const formData = new FormData();
+    formData.append("file", file);
 
-The transcription would capture all spoken content from the audio or video file, including:
-- Main dialogue and narration
-- Background conversations if audible
-- Any spoken statistics or claims that can be fact-checked
-- Language patterns that may indicate bias
+    try {
+      // UPDATED PORT TO 5174
+      // Send the file to the backend on the correct port
+      const response = await fetch("http://localhost:5174/api/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-This mock transcription demonstrates how the Factum analysis would work on media content. The same bias detection, logical fallacy identification, and fact-checking capabilities would apply to transcribed speech as they do to written documents.
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Transcription failed");
+      }
 
-Key points from this recording include discussions about workplace diversity, claims about industry statistics, and various persuasive arguments that warrant further analysis.`;
+      const data = await response.json();
 
-    setIsTranscribing(false);
-    
-    if (onMediaTranscribe) {
-      onMediaTranscribe(file, mockTranscription);
-    } else {
-      onTextPaste(mockTranscription);
+      // We take the real transcript from OpenAI and use it
+      // We take the real transcript from OpenAI and use it
+      const transcript = data.transcript;
+      setIsTranscribing(false);
+
+      // This updates the documentContent in AnalysisPage.jsx
+      if (onMediaTranscribe) {
+        // FIX: Changed realTranscription to transcript
+        onMediaTranscribe(file, transcript);
+      }
+    } catch (error) {
+      console.error("Transcription Error:", error);
+      alert("Failed to transcribe. Is the server on port 5174?");
+      setIsTranscribing(false);
     }
   };
 
@@ -130,36 +158,40 @@ Key points from this recording include discussions about workplace diversity, cl
 
   const clearUpload = () => {
     onFileUpload(null);
-    onTextPaste('');
-    setTextValue('');
+    onTextPaste("");
+    setTextValue("");
     setMediaFile(null);
     setIsTranscribing(false);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const getFileIcon = () => {
     if (mediaFile) {
-      if (isVideoFile(mediaFile)) return <Video className="w-6 h-6 text-purple-400" />;
-      if (isAudioFile(mediaFile)) return <Music className="w-6 h-6 text-purple-400" />;
+      if (isVideoFile(mediaFile))
+        return <Video className="w-6 h-6 text-purple-400" />;
+      if (isAudioFile(mediaFile))
+        return <Music className="w-6 h-6 text-purple-400" />;
     }
     return <FileText className="w-6 h-6 text-purple-400" />;
   };
 
   const getFileTypeLabel = () => {
     if (mediaFile) {
-      if (isVideoFile(mediaFile)) return 'Video';
-      if (isAudioFile(mediaFile)) return 'Audio';
+      if (isVideoFile(mediaFile)) return "Video";
+      if (isAudioFile(mediaFile)) return "Audio";
     }
-    return 'Document';
+    return "Document";
   };
 
   return (
     <div className="h-full flex flex-col">
       <div className="px-5 py-4 border-b border-dark-700">
         <h2 className="text-lg font-semibold text-white">Input</h2>
-        <p className="text-sm text-gray-500 mt-1">Upload document, audio, or video</p>
+        <p className="text-sm text-gray-500 mt-1">
+          Upload document, audio, or video
+        </p>
       </div>
 
       <div className="flex-1 p-5 overflow-y-auto">
@@ -170,14 +202,21 @@ Key points from this recording include discussions about workplace diversity, cl
               <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4">
                 <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
               </div>
-              <h3 className="text-white font-medium mb-2">Transcribing Media</h3>
+              <h3 className="text-white font-medium mb-2">
+                Transcribing Media
+              </h3>
               <p className="text-sm text-gray-400 mb-4">
                 Extracting text from {mediaFile?.name}
               </p>
               <div className="w-full bg-dark-700 rounded-full h-2 overflow-hidden">
-                <div className="bg-purple-500 h-full rounded-full animate-pulse" style={{ width: '60%' }} />
+                <div
+                  className="bg-purple-500 h-full rounded-full animate-pulse"
+                  style={{ width: "60%" }}
+                />
               </div>
-              <p className="text-xs text-gray-500 mt-3">This may take a few moments...</p>
+              <p className="text-xs text-gray-500 mt-3">
+                This may take a few moments...
+              </p>
             </div>
           </div>
         ) : !uploadedFile && !pastedText ? (
@@ -191,9 +230,10 @@ Key points from this recording include discussions about workplace diversity, cl
               className={`
                 relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
                 transition-all duration-300 group
-                ${isDragging 
-                  ? 'border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20' 
-                  : 'border-dark-500 hover:border-purple-500/50 hover:bg-dark-700/50'
+                ${
+                  isDragging
+                    ? "border-purple-500 bg-purple-500/10 shadow-lg shadow-purple-500/20"
+                    : "border-dark-500 hover:border-purple-500/50 hover:bg-dark-700/50"
                 }
               `}
             >
@@ -204,20 +244,23 @@ Key points from this recording include discussions about workplace diversity, cl
                 onChange={handleFileInput}
                 className="hidden"
               />
-              
-              <div className={`
+
+              <div
+                className={`
                 w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center
                 transition-all duration-300
-                ${isDragging 
-                  ? 'bg-purple-500/20 text-purple-400' 
-                  : 'bg-dark-700 text-gray-400 group-hover:bg-purple-500/10 group-hover:text-purple-400'
+                ${
+                  isDragging
+                    ? "bg-purple-500/20 text-purple-400"
+                    : "bg-dark-700 text-gray-400 group-hover:bg-purple-500/10 group-hover:text-purple-400"
                 }
-              `}>
+              `}
+              >
                 <Upload className="w-8 h-8" />
               </div>
-              
+
               <p className="text-white font-medium mb-2">
-                {isDragging ? 'Drop your file here' : 'Drag & drop your file'}
+                {isDragging ? "Drop your file here" : "Drag & drop your file"}
               </p>
               <p className="text-sm text-gray-500 mb-3">
                 Documents: .txt, .pdf, .docx
@@ -289,15 +332,18 @@ Key points from this recording include discussions about workplace diversity, cl
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-white truncate">
-                  {uploadedFile ? uploadedFile.name : mediaFile ? mediaFile.name : 'Pasted Text'}
+                  {uploadedFile
+                    ? uploadedFile.name
+                    : mediaFile
+                      ? mediaFile.name
+                      : "Pasted Text"}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {uploadedFile 
+                  {uploadedFile
                     ? `${(uploadedFile.size / 1024).toFixed(1)} KB`
                     : mediaFile
-                    ? `${getFileTypeLabel()} • Transcribed`
-                    : `${pastedText.length} characters`
-                  }
+                      ? `${getFileTypeLabel()} • Transcribed`
+                      : `${pastedText.length} characters`}
                 </p>
               </div>
               <button
@@ -307,7 +353,7 @@ Key points from this recording include discussions about workplace diversity, cl
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {pastedText && (
               <div className="mt-4 pt-4 border-t border-dark-600">
                 <p className="text-sm text-gray-400 line-clamp-4">

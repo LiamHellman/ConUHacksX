@@ -1,17 +1,20 @@
 import { AlertTriangle, Users, TrendingUp } from 'lucide-react';
+import { motion } from 'motion/react';
+import Plasma from '../Plasma/Plasma';
+import GlareHover from '../GlareHover/GlareHover';
+import BlurText from '../BlurText/BlurText';
+import ShinyText from '../ShinyText/ShinyText';
 
 export default function Hero({ onGetStarted }) {
   return (
-    <div>
+    <div className="isolate">
       <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background gradient orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/15 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-700/10 rounded-full blur-3xl" />
+        {/* Plasma background */}
+        <Plasma color="#4c1d95" speed={0.5} opacity={0.4} />
         
         {/* Grid pattern overlay */}
         <div 
-          className="absolute inset-0 opacity-5"
+          className="absolute inset-0 opacity-5 z-[1]"
           style={{
             backgroundImage: `linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px),
                              linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px)`,
@@ -21,34 +24,101 @@ export default function Hero({ onGetStarted }) {
 
       <div className="relative z-10 max-w-5xl mx-auto px-8 text-center">
         {/* Main headline */}
-        <h1 className="text-6xl lg:text-7xl font-bold leading-tight tracking-tight mb-6">
-          <span className="text-white">Make </span>
-          <span className="bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600 bg-clip-text text-transparent">
-            Bias, Fallacies,
-          </span>
+        <h1 className="text-6xl lg:text-7xl font-bold leading-relaxed tracking-tight mb-16">
+          <ShinyText 
+            text="Make" 
+            color="#ffffff" 
+            shineColor="#c4b5fd" 
+            speed={3} 
+            delay={1}
+            blurIn={true}
+            blurDelay={0}
+            className="text-6xl lg:text-7xl font-bold"
+          />
+          {" "}
+          <ShinyText 
+            text="Bias," 
+            color="#a78bfa" 
+            shineColor="#ffffff" 
+            speed={3} 
+            delay={1}
+            blurIn={true}
+            blurDelay={0.1}
+            className="text-6xl lg:text-7xl font-bold"
+          />
+          {" "}
+          <ShinyText 
+            text="Fallacies," 
+            color="#a78bfa" 
+            shineColor="#ffffff" 
+            speed={3} 
+            delay={1}
+            blurIn={true}
+            blurDelay={0.2}
+            className="text-6xl lg:text-7xl font-bold"
+          />
           <br />
-          <span className="text-white">and </span>
-          <span className="bg-gradient-to-r from-purple-500 to-purple-400 bg-clip-text text-transparent">
-            Misinformation
-          </span>
-          <span className="text-white"> Visible</span>
+          <ShinyText 
+            text="and" 
+            color="#ffffff" 
+            shineColor="#c4b5fd" 
+            speed={3} 
+            delay={1}
+            blurIn={true}
+            blurDelay={0.3}
+            className="text-6xl lg:text-7xl font-bold"
+          />
+          {" "}
+          <ShinyText 
+            text="Misinformation" 
+            color="#a78bfa" 
+            shineColor="#ffffff" 
+            speed={3} 
+            delay={1}
+            blurIn={true}
+            blurDelay={0.4}
+            className="text-6xl lg:text-7xl font-bold"
+          />
+          {" "}
+          <ShinyText 
+            text="Visible" 
+            color="#ffffff" 
+            shineColor="#c4b5fd" 
+            speed={3} 
+            delay={1}
+            blurIn={true}
+            blurDelay={0.5}
+            className="text-6xl lg:text-7xl font-bold"
+          />
         </h1>
 
-        {/* Subtext */}
-        <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-          Factum analyzes your documents for hidden bias, logical fallacies, and unverified claims — 
-          helping you communicate with clarity, fairness, and credibility.
-        </p>
-
         {/* CTA Button */}
-        <div className="flex items-center justify-center">
-          <button
-            onClick={onGetStarted}
-            className="px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-600/25 hover:shadow-purple-500/40 hover:scale-105"
+        <motion.div 
+          className="flex items-center justify-center"
+          initial={{ filter: 'blur(10px)', opacity: 0, y: 20 }}
+          animate={{ filter: 'blur(0px)', opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7, ease: 'easeOut' }}
+        >
+          <GlareHover
+            width="auto"
+            height="auto"
+            background="transparent"
+            borderRadius="12px"
+            borderColor="transparent"
+            glareColor="#ffffff"
+            glareOpacity={0.3}
+            glareAngle={-30}
+            glareSize={300}
+            transitionDuration={800}
           >
-            Analyze a Document
-          </button>
-        </div>
+            <button
+              onClick={onGetStarted}
+              className="px-8 py-4 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-600/25 hover:shadow-purple-500/40"
+            >
+              Analyze a Document
+            </button>
+          </GlareHover>
+        </motion.div>
 
         {/* Stats */}
         <div className="mt-20 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
@@ -57,10 +127,16 @@ export default function Hero({ onGetStarted }) {
             { value: '25+', label: 'Fallacy Types' },
             { value: '99%', label: 'Accuracy Rate' },
           ].map((stat, i) => (
-            <div key={i} className="text-center">
+            <motion.div 
+              key={i} 
+              className="text-center"
+              initial={{ filter: 'blur(10px)', opacity: 0, y: 20 }}
+              animate={{ filter: 'blur(0px)', opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.9 + i * 0.1, ease: 'easeOut' }}
+            >
               <div className="text-3xl font-bold text-purple-400 mb-1">{stat.value}</div>
               <div className="text-sm text-gray-500">{stat.label}</div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -77,7 +153,7 @@ export default function Hero({ onGetStarted }) {
             <h2 className="text-4xl font-bold text-white mb-6">Our Mission</h2>
             <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
               We believe in a world where communication is fair, accurate, and inclusive. 
-              Factum empowers writers, educators, journalists, and organizations to identify 
+              Factify empowers writers, educators, journalists, and organizations to identify 
               hidden biases and misinformation in their content — fostering trust, understanding, 
               and equity in every conversation.
             </p>

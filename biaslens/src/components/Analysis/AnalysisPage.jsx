@@ -3,6 +3,7 @@ import UploadPanel from './UploadPanel';
 import ControlBar from './ControlBar';
 import DocumentViewer from './DocumentViewer';
 import InsightsPanel from './InsightsPanel';
+import AnimatedContent from '../AnimatedContent/AnimatedContent';
 import { analyzeText } from "../../api/analyze";
 
 // Mock analysis function - replace with actual API call
@@ -18,11 +19,12 @@ const runAnalysis = async () => {
 
 export default function AnalysisPage() {
   const [uploadedFile, setUploadedFile] = useState(null);
-  const [pastedText, setPastedText] = useState('');
-  const [documentContent, setDocumentContent] = useState('');
+  const [pastedText, setPastedText] = useState("");
+  const [documentContent, setDocumentContent] = useState("");
   const [checks, setChecks] = useState({
     bias: true,
     fallacies: true,
+    tactic: true,
     factcheck: true,
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -48,16 +50,16 @@ export default function AnalysisPage() {
   }, [pastedText]);
 
   const handleToggleCheck = (key) => {
-    setChecks(prev => ({ ...prev, [key]: !prev[key] }));
+    setChecks((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleAnalyze = async () => {
     if (!documentContent) return;
-    
+
     setIsAnalyzing(true);
     setResults(null);
     setSelectedFinding(null);
-    
+
     try {
       const data = await analyzeText(documentContent, {
         maxFindings: 10,
@@ -77,12 +79,25 @@ export default function AnalysisPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
+    <AnimatedContent
+      distance={100}
+      direction="vertical"
+      reverse={false}
+      duration={0.8}
+      ease="power3.out"
+      initialOpacity={0}
+      animateOpacity
+      scale={1}
+      threshold={0.1}
+      delay={0}
+      className="h-[calc(100vh-64px)] flex flex-col bg-dark-950"
+    >
       {/* Control bar */}
       <ControlBar
         checks={checks}
         onToggleCheck={handleToggleCheck}
         onAnalyze={handleAnalyze}
+        onMediaTranscribe={(file, text) => setDocumentContent(text)}
         isAnalyzing={isAnalyzing}
         hasContent={!!documentContent}
       />
@@ -94,6 +109,7 @@ export default function AnalysisPage() {
           <UploadPanel
             onFileUpload={setUploadedFile}
             onTextPaste={setPastedText}
+            onMediaTranscribe={(file, text) => setDocumentContent(text)}
             uploadedFile={uploadedFile}
             pastedText={pastedText}
           />
@@ -120,6 +136,6 @@ export default function AnalysisPage() {
           />
         </div>
       </div>
-    </div>
+    </AnimatedContent>
   );
 }

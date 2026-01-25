@@ -1,0 +1,5 @@
+.fade-content-initial {
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(10px);
+}
