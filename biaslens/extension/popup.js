@@ -21,8 +21,22 @@ const optTone = document.getElementById('optTone');
 
 let currentSelectedText = '';
 
+// Default options state
+const defaultOptions = {
+  bias: true,
+  fallacy: true,
+  ethics: false,
+  tone: false
+};
+
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
+  // Load saved options state
+  await loadOptions();
+  
+  // Set up toggle button click handlers
+  setupOptionButtons();
+  
   // Get selected text from storage (set by content script)
   const result = await chrome.storage.local.get(['selectedText']);
   if (result.selectedText) {
@@ -47,6 +61,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+// Load options from storage
+async function loadOptions() {
+  const result = await chrome.storage.local.get(['factifyOptions']);
+  const options = result.factifyOptions || defaultOptions;
+  
+  // Apply saved state to buttons
+  optBias.classList.toggle('active', options.bias);
+  optFallacy.classList.toggle('active', options.fallacy);
+  optEthics.classList.toggle('active', options.ethics);
+  optTone.classList.toggle('active', options.tone);
+}
+
+// Save options to storage
+async function saveOptions() {
+  const options = {
+    bias: optBias.classList.contains('active'),
+    fallacy: optFallacy.classList.contains('active'),
+    ethics: optEthics.classList.contains('active'),
+    tone: optTone.classList.contains('active')
+  };
+  await chrome.storage.local.set({ factifyOptions: options });
+}
+
+// Set up click handlers for option buttons
+function setupOptionButtons() {
+  [optBias, optFallacy, optEthics, optTone].forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('active');
+      saveOptions();
+    });
+  });
+}
+
 function showSelectedText(text) {
   if (text && text.trim()) {
     instructions.style.display = 'none';
@@ -70,10 +117,10 @@ analyzeBtn.addEventListener('click', async () => {
   
   try {
     const settings = {
-      detectBias: optBias.checked,
-      detectFallacies: optFallacy.checked,
-      detectEthicalConcerns: optEthics.checked,
-      analyzeTone: optTone.checked
+      detectBias: optBias.classList.contains('active'),
+      detectFallacies: optFallacy.classList.contains('active'),
+      detectEthicalConcerns: optEthics.classList.contains('active'),
+      analyzeTone: optTone.classList.contains('active')
     };
     
     const response = await fetch(`${API_URL}/api/analyze`, {
