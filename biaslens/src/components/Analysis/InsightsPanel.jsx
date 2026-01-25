@@ -188,10 +188,8 @@ export default function InsightsPanel({
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {" "}
-      {/* Added overflow-hidden to keep container stable */}
-      {/* FULL WIDTH TAB BUTTONS */}
-      <div className="border-b border-dark-700 px-4 py-3 flex gap-2 flex-shrink-0">
+      {/* Tabs Header */}
+      <div className="border-b border-dark-700 px-4 py-3 flex gap-2 flex-shrink-0 bg-dark-900">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = activeTab === t.key;
@@ -199,10 +197,10 @@ export default function InsightsPanel({
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors duration-200 ${
+              className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-none ${
                 active
                   ? "bg-purple-500/10 text-white border border-purple-500/30"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-dark-700/50"
+                  : "text-gray-400 hover:text-gray-200"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -211,15 +209,29 @@ export default function InsightsPanel({
           );
         })}
       </div>
-      {/* CONTENT AREA: Stable container with absolute children to prevent layout shifts */}
-      <div className="flex-1 relative overflow-hidden">
+
+      {/* The Content Area */}
+      <div className="flex-1 relative bg-dark-900">
+        {/* Summary Tab */}
         <div
-          className={`absolute inset-0 overflow-y-auto custom-scrollbar ${activeTab === "summary" ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"}`}
+          className={`absolute inset-0 overflow-y-auto custom-scrollbar p-5 space-y-4 ${
+            activeTab === "summary"
+              ? "opacity-100 z-10"
+              : "opacity-0 z-0 pointer-events-none"
+          }`}
+          style={{ transition: "none" }} // Forces an instant swap with no fading/flashing
         >
           {renderSummary()}
         </div>
+
+        {/* Findings Tab */}
         <div
-          className={`absolute inset-0 overflow-y-auto custom-scrollbar ${activeTab === "findings" ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"}`}
+          className={`absolute inset-0 overflow-y-auto custom-scrollbar p-5 ${
+            activeTab === "findings"
+              ? "opacity-100 z-10"
+              : "opacity-0 z-0 pointer-events-none"
+          }`}
+          style={{ transition: "none" }}
         >
           {renderFindings()}
         </div>
