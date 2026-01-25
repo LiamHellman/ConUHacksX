@@ -99,13 +99,42 @@ analyzeBtn.addEventListener('click', async () => {
 });
 
 function displayResults(data) {
-  // Show score
-  const score = data.credibilityScore ?? data.score ?? '--';
+  // Calculate credibility score from the API response
+  let score = '--';
+  if (data.overall) {
+    // Average of all scores from the API
+    const { fallacyScore, biasScore, tacticScore, verifiabilityScore } = data.overall;
+    score = Math.round((fallacyScore + biasScore + tacticScore + verifiabilityScore) / 4);
+  } else if (data.credibilityScore !== undefined) {
+    score = data.credibilityScore;
+  } else if (data.score !== undefined) {
+    score = data.score;
+  }
   scoreValue.textContent = typeof score === 'number' ? Math.round(score) : score;
   
-  // Build findings
+  // Build findings from the API response
   let findingsHtml = '';
   
+  // Handle the findings array format from the API
+  if (data.findings && data.findings.length > 0) {
+    data.findings.forEach(finding => {
+      const category = finding.category || 'general';
+      const categoryLabels = {
+        'fallacy': 'Logical Fallacy',
+        'bias': 'Bias Detected',
+        'tactic': 'Persuasion Tactic'
+      };
+      findingsHtml += `
+        <div class="finding-item ${category}">
+          <div class="finding-type">${categoryLabels[category] || 'Finding'}</div>
+          <div class="finding-text"><strong>${finding.label || finding.categoryId || category}:</strong> ${finding.explanation}</div>
+          ${finding.quote ? `<div class="finding-quote">"${finding.quote}"</div>` : ''}
+        </div>
+      `;
+    });
+  }
+  
+  // Also handle legacy format with separate arrays
   if (data.biases && data.biases.length > 0) {
     data.biases.forEach(bias => {
       findingsHtml += `
@@ -126,26 +155,6 @@ function displayResults(data) {
         </div>
       `;
     });
-  }
-  
-  if (data.ethicalConcerns && data.ethicalConcerns.length > 0) {
-    data.ethicalConcerns.forEach(concern => {
-      findingsHtml += `
-        <div class="finding-item ethics">
-          <div class="finding-type">Ethical Concern</div>
-          <div class="finding-text">${concern.explanation || concern.description || concern}</div>
-        </div>
-      `;
-    });
-  }
-  
-  if (data.tone) {
-    findingsHtml += `
-      <div class="finding-item tone">
-        <div class="finding-type">Tone Analysis</div>
-        <div class="finding-text">${data.tone.description || data.tone}</div>
-      </div>
-    `;
   }
   
   if (!findingsHtml) {

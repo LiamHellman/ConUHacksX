@@ -124,25 +124,27 @@ body {
 .options-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 
 .option-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .option-item:hover {
   border-color: var(--accent-purple);
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
 }
 
 .option-item input[type="checkbox"] {
@@ -150,27 +152,40 @@ body {
 }
 
 .option-item .checkmark {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
   border: 2px solid var(--text-secondary);
-  border-radius: 4px;
+  border-radius: 6px;
   position: relative;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.option-item input:checked + .checkmark {
-  background: var(--accent-purple);
+.option-item:hover .checkmark {
   border-color: var(--accent-purple);
 }
 
+.option-item input:checked + .checkmark {
+  background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-blue) 100%);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.4);
+}
+
 .option-item input:checked + .checkmark::after {
-  content: '✓';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 10px;
+  content: '';
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+.option-item span:last-child {
+  color: var(--text-primary);
 }
 
 /* Buttons */
@@ -338,6 +353,10 @@ body {
   border-left-color: var(--error);
 }
 
+.finding-item.tactic {
+  border-left-color: var(--accent-blue);
+}
+
 .finding-item.ethics {
   border-left-color: var(--accent-pink);
 }
@@ -358,6 +377,15 @@ body {
   font-size: 12px;
   color: var(--text-primary);
   line-height: 1.4;
+}
+
+.finding-quote {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border-color);
 }
 
 /* Rewrite Section */
