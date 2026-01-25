@@ -19,13 +19,13 @@ export default function ResizableSections({ left, center, right }) {
       if (dragState.current.dragging === "left") {
         const newLeft = Math.max(120, dragState.current.startWidths[0] + dx);
         const newCenter = Math.max(120, dragState.current.startWidths[1] - dx);
-        leftRef.current.style.flexBasis = `${newLeft}px`;
-        centerRef.current.style.flexBasis = `${newCenter}px`;
+        leftRef.current.style.flex = `0 0 ${newLeft}px`;
+        centerRef.current.style.flex = `1 1 ${newCenter}px`;
       } else if (dragState.current.dragging === "right") {
         const newCenter = Math.max(120, dragState.current.startWidths[1] + dx);
         const newRight = Math.max(120, dragState.current.startWidths[2] - dx);
-        centerRef.current.style.flexBasis = `${newCenter}px`;
-        rightRef.current.style.flexBasis = `${newRight}px`;
+        centerRef.current.style.flex = `1 1 ${newCenter}px`;
+        rightRef.current.style.flex = `0 0 ${newRight}px`;
       }
     }
     function onMouseUp() {
@@ -59,7 +59,7 @@ export default function ResizableSections({ left, center, right }) {
 
   return (
     <div className="resizable-sections" ref={containerRef}>
-      <div className="section left" ref={leftRef}>
+      <div className="section left" ref={leftRef} style={{ flex: "0 0 320px" }}>
         {left}
       </div>
       <div
@@ -69,7 +69,7 @@ export default function ResizableSections({ left, center, right }) {
         aria-orientation="vertical"
         tabIndex={0}
       />
-      <div className="section center" ref={centerRef}>
+      <div className="section center" ref={centerRef} style={{ flex: "1 1 0%" }}>
         {center}
       </div>
       <div
@@ -79,7 +79,7 @@ export default function ResizableSections({ left, center, right }) {
         aria-orientation="vertical"
         tabIndex={0}
       />
-      <div className="section right" ref={rightRef}>
+      <div className="section right" ref={rightRef} style={{ flex: "0 0 340px" }}>
         {right}
       </div>
     </div>
