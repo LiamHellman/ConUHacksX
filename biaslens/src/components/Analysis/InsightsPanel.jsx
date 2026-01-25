@@ -69,7 +69,7 @@ export default function InsightsPanel({
           label="Neutrality"
           score={results?.scores?.bias ?? 0}
           color="pink"
-          description="Higher scores indicate biased language"
+          description="Lower scores indicate biased language"
         />
       )}
       {checks.fallacies && (
@@ -77,7 +77,7 @@ export default function InsightsPanel({
           label="Soundness"
           score={results?.scores?.fallacies ?? 0}
           color="amber"
-          description="Higher scores indicate fallacious reasoning"
+          description="Lower scores indicate fallacious reasoning"
         />
       )}
       {checks.tactic && (
@@ -85,7 +85,7 @@ export default function InsightsPanel({
           label="Transparency"
           score={results?.scores?.tactic ?? 0}
           color="blue"
-          description="Higher scores indicate more persuasive tactics"
+          description="Lower scores indicate more persuasive tactics"
         />
       )}
       {checks.factcheck && (
@@ -93,7 +93,7 @@ export default function InsightsPanel({
           label="Verifiability"
           score={results?.scores?.factcheck ?? 0}
           color="purple"
-          description="Higher scores indicate more unreliable claims"
+          description="Lower scores indicate more unreliable claims"
         />
       )}
       

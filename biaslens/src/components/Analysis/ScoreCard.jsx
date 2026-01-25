@@ -19,10 +19,6 @@ export default function ScoreCard({ label, score, color, description, max = 100 
     let v = Number(score);
     if (!Number.isFinite(v)) v = 0;
 
-    // Heuristic: if you pass 0–10 while max is 100, treat as 0–10 and scale up
-    // (This matches the screenshot issue: 5/7/8/4 were being treated as 5%.)
-    if (max === 100 && v >= 0 && v <= 10) v = v * 10;
-
     v = Math.max(0, Math.min(max, v));
     return v;
   }, [score, max]);
