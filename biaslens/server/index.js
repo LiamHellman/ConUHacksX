@@ -2,48 +2,29 @@
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-
-// Load .env from server directory
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-dotenv.config({ path: `${__dirname}/../.env` });
-
 import fs from "fs";
 import path from "path";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { YtTranscript } from "yt-transcript";
+import { execFile } from "child_process";
+import { promisify } from "util";
+
+const execFilePromise = promisify(execFile);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from root directory
+dotenv.config({ path: `${__dirname}/../.env` });
+
 import { analyzeWithLLM } from "./llm.js";
 
-// YouTube transcript fetcher using yt-transcript
-async function fetchYouTubeTranscript(videoId) {
-  const yt = new YtTranscript({ videoId });
-  const transcript = await yt.getTranscript();
-  
-  if (!transcript || transcript.length === 0) {
-    throw new Error("No transcript available for this video");
-  }
-  
-  const text = transcript
-    .map(seg => seg.text || '')
-    .filter(t => t.trim())
-    .join(' ');
-  
-  if (!text) {
-    throw new Error("Could not extract transcript text");
-  }
-  
-  return text;
-}
-
-// Initialize App and OpenAI
 const app = express();
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ dest: "uploads/" });
 
-// CORS - allow your frontend domain
+// Middleware
 app.use(
   cors({
     origin: [
@@ -57,7 +38,61 @@ app.use(
 );
 app.use(express.json({ limit: "2mb" }));
 
-// --- ROUTE: Audio/Video Transcription (Whisper) ---
+// --- ROUTE: YouTube Transcription (yt-dlp + Whisper) ---
+app.post("/api/youtube", async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "No URL provided" });
+
+  const timestamp = Date.now();
+  const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
+  const exePath = path.resolve(__dirname, "yt-dlp.exe");
+
+  try {
+    console.log(`🚀 Executing local yt-dlp for: ${url}`);
+
+    // 1. Download audio as MP3
+    await execFilePromise(
+      exePath,
+      [
+        "-x",
+        "--audio-format",
+        "mp3",
+        "--force-overwrites",
+        "-o",
+        tempPath,
+        url,
+      ],
+      { windowsVerbatimArguments: true },
+    );
+
+    console.log("✅ Download complete. Transcribing with OpenAI Whisper...");
+
+    // 2. Send the downloaded MP3 to Whisper
+    const transcription = await client.audio.transcriptions.create({
+      file: fs.createReadStream(tempPath),
+      model: "whisper-1",
+    });
+
+    return res.json({ transcript: transcription.text });
+  } catch (error) {
+    console.error("❌ YouTube Route Error:", error.message);
+    res.status(500).json({
+      error: "YouTube processing failed.",
+      details: error.message,
+    });
+  } finally {
+    // 3. Always clean up the temp audio file
+    if (fs.existsSync(tempPath)) {
+      try {
+        fs.unlinkSync(tempPath);
+      } catch (e) {
+        console.error("Cleanup error:", e.message);
+      }
+    }
+  }
+});
+
+// --- ROUTE: Local File Upload (Whisper) ---
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   let tempPathWithExt = null;
   try {
@@ -79,37 +114,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   } finally {
     if (tempPathWithExt && fs.existsSync(tempPathWithExt))
       fs.unlinkSync(tempPathWithExt);
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-  }
-});
-
-// --- ROUTE: YouTube Transcription (using captions) ---
-app.post("/api/youtube", async (req, res) => {
-  try {
-    const { url } = req.body;
-    if (!url) return res.status(400).json({ error: "No URL provided" });
-
-    console.log(`🚀 Fetching YouTube captions for: ${url}`);
-
-    // Extract video ID from URL
-    const videoIdMatch = url.match(/(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (!videoIdMatch) {
-      return res.status(400).json({ error: "Invalid YouTube URL" });
-    }
-    const videoId = videoIdMatch[1];
-
-    // Fetch transcript using custom function
-    const transcript = await fetchYouTubeTranscript(videoId);
-
-    console.log("✅ Transcript fetched successfully, length:", transcript.length);
-
-    return res.json({ transcript });
-  } catch (error) {
-    console.error("❌ YouTube Route Error:", error.message);
-    res.status(500).json({ 
-      error: "YouTube transcription failed. Video may not have captions.", 
-      details: error.message 
-    });
+    if (req.file && fs.existsSync(req.file.path))
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {}
   }
 });
 
@@ -131,7 +139,7 @@ app.post("/api/analyze", async (req, res) => {
 });
 
 // Start Server
-const port = process.env.PORT || process.env.API_PORT || 5174;
+const port = process.env.PORT || 5174;
 app.listen(port, () => {
   const uploadsDir = path.resolve(__dirname, "uploads");
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
