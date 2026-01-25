@@ -333,42 +333,107 @@ function removeHighlights() {
 function applyHighlights(findings) {
   if (!findings || findings.length === 0) return;
   
+  console.log('[Factify] Applying highlights for', findings.length, 'findings');
+  
   // For each finding, try multiple search strategies
   findings.forEach((finding, index) => {
-    if (!finding.quote || finding.quote.length < 5) return;
+    if (!finding.quote || finding.quote.length < 3) {
+      console.log('[Factify] Skipping finding', index, '- no quote or too short');
+      return;
+    }
     
     const category = finding.category || 'tactic';
     const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
     const searchText = finding.quote.trim();
     const findingId = finding.id || `finding-${index}`;
     
+    console.log('[Factify] Looking for:', searchText.substring(0, 50) + '...');
+    
     // Try to find and highlight using multiple strategies
     let found = false;
     
-    // Strategy 1: Exact match using TreeWalker
+    // Strategy 1: Exact match
     found = tryHighlightExact(searchText, category, colors, findingId, finding);
+    if (found) { console.log('[Factify] Found with exact match'); return; }
     
-    // Strategy 2: If not found, try with normalized whitespace
-    if (!found) {
-      const normalizedSearch = searchText.replace(/\s+/g, ' ');
-      found = tryHighlightNormalized(normalizedSearch, category, colors, findingId, finding);
+    // Strategy 2: Normalized whitespace and punctuation
+    const normalizedSearch = searchText.replace(/\s+/g, ' ').replace(/['']/g, "'").replace(/[""]/g, '"');
+    found = tryHighlightExact(normalizedSearch, category, colors, findingId, finding);
+    if (found) { console.log('[Factify] Found with normalized search'); return; }
+    
+    // Strategy 3: Try first 30 chars
+    if (searchText.length > 30) {
+      found = tryHighlightExact(searchText.substring(0, 30).trim(), category, colors, findingId, finding);
+      if (found) { console.log('[Factify] Found with first 30 chars'); return; }
     }
     
-    // Strategy 3: If still not found, try partial match (first 50 chars)
-    if (!found && searchText.length > 50) {
-      const partialSearch = searchText.substring(0, 50).trim();
-      found = tryHighlightExact(partialSearch, category, colors, findingId, finding);
+    // Strategy 4: Try middle portion
+    if (searchText.length > 40) {
+      const midStart = Math.floor(searchText.length / 4);
+      const midPortion = searchText.substring(midStart, midStart + 30).trim();
+      found = tryHighlightExact(midPortion, category, colors, findingId, finding);
+      if (found) { console.log('[Factify] Found with middle portion'); return; }
     }
     
-    // Strategy 4: Try finding by keywords
-    if (!found) {
-      tryHighlightByKeywords(searchText, category, colors, findingId, finding);
+    // Strategy 5: Extract longest word sequence (3+ words)
+    const words = searchText.split(/\s+/).filter(w => w.length > 2);
+    if (words.length >= 3) {
+      const phrase = words.slice(0, 4).join(' ');
+      found = tryHighlightExact(phrase, category, colors, findingId, finding);
+      if (found) { console.log('[Factify] Found with word sequence'); return; }
     }
+    
+    // Strategy 6: Try each sentence fragment
+    const sentences = searchText.split(/[.!?]/);
+    for (const sentence of sentences) {
+      if (sentence.trim().length > 10) {
+        found = tryHighlightExact(sentence.trim(), category, colors, findingId, finding);
+        if (found) { console.log('[Factify] Found with sentence fragment'); return; }
+      }
+    }
+    
+    console.log('[Factify] Could not find text for finding', index);
   });
+}
+
+// Build a map of the page text for searching
+function getPageTextMap() {
+  const textNodes = [];
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript, head')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (node.textContent.length === 0) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    textNodes.push(node);
+  }
+  return textNodes;
 }
 
 // Try exact match highlighting
 function tryHighlightExact(searchText, category, colors, findingId, finding) {
+  if (!searchText || searchText.length < 3) return false;
+  
+  // Normalize search text
+  const normalizedSearchText = searchText
+    .replace(/[''`]/g, "'")
+    .replace(/[""]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  
   const walker = document.createTreeWalker(
     document.body,
     NodeFilter.SHOW_TEXT,
@@ -376,7 +441,7 @@ function tryHighlightExact(searchText, category, colors, findingId, finding) {
       acceptNode: (node) => {
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript')) {
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript, head')) {
           return NodeFilter.FILTER_REJECT;
         }
         if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
@@ -390,96 +455,33 @@ function tryHighlightExact(searchText, category, colors, findingId, finding) {
     if (!node.parentNode) continue;
     
     const text = node.textContent;
-    const lowerText = text.toLowerCase();
-    const lowerSearch = searchText.toLowerCase();
-    const matchIndex = lowerText.indexOf(lowerSearch);
+    // Normalize page text the same way
+    const normalizedText = text
+      .replace(/[''`]/g, "'")
+      .replace(/[""]/g, '"')
+      .replace(/\s+/g, ' ')
+      .toLowerCase();
+    
+    const matchIndex = normalizedText.indexOf(normalizedSearchText);
     
     if (matchIndex !== -1) {
-      highlightTextNode(node, matchIndex, searchText.length, category, colors, findingId, finding);
-      return true;
-    }
-  }
-  return false;
-}
-
-// Try matching with normalized whitespace
-function tryHighlightNormalized(searchText, category, colors, findingId, finding) {
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript')) {
-          return NodeFilter.FILTER_REJECT;
+      // Find approximate position in original text
+      // Count characters up to match point
+      let origIndex = 0;
+      let normIndex = 0;
+      while (normIndex < matchIndex && origIndex < text.length) {
+        if (/\s/.test(text[origIndex])) {
+          // Skip extra whitespace in original
+          while (origIndex < text.length - 1 && /\s/.test(text[origIndex + 1])) {
+            origIndex++;
+          }
         }
-        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
+        origIndex++;
+        normIndex++;
       }
-    }
-  );
-  
-  let node;
-  while (node = walker.nextNode()) {
-    if (!node.parentNode) continue;
-    
-    const text = node.textContent;
-    const normalizedText = text.replace(/\s+/g, ' ').toLowerCase();
-    const lowerSearch = searchText.toLowerCase();
-    
-    if (normalizedText.includes(lowerSearch)) {
-      // Find the approximate position in original text
-      const matchIndex = normalizedText.indexOf(lowerSearch);
-      // Estimate original length (may vary due to whitespace)
-      highlightTextNode(node, matchIndex, searchText.length, category, colors, findingId, finding);
+      
+      highlightTextNode(node, origIndex, searchText.length, category, colors, findingId, finding);
       return true;
-    }
-  }
-  return false;
-}
-
-// Try to find by extracting keywords and matching
-function tryHighlightByKeywords(searchText, category, colors, findingId, finding) {
-  // Extract significant words (longer than 4 chars)
-  const words = searchText.split(/\s+/).filter(w => w.length > 4);
-  if (words.length < 2) return false;
-  
-  // Take first few significant words to search for
-  const keyPhrase = words.slice(0, 3).join(' ').toLowerCase();
-  
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript')) {
-          return NodeFilter.FILTER_REJECT;
-        }
-        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    }
-  );
-  
-  let node;
-  while (node = walker.nextNode()) {
-    if (!node.parentNode) continue;
-    
-    const text = node.textContent.toLowerCase();
-    
-    // Check if all key words are present
-    const allWordsPresent = words.slice(0, 3).every(w => text.includes(w.toLowerCase()));
-    if (allWordsPresent) {
-      // Highlight from first word to reasonable length
-      const firstWordIdx = text.indexOf(words[0].toLowerCase());
-      if (firstWordIdx !== -1) {
-        const highlightLen = Math.min(searchText.length, node.textContent.length - firstWordIdx);
-        highlightTextNode(node, firstWordIdx, highlightLen, category, colors, findingId, finding);
-        return true;
-      }
     }
   }
   return false;
