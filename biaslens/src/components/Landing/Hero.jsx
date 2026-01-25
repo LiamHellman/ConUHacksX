@@ -132,7 +132,7 @@ export default function Hero({ onGetStarted }) {
             transitionDuration={800}
           >
             <a
-              href="/extension/factify-extension.zip"
+              href="/factify-extension.zip"
               download
               className="flex items-center gap-2 px-8 py-4 bg-dark-800/80 hover:bg-dark-700 text-white font-semibold rounded-xl transition-all duration-300 border border-purple-500/30 hover:border-purple-500/50"
             >
