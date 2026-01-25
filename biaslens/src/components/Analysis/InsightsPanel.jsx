@@ -1,13 +1,15 @@
 import { useState } from "react";
-import {
-  BarChart3,
-  List,
-  RefreshCw,
-  AlertCircle,
-  Info,
-  ChevronRight,
-} from "lucide-react";
+import { BarChart3, List, AlertCircle, Info, ChevronRight } from "lucide-react";
 import ScoreCard from "./ScoreCard";
+
+// Theme helpers (OKLab-derived RGB injected as CSS vars by applyThemeVars())
+const BRAND_RGB = "var(--brand, var(--type-factcheck, 168 85 247))";
+const brandBg = (a) => `rgb(${BRAND_RGB} / ${a})`;
+const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
+
+const typeRgbVar = (type) => `var(--type-${type}, 255 255 255)`;
+const typeBg = (type, a) => `rgb(${typeRgbVar(type)} / ${a})`;
+const typeFg = (type, a = 1) => `rgb(${typeRgbVar(type)} / ${a})`;
 
 export default function InsightsPanel({
   results,
@@ -33,13 +35,15 @@ export default function InsightsPanel({
     return styles[severity] || styles.low;
   };
 
-  const getTypeBadge = (type) => {
-    const styles = {
-      bias: "bg-pink-500/20 text-pink-400",
-      fallacy: "bg-amber-500/20 text-amber-400",
-      tactic: "bg-blue-500/20 text-blue-400",
+  // Theme-driven type badge style (no Tailwind palette dependency)
+  const getTypeBadgeStyle = (type) => {
+    // Your finding types are: bias | fallacy | tactic (and you may add factcheck elsewhere)
+    const t = type || "bias";
+    return {
+      backgroundColor: typeBg(t, 0.16),
+      color: typeFg(t, 1),
+      border: `1px solid ${typeBg(t, 0.22)}`,
     };
-    return styles[type] || "bg-gray-500/20 text-gray-400";
   };
 
   const renderEmptyState = () => (
@@ -49,15 +53,24 @@ export default function InsightsPanel({
       </div>
       <h3 className="text-lg font-semibold text-white mb-2">No Analysis Yet</h3>
       <p className="text-gray-500 text-sm max-w-xs">
-        Upload a document and click Deconstruct to see insights
+        Upload a document and click Analyze to see insights
       </p>
     </div>
   );
 
   const renderLoading = () => (
     <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-      <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4">
-        <div className="w-8 h-8 border-3 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+        style={{ backgroundColor: brandBg(0.10) }}
+      >
+        <div
+          className="w-8 h-8 border-3 rounded-full animate-spin"
+          style={{
+            borderColor: brandBg(0.30),
+            borderTopColor: brandBg(1),
+          }}
+        />
       </div>
       <h3 className="text-lg font-semibold text-white mb-2">
         Deconstructing Argument
@@ -68,35 +81,39 @@ export default function InsightsPanel({
 
   const renderSummary = () => (
     <div className="p-5 space-y-4">
+      {/* NOTE: requires ScoreCard update to accept `type` instead of `color` */}
       <ScoreCard
         label="Neutrality"
         score={results?.scores?.bias ?? 0}
-        color="pink"
+        type="bias"
         description="Measures emotional nudges and loaded language"
       />
       <ScoreCard
         label="Soundness"
         score={results?.scores?.fallacies ?? 0}
-        color="amber"
+        type="fallacy"
         description="Identifies gaps in logical reasoning"
       />
       <ScoreCard
         label="Transparency"
         score={results?.scores?.tactic ?? 0}
-        color="blue"
+        type="tactic"
         description="Detects hidden persuasive techniques"
       />
       <ScoreCard
         label="Verifiability"
         score={results?.scores?.factcheck ?? 0}
-        color="purple"
+        type="factcheck"
         description="Ability to back claims with evidence"
       />
 
       {results?.summary && (
         <div className="mt-6 p-4 bg-dark-700/50 rounded-xl border border-dark-600">
           <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+            <Info
+              className="w-5 h-5 flex-shrink-0 mt-0.5"
+              style={{ color: brandFg(0.95) }}
+            />
             <div>
               <h4 className="text-sm font-medium text-white mb-1">
                 Executive Summary
@@ -120,64 +137,92 @@ export default function InsightsPanel({
         </div>
       ) : (
         <div className="space-y-3">
-          {results.findings.map((finding) => (
-            <div
-              key={finding.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelectFinding(finding)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ")
-                  onSelectFinding(finding);
-              }}
-              className={`
-                w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer
-                ${
-                  selectedFinding?.id === finding.id
-                    ? "bg-dark-700 border-purple-500/50 ring-2 ring-purple-500/20"
-                    : "bg-dark-800/50 border-dark-600 hover:border-dark-500 hover:bg-dark-700/50"
-                }
-              `}
-            >
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <span className="font-medium text-white">{finding.label}</span>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${getTypeBadge(finding.type)}`}
-                  >
-                    {finding.type}
-                  </span>
-                  <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${getSeverityBadge(finding.severity)}`}
-                  >
-                    {finding.severity}
-                  </span>
-                </div>
-              </div>
-              <p
-                className={`text-sm text-gray-400 mb-3 ${expandedFindingId === finding.id ? "" : "line-clamp-2"}`}
-              >
-                {finding.explanation}
-              </p>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setExpandedFindingId((prev) =>
-                    prev === finding.id ? null : finding.id,
-                  );
+          {results.findings.map((finding) => {
+            const isSelected = selectedFinding?.id === finding.id;
+
+            return (
+              <div
+                key={finding.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => onSelectFinding(finding)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    onSelectFinding(finding);
                 }}
-                className="flex items-center text-purple-400 text-sm hover:text-purple-300"
+                className={`
+                  w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer
+                  ${
+                    isSelected
+                      ? "bg-dark-700"
+                      : "bg-dark-800/50 border-dark-600 hover:border-dark-500 hover:bg-dark-700/50"
+                  }
+                `}
+                style={
+                  isSelected
+                    ? {
+                        borderColor: brandBg(0.50),
+                        boxShadow: `0 0 0 2px ${brandBg(0.18)}`,
+                      }
+                    : undefined
+                }
               >
-                <span>
-                  {expandedFindingId === finding.id ? "Show less" : "Show more"}
-                </span>
-                <ChevronRight
-                  className={`w-4 h-4 transition-transform ${expandedFindingId === finding.id ? "rotate-90" : ""}`}
-                />
-              </button>
-            </div>
-          ))}
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <span className="font-medium text-white">{finding.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="px-2 py-0.5 rounded text-xs font-medium"
+                      style={getTypeBadgeStyle(finding.type)}
+                    >
+                      {finding.type}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium ${getSeverityBadge(
+                        finding.severity
+                      )}`}
+                    >
+                      {finding.severity}
+                    </span>
+                  </div>
+                </div>
+
+                <p
+                  className={`text-sm text-gray-400 mb-3 ${
+                    expandedFindingId === finding.id ? "" : "line-clamp-2"
+                  }`}
+                >
+                  {finding.explanation}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExpandedFindingId((prev) =>
+                      prev === finding.id ? null : finding.id
+                    );
+                  }}
+                  className="flex items-center text-sm"
+                  style={{ color: brandFg(0.95) }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = brandFg(1);
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = brandFg(0.95);
+                  }}
+                >
+                  <span>
+                    {expandedFindingId === finding.id ? "Show less" : "Show more"}
+                  </span>
+                  <ChevronRight
+                    className={`w-4 h-4 transition-transform ${
+                      expandedFindingId === finding.id ? "rotate-90" : ""
+                    }`}
+                  />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -193,15 +238,22 @@ export default function InsightsPanel({
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = activeTab === t.key;
+
           return (
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-none ${
-                active
-                  ? "bg-purple-500/10 text-white border border-purple-500/30"
-                  : "text-gray-400 hover:text-gray-200"
+              className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-none border ${
+                active ? "text-white" : "text-gray-400 hover:text-gray-200 border-transparent"
               }`}
+              style={
+                active
+                  ? {
+                      backgroundColor: brandBg(0.10),
+                      borderColor: brandBg(0.30),
+                    }
+                  : undefined
+              }
             >
               <Icon className="w-4 h-4" />
               {t.label}
@@ -219,7 +271,7 @@ export default function InsightsPanel({
               ? "opacity-100 z-10"
               : "opacity-0 z-0 pointer-events-none"
           }`}
-          style={{ transition: "none" }} // Forces an instant swap with no fading/flashing
+          style={{ transition: "none" }}
         >
           {renderSummary()}
         </div>

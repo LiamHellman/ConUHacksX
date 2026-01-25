@@ -5,6 +5,17 @@
   overflow: visible;
 }
 
+/* Theme fallbacks:
+   - --brand should be set by applyThemeVars()
+   - --type-bias / --type-fallacy / --type-tactic should be set similarly
+*/
+:root {
+  --brand: var(--type-factcheck, 168 85 247);
+  --type-bias: 236 72 153;
+  --type-fallacy: 245 158 11;
+  --type-tactic: 59 130 246;
+}
+
 .dock-panel {
   position: relative;
   display: flex;
@@ -13,7 +24,7 @@
   gap: 0.75rem;
   border-radius: 1rem;
   background-color: rgba(15, 10, 25, 0.8);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid rgb(var(--brand) / 0.22);
   padding: 0.5rem 0.75rem;
   backdrop-filter: blur(10px);
   overflow: visible;
@@ -25,50 +36,54 @@
   align-items: center;
   justify-content: center;
   border-radius: 12px;
+
   background-color: rgba(30, 25, 45, 0.9);
   border: 1px solid rgba(100, 100, 120, 0.3);
+
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.2),
     0 2px 4px -1px rgba(0, 0, 0, 0.1);
+
   cursor: pointer;
   outline: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dock-item:hover {
-  border-color: rgba(139, 92, 246, 0.5);
+  border-color: rgb(var(--brand) / 0.55);
 }
 
 .dock-item--active {
-  background-color: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.6);
+  background-color: rgb(var(--brand) / 0.16);
+  border-color: rgb(var(--brand) / 0.62);
   box-shadow:
-    0 4px 6px -1px rgba(139, 92, 246, 0.2),
-    0 0 20px rgba(139, 92, 246, 0.15);
+    0 4px 6px -1px rgb(var(--brand) / 0.18),
+    0 0 20px rgb(var(--brand) / 0.14);
 }
 
-.dock-item--active.dock-item--pink {
-  background-color: rgba(236, 72, 153, 0.2);
-  border-color: rgba(236, 72, 153, 0.6);
+/* Semantic active variants (driven by OKLab-derived vars) */
+.dock-item--active.dock-item--bias {
+  background-color: rgb(var(--type-bias) / 0.16);
+  border-color: rgb(var(--type-bias) / 0.62);
   box-shadow:
-    0 4px 6px -1px rgba(236, 72, 153, 0.2),
-    0 0 20px rgba(236, 72, 153, 0.15);
+    0 4px 6px -1px rgb(var(--type-bias) / 0.18),
+    0 0 20px rgb(var(--type-bias) / 0.14);
 }
 
-.dock-item--active.dock-item--amber {
-  background-color: rgba(245, 158, 11, 0.2);
-  border-color: rgba(245, 158, 11, 0.6);
+.dock-item--active.dock-item--fallacy {
+  background-color: rgb(var(--type-fallacy) / 0.16);
+  border-color: rgb(var(--type-fallacy) / 0.62);
   box-shadow:
-    0 4px 6px -1px rgba(245, 158, 11, 0.2),
-    0 0 20px rgba(245, 158, 11, 0.15);
+    0 4px 6px -1px rgb(var(--type-fallacy) / 0.18),
+    0 0 20px rgb(var(--type-fallacy) / 0.14);
 }
 
-.dock-item--active.dock-item--blue {
-  background-color: rgba(59, 130, 246, 0.2);
-  border-color: rgba(59, 130, 246, 0.6);
+.dock-item--active.dock-item--tactic {
+  background-color: rgb(var(--type-tactic) / 0.16);
+  border-color: rgb(var(--type-tactic) / 0.62);
   box-shadow:
-    0 4px 6px -1px rgba(59, 130, 246, 0.2),
-    0 0 20px rgba(59, 130, 246, 0.15);
+    0 4px 6px -1px rgb(var(--type-tactic) / 0.18),
+    0 0 20px rgb(var(--type-tactic) / 0.14);
 }
 
 .dock-icon {
@@ -84,16 +99,17 @@
   color: #fff;
 }
 
-.dock-item--active.dock-item--pink .dock-icon {
-  color: #f472b6;
+/* Optional: tint icon to the semantic type while active (instead of white) */
+.dock-item--active.dock-item--bias .dock-icon {
+  color: rgb(var(--type-bias) / 1);
 }
 
-.dock-item--active.dock-item--amber .dock-icon {
-  color: #fbbf24;
+.dock-item--active.dock-item--fallacy .dock-icon {
+  color: rgb(var(--type-fallacy) / 1);
 }
 
-.dock-item--active.dock-item--blue .dock-icon {
-  color: #60a5fa;
+.dock-item--active.dock-item--tactic .dock-icon {
+  color: rgb(var(--type-tactic) / 1);
 }
 
 .dock-label {
@@ -103,12 +119,15 @@
   width: max-content;
   white-space: nowrap;
   border-radius: 0.5rem;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+
+  border: 1px solid rgb(var(--brand) / 0.30);
   background-color: rgba(15, 10, 25, 0.95);
+
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 500;
   color: #fff;
+
   transform: translateX(-50%);
   backdrop-filter: blur(10px);
   z-index: 50;
