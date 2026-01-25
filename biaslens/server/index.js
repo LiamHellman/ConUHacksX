@@ -12,62 +12,76 @@ import multer from "multer";
 import OpenAI from "openai";
 import { analyzeWithLLM } from "./llm.js";
 
-// Custom YouTube transcript fetcher using Innertube API
+// Custom YouTube transcript fetcher
 async function fetchYouTubeTranscript(videoId) {
-  // Use YouTube's internal API to get transcript
-  const response = await fetch('https://www.youtube.com/youtubei/v1/get_transcript?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
-    method: 'POST',
+  // Fetch the video page to extract caption info
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const response = await fetch(watchUrl, {
     headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    },
-    body: JSON.stringify({
-      context: {
-        client: {
-          clientName: 'WEB',
-          clientVersion: '2.20240101.00.00'
-        }
-      },
-      params: Buffer.from(`\n\x0b${videoId}`).toString('base64')
-    })
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Cookie': 'CONSENT=YES+'
+    }
   });
-
-  if (!response.ok) {
-    throw new Error(`YouTube API error: ${response.status}`);
-  }
-
-  const data = await response.json();
   
-  // Extract transcript from response
-  const transcriptRenderer = data?.actions?.[0]?.updateEngagementPanelAction?.content?.transcriptRenderer;
-  const segments = transcriptRenderer?.content?.transcriptSearchPanelRenderer?.body?.transcriptSegmentListRenderer?.initialSegments
-    || transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups;
-
-  if (!segments || segments.length === 0) {
-    // Try alternative path for different response format
-    const altSegments = data?.actions?.[0]?.updateEngagementPanelAction?.content?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups;
-    if (!altSegments || altSegments.length === 0) {
-      throw new Error("No transcript segments found");
+  const html = await response.text();
+  
+  // Look for playerCaptionsTracklistRenderer which contains caption URLs
+  const captionsMatch = html.match(/"playerCaptionsTracklistRenderer":\s*(\{[^}]+\})/);
+  
+  // Also try to find captions in the ytInitialPlayerResponse
+  const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/);
+  
+  let captionUrl = null;
+  
+  if (playerResponseMatch) {
+    try {
+      // Find the captions section more carefully
+      const prText = playerResponseMatch[1];
+      const captionTracksMatch = prText.match(/"captionTracks":\s*(\[[^\]]+\])/);
+      
+      if (captionTracksMatch) {
+        const tracks = JSON.parse(captionTracksMatch[1]);
+        // Find English or first available
+        const track = tracks.find(t => t.languageCode === 'en' || t.vssId?.includes('.en')) || tracks[0];
+        if (track?.baseUrl) {
+          captionUrl = track.baseUrl;
+        }
+      }
+    } catch (e) {
+      console.log("Parse error:", e.message);
     }
   }
-
-  // Extract text from segments
+  
+  if (!captionUrl) {
+    throw new Error("No captions available for this video");
+  }
+  
+  // Fetch the caption XML
+  const captionResponse = await fetch(captionUrl);
+  const xml = await captionResponse.text();
+  
+  // Extract text from XML
   const texts = [];
-  const segs = segments || data?.actions?.[0]?.updateEngagementPanelAction?.content?.transcriptRenderer?.body?.transcriptBodyRenderer?.cueGroups || [];
-  
-  for (const segment of segs) {
-    const cue = segment?.transcriptSegmentRenderer || segment?.transcriptCueGroupRenderer?.cues?.[0]?.transcriptCueRenderer;
-    if (cue?.snippet?.runs) {
-      texts.push(cue.snippet.runs.map(r => r.text).join(''));
-    } else if (cue?.cue?.simpleText) {
-      texts.push(cue.cue.simpleText);
-    }
+  const regex = /<text[^>]*>([^<]*)<\/text>/g;
+  let match;
+  while ((match = regex.exec(xml)) !== null) {
+    let text = match[1]
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+    if (text) texts.push(text);
   }
-
+  
   if (texts.length === 0) {
     throw new Error("Could not extract transcript text");
   }
-
+  
   return texts.join(' ');
 }
 
