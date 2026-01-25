@@ -93,7 +93,7 @@ function blendedBg(findings) {
   const g = Math.round(255 * linearToSRGBChannel(lin.g));
   const b = Math.round(255 * linearToSRGBChannel(lin.b));
 
-  const baseAlpha = Math.min(0.58, 1 - alphaComp);
+  const baseAlpha = Math.min(0.40, 1 - alphaComp);
 
   return { r, g, b, baseAlpha };
 }
