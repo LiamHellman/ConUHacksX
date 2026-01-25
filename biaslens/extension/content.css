@@ -157,6 +157,10 @@
   border-left-color: #ef4444;
 }
 
+#factify-results-panel .factify-finding.tactic {
+  border-left-color: #3b82f6;
+}
+
 #factify-results-panel .factify-finding-type {
   font-size: 10px;
   text-transform: uppercase;
@@ -169,6 +173,15 @@
   font-size: 13px;
   color: white;
   line-height: 1.4;
+}
+
+#factify-results-panel .factify-finding-quote {
+  font-size: 11px;
+  color: #a0a0b0;
+  font-style: italic;
+  margin-top: 8px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(139, 92, 246, 0.3);
 }
 
 #factify-results-panel .factify-loading {

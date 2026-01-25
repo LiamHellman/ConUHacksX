@@ -103,7 +103,16 @@ function showResultsPanel(loading, data, error) {
       </div>
     `;
   } else if (data) {
-    const score = data.credibilityScore ?? data.score ?? '--';
+    // Calculate credibility score from the API response
+    let score = '--';
+    if (data.overall) {
+      const { fallacyScore, biasScore, tacticScore, verifiabilityScore } = data.overall;
+      score = Math.round((fallacyScore + biasScore + tacticScore + verifiabilityScore) / 4);
+    } else if (data.credibilityScore !== undefined) {
+      score = data.credibilityScore;
+    } else if (data.score !== undefined) {
+      score = data.score;
+    }
     
     contentHtml = `
       <div class="factify-score">
@@ -112,6 +121,26 @@ function showResultsPanel(loading, data, error) {
       </div>
     `;
     
+    // Handle the findings array format from the API
+    if (data.findings && data.findings.length > 0) {
+      const categoryLabels = {
+        'fallacy': 'Logical Fallacy',
+        'bias': 'Bias Detected',
+        'tactic': 'Persuasion Tactic'
+      };
+      data.findings.forEach(finding => {
+        const category = finding.category || 'general';
+        contentHtml += `
+          <div class="factify-finding ${category}">
+            <div class="factify-finding-type">${categoryLabels[category] || 'Finding'}</div>
+            <div class="factify-finding-text"><strong>${finding.label || finding.categoryId || category}:</strong> ${finding.explanation}</div>
+            ${finding.quote ? `<div class="factify-finding-quote">"${finding.quote}"</div>` : ''}
+          </div>
+        `;
+      });
+    }
+    
+    // Also handle legacy format
     if (data.biases && data.biases.length > 0) {
       data.biases.forEach(bias => {
         contentHtml += `
@@ -134,27 +163,7 @@ function showResultsPanel(loading, data, error) {
       });
     }
     
-    if (data.ethicalConcerns && data.ethicalConcerns.length > 0) {
-      data.ethicalConcerns.forEach(concern => {
-        contentHtml += `
-          <div class="factify-finding">
-            <div class="factify-finding-type">Ethical Concern</div>
-            <div class="factify-finding-text">${concern.explanation || concern.description || concern}</div>
-          </div>
-        `;
-      });
-    }
-    
-    if (data.tone) {
-      contentHtml += `
-        <div class="factify-finding">
-          <div class="factify-finding-type">Tone Analysis</div>
-          <div class="factify-finding-text">${data.tone.description || data.tone}</div>
-        </div>
-      `;
-    }
-    
-    if (!data.biases?.length && !data.fallacies?.length && !data.ethicalConcerns?.length) {
+    if (!data.findings?.length && !data.biases?.length && !data.fallacies?.length) {
       contentHtml += `
         <div class="factify-finding">
           <div class="factify-finding-text">No significant issues detected. The text appears to be relatively neutral and well-reasoned.</div>
