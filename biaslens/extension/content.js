@@ -107,11 +107,8 @@ function hideFactifyButton() {
   }
 }
 
-function showResultsPanel(loading, data, error, filters = null) {
+function showResultsPanel(loading, data, error) {
   hideResultsPanel();
-  
-  // Default filters if not provided
-  const activeFilters = filters || { bias: true, fallacy: true, tactic: true };
   
   resultsPanel = document.createElement('div');
   resultsPanel.id = 'factify-results-panel';
@@ -157,17 +154,7 @@ function showResultsPanel(loading, data, error, filters = null) {
         'bias': 'Bias Detected',
         'tactic': 'Persuasion Tactic'
       };
-      
-      // Filter findings based on active filters
-      const filteredFindings = data.findings.filter(finding => {
-        const category = finding.category || 'general';
-        if (category === 'bias' && !activeFilters.bias) return false;
-        if (category === 'fallacy' && !activeFilters.fallacy) return false;
-        if (category === 'tactic' && !activeFilters.tactic) return false;
-        return true;
-      });
-      
-      filteredFindings.forEach((finding, index) => {
+      data.findings.forEach((finding, index) => {
         const category = finding.category || 'general';
         const findingId = finding.id || `finding-${index}`;
         contentHtml += `
@@ -178,19 +165,6 @@ function showResultsPanel(loading, data, error, filters = null) {
           </div>
         `;
       });
-      
-      // Apply highlights only for filtered findings
-      if (filteredFindings.length > 0) {
-        applyHighlights(filteredFindings);
-      }
-      
-      if (filteredFindings.length === 0) {
-        contentHtml += `
-          <div class="factify-finding">
-            <div class="factify-finding-text">No issues found for the selected categories.</div>
-          </div>
-        `;
-      }
     }
     
     // Also handle legacy format
@@ -222,6 +196,11 @@ function showResultsPanel(loading, data, error, filters = null) {
           <div class="factify-finding-text">No significant issues detected. The text appears to be relatively neutral and well-reasoned.</div>
         </div>
       `;
+    }
+    
+    // Apply highlights to the page
+    if (data.findings && data.findings.length > 0) {
+      applyHighlights(data.findings);
     }
   }
   
@@ -354,114 +333,16 @@ function removeHighlights() {
 function applyHighlights(findings) {
   if (!findings || findings.length === 0) return;
   
-  console.log('[Factify] Applying highlights for', findings.length, 'findings');
-  
-  // Build a full text map of the page for cross-node searching
-  const pageText = document.body.innerText || document.body.textContent;
-  const normalizedPageText = pageText.replace(/\s+/g, ' ').toLowerCase();
-  
-  // For each finding, try multiple search strategies
-  findings.forEach((finding, index) => {
-    if (!finding.quote || finding.quote.length < 3) {
-      console.log('[Factify] Skipping finding', index, '- no quote or too short');
-      return;
-    }
-    
-    const category = finding.category || 'tactic';
-    const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
-    const searchText = finding.quote.trim();
-    const findingId = finding.id || `finding-${index}`;
-    
-    console.log('[Factify] Looking for:', searchText.substring(0, 50) + '...');
-    
-    // Try to find and highlight using multiple strategies
-    let found = false;
-    
-    // Strategy 1: Exact match in single text node
-    found = tryHighlightExact(searchText, category, colors, findingId, finding);
-    if (found) { console.log('[Factify] Found with exact match'); return; }
-    
-    // Strategy 2: Try unique phrases from the quote (5-8 word chunks)
-    const words = searchText.split(/\s+/).filter(w => w.length > 0);
-    for (let phraseLen = Math.min(8, words.length); phraseLen >= 4 && !found; phraseLen--) {
-      for (let start = 0; start <= words.length - phraseLen && !found; start++) {
-        const phrase = words.slice(start, start + phraseLen).join(' ');
-        if (phrase.length >= 15) {
-          found = tryHighlightExact(phrase, category, colors, findingId, finding);
-          if (found) { console.log('[Factify] Found with phrase:', phrase.substring(0, 30)); return; }
-        }
-      }
-    }
-    
-    // Strategy 3: Try distinctive 3-4 word phrases
-    for (let i = 0; i < words.length - 2 && !found; i++) {
-      const threeWords = words.slice(i, i + 3).join(' ');
-      if (threeWords.length >= 12) {
-        found = tryHighlightExact(threeWords, category, colors, findingId, finding);
-        if (found) { console.log('[Factify] Found with 3 words:', threeWords); return; }
-      }
-    }
-    
-    // Strategy 4: Try quoted text if present
-    const quotedMatch = searchText.match(/"([^"]+)"|'([^']+)'|"([^"]+)"/);
-    if (quotedMatch) {
-      const quoted = quotedMatch[1] || quotedMatch[2] || quotedMatch[3];
-      if (quoted && quoted.length > 10) {
-        found = tryHighlightExact(quoted, category, colors, findingId, finding);
-        if (found) { console.log('[Factify] Found quoted text'); return; }
-      }
-    }
-    
-    console.log('[Factify] Could not find text for finding', index, '- quote:', searchText.substring(0, 60));
-  });
-}
-
-// Build a map of the page text for searching
-function getPageTextMap() {
-  const textNodes = [];
+  // Get all text nodes in the body
   const walker = document.createTreeWalker(
     document.body,
     NodeFilter.SHOW_TEXT,
     {
       acceptNode: (node) => {
+        // Skip our own elements and script/style tags
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript, head')) {
-          return NodeFilter.FILTER_REJECT;
-        }
-        if (node.textContent.length === 0) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    }
-  );
-  
-  let node;
-  while (node = walker.nextNode()) {
-    textNodes.push(node);
-  }
-  return textNodes;
-}
-
-// Try exact match highlighting
-function tryHighlightExact(searchText, category, colors, findingId, finding) {
-  if (!searchText || searchText.length < 3) return false;
-  
-  // Normalize search text
-  const normalizedSearchText = searchText
-    .replace(/[''`]/g, "'")
-    .replace(/[""]/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-  
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, .factify-highlight, script, style, noscript, head')) {
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, script, style, noscript')) {
           return NodeFilter.FILTER_REJECT;
         }
         if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
@@ -470,81 +351,73 @@ function tryHighlightExact(searchText, category, colors, findingId, finding) {
     }
   );
   
+  const textNodes = [];
   let node;
   while (node = walker.nextNode()) {
-    if (!node.parentNode) continue;
-    
-    const text = node.textContent;
-    // Normalize page text the same way
-    const normalizedText = text
-      .replace(/[''`]/g, "'")
-      .replace(/[""]/g, '"')
-      .replace(/\s+/g, ' ')
-      .toLowerCase();
-    
-    const matchIndex = normalizedText.indexOf(normalizedSearchText);
-    
-    if (matchIndex !== -1) {
-      // Find approximate position in original text
-      // Count characters up to match point
-      let origIndex = 0;
-      let normIndex = 0;
-      while (normIndex < matchIndex && origIndex < text.length) {
-        if (/\s/.test(text[origIndex])) {
-          // Skip extra whitespace in original
-          while (origIndex < text.length - 1 && /\s/.test(text[origIndex + 1])) {
-            origIndex++;
-          }
-        }
-        origIndex++;
-        normIndex++;
-      }
-      
-      highlightTextNode(node, origIndex, searchText.length, category, colors, findingId, finding);
-      return true;
-    }
+    textNodes.push(node);
   }
-  return false;
-}
-
-// Helper to highlight a portion of a text node
-function highlightTextNode(textNode, startIndex, length, category, colors, findingId, finding) {
-  const text = textNode.textContent;
-  const endIndex = Math.min(startIndex + length, text.length);
   
-  const before = text.substring(0, startIndex);
-  const match = text.substring(startIndex, endIndex);
-  const after = text.substring(endIndex);
-  
-  const span = document.createElement('span');
-  span.className = 'factify-highlight';
-  span.dataset.category = category;
-  span.dataset.findingId = findingId;
-  span.dataset.label = finding.label || finding.categoryId || category;
-  span.style.cssText = `
-    background: ${colors.bg};
-    border-bottom: 2px solid ${colors.border};
-    padding: 1px 2px;
-    border-radius: 2px;
-    cursor: pointer;
-    transition: background 0.2s;
-  `;
-  span.textContent = match;
-  span.title = `${finding.label || category}: ${finding.explanation}`;
-  
-  span.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    scrollToFinding(findingId);
+  // For each finding, try to find and highlight the quote
+  findings.forEach((finding, index) => {
+    if (!finding.quote || finding.quote.length < 5) return;
+    
+    const category = finding.category || 'tactic';
+    const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
+    const searchText = finding.quote.trim();
+    const findingId = finding.id || `finding-${index}`;
+    
+    // Search through text nodes
+    for (let i = 0; i < textNodes.length; i++) {
+      const textNode = textNodes[i];
+      if (!textNode.parentNode) continue; // Already processed
+      
+      const text = textNode.textContent;
+      const index = text.toLowerCase().indexOf(searchText.toLowerCase());
+      
+      if (index !== -1) {
+        // Found the text, split and wrap
+        const before = text.substring(0, index);
+        const match = text.substring(index, index + searchText.length);
+        const after = text.substring(index + searchText.length);
+        
+        const span = document.createElement('span');
+        span.className = 'factify-highlight';
+        span.dataset.category = category;
+        span.dataset.findingId = findingId;
+        span.dataset.label = finding.label || finding.categoryId || category;
+        span.style.cssText = `
+          background: ${colors.bg};
+          border-bottom: 2px solid ${colors.border};
+          padding: 1px 2px;
+          border-radius: 2px;
+          cursor: pointer;
+          transition: background 0.2s;
+        `;
+        span.textContent = match;
+        
+        // Tooltip on hover
+        span.title = `${finding.label || category}: ${finding.explanation}`;
+        
+        // Click handler to scroll to finding in panel
+        span.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          scrollToFinding(findingId);
+        });
+        
+        // Create new structure
+        const fragment = document.createDocumentFragment();
+        if (before) fragment.appendChild(document.createTextNode(before));
+        fragment.appendChild(span);
+        if (after) fragment.appendChild(document.createTextNode(after));
+        
+        textNode.parentNode.replaceChild(fragment, textNode);
+        highlights.push(span);
+        
+        break; // Only highlight first occurrence
+      }
+    }
   });
-  
-  const fragment = document.createDocumentFragment();
-  if (before) fragment.appendChild(document.createTextNode(before));
-  fragment.appendChild(span);
-  if (after) fragment.appendChild(document.createTextNode(after));
-  
-  textNode.parentNode.replaceChild(fragment, textNode);
-  highlights.push(span);
 }
 
 // Scroll to and highlight a finding in the results panel
@@ -577,7 +450,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const selection = window.getSelection().toString().trim();
     sendResponse({ text: selection });
   } else if (request.action === 'showResults') {
-    showResultsPanel(request.loading, request.data, request.error, request.filters);
+    showResultsPanel(request.loading, request.data, request.error);
   }
   return true;
 });

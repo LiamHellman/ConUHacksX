@@ -8,10 +8,8 @@ import {
   Music,
   Loader2,
   Youtube,
-  Link as LinkIcon,
 } from "lucide-react";
 
-// Helper to detect dev vs prod environment
 const API_URL = import.meta.env.PROD
   ? "https://factify-api.onrender.com"
   : "http://localhost:5174";
@@ -22,18 +20,14 @@ export default function UploadPanel({
   // Back-compat: single-file callback
   onFileUpload,
   onTextPaste,
-  onMediaTranscribe, // We reuse this for YouTube transcripts
   uploadedFile,
   pastedText,
+  onMediaTranscribe,
+  onHistoryUpdate,
 }) {
   const [isDragging, setIsDragging] = useState(false);
-
-  // UI States
-  const [mode, setMode] = useState("select"); // 'select' | 'text' | 'youtube'
+  const [showTextInput, setShowTextInput] = useState(false);
   const [textValue, setTextValue] = useState(pastedText || "");
-  const [youtubeUrl, setYoutubeUrl] = useState("");
-
-  // Processing States
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [mediaFile, setMediaFile] = useState(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -62,39 +56,31 @@ export default function UploadPanel({
     "video/x-msvideo",
   ];
 
-  const isTextFile = (file) => {
-    return (
-      textFileTypes.includes(file.type) ||
-      file.name.endsWith(".txt") ||
-      file.name.endsWith(".pdf") ||
-      file.name.endsWith(".docx")
-    );
-  };
+  const isTextFile = (file) =>
+    textFileTypes.includes(file.type) ||
+    file.name.endsWith(".txt") ||
+    file.name.endsWith(".pdf") ||
+    file.name.endsWith(".docx");
 
-  const isAudioFile = (file) => {
-    return (
-      audioFileTypes.includes(file.type) ||
-      file.name.endsWith(".mp3") ||
-      file.name.endsWith(".wav") ||
-      file.name.endsWith(".ogg") ||
-      file.name.endsWith(".m4a")
-    );
-  };
+  const isAudioFile = (file) =>
+    audioFileTypes.includes(file.type) ||
+    file.name.endsWith(".mp3") ||
+    file.name.endsWith(".wav") ||
+    file.name.endsWith(".ogg") ||
+    file.name.endsWith(".m4a");
 
-  const isVideoFile = (file) => {
-    return (
-      videoFileTypes.includes(file.type) ||
-      file.name.endsWith(".mp4") ||
-      file.name.endsWith(".webm") ||
-      file.name.endsWith(".mov") ||
-      file.name.endsWith(".avi")
-    );
-  };
+  const isVideoFile = (file) =>
+    videoFileTypes.includes(file.type) ||
+    file.name.endsWith(".mp4") ||
+    file.name.endsWith(".webm") ||
+    file.name.endsWith(".mov") ||
+    file.name.endsWith(".avi");
 
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
   };
+
   const handleDragLeave = (e) => {
     e.preventDefault();
     setIsDragging(false);
@@ -142,18 +128,16 @@ export default function UploadPanel({
 
   const transcribeMedia = async (file, batchId) => {
     setIsTranscribing(true);
-    setStatusMessage(`Extracting text from ${file.name}...`);
     setMediaFile(file);
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${API_URL}/api/upload`, {
+      const response = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
 
       const data = await response.json();
       setIsTranscribing(false);
@@ -163,11 +147,8 @@ export default function UploadPanel({
         onMediaTranscribe(file, data.transcript, type, batchId);
       }
     } catch (error) {
-      console.error(error);
-      alert("Transcription failed. Please try again.");
-    } finally {
+      console.error("Transcription Error:", error);
       setIsTranscribing(false);
-      setMediaFile(null);
     }
   };
 
@@ -184,9 +165,9 @@ export default function UploadPanel({
         body: JSON.stringify({ url: youtubeUrl }),
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || "YouTube transcription failed");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "YouTube transcription failed");
       }
 
       const data = await response.json();
@@ -200,10 +181,9 @@ export default function UploadPanel({
         );
       }
       setYoutubeUrl("");
-      setMode("select");
     } catch (error) {
-      console.error(error);
-      alert(`Error: ${error.message}`);
+      console.error("YT Error:", error);
+      alert("Failed to get YouTube transcript: " + error.message);
     } finally {
       setIsTranscribing(false);
       setMediaFile(null);
@@ -225,14 +205,6 @@ export default function UploadPanel({
     }
   };
 
-  const resetUI = () => {
-    setMode("select");
-    setMediaFile(null);
-    setIsTranscribing(false);
-    setTextValue("");
-    setYoutubeUrl("");
-  };
-
   const clearUpload = () => {
     // With multi-doc, clearing is basically a UI reset; parent stores docs already.
     if (typeof onFileUpload === "function") onFileUpload(null);
@@ -243,14 +215,13 @@ export default function UploadPanel({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- Render Helpers ---
   const getFileIcon = () => {
-    if (mediaFile?.type === "video/youtube")
-      return <Youtube className="w-6 h-6 text-red-500" />;
-    if (mediaFile && isVideoFile(mediaFile))
-      return <Video className="w-6 h-6 text-purple-400" />;
-    if (mediaFile && isAudioFile(mediaFile))
-      return <Music className="w-6 h-6 text-purple-400" />;
+    if (mediaFile) {
+      if (isVideoFile(mediaFile))
+        return <Video className="w-6 h-6 text-purple-400" />;
+      if (isAudioFile(mediaFile))
+        return <Music className="w-6 h-6 text-purple-400" />;
+    }
     return <FileText className="w-6 h-6 text-purple-400" />;
   };
 
@@ -258,11 +229,12 @@ export default function UploadPanel({
     <div className="h-full flex flex-col">
       <div className="px-5 py-4 border-b border-dark-700">
         <h2 className="text-lg font-semibold text-white">Input</h2>
-        <p className="text-sm text-gray-500 mt-1">Upload file or paste URL</p>
+        <p className="text-sm text-gray-500 mt-1">
+          Upload document, audio, video or YouTube link
+        </p>
       </div>
 
       <div className="flex-1 p-5 overflow-y-auto space-y-4">
-        {/* LOADING STATE */}
         {isTranscribing ? (
           <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6">
             <div className="flex flex-col items-center text-center">
@@ -355,54 +327,21 @@ export default function UploadPanel({
                 <textarea
                   value={textValue}
                   onChange={(e) => setTextValue(e.target.value)}
-                  placeholder="Paste text to analyze..."
+                  placeholder="Paste text..."
                   className="w-full h-48 px-4 py-3 bg-dark-800 border border-dark-600 focus:border-purple-500 rounded-xl text-white resize-none outline-none"
                 />
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setMode("select")}
+                    onClick={() => setShowTextInput(false)}
                     className="flex-1 py-2 border border-dark-500 rounded-lg text-gray-400"
                   >
-                    Back
+                    Cancel
                   </button>
                   <button
                     onClick={handleTextSubmit}
                     className="flex-1 py-2 bg-purple-600 rounded-lg text-white"
                   >
                     Use Text
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* YOUTUBE MODE */}
-            {mode === "youtube" && (
-              <div className="space-y-4">
-                <div className="bg-dark-800 border border-dark-600 rounded-xl p-4">
-                  <div className="flex items-center gap-3 mb-3 text-red-400">
-                    <Youtube className="w-5 h-5" />
-                    <span className="font-medium text-white">YouTube Link</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    placeholder="https://youtube.com/watch?v=..."
-                    className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-white focus:border-red-500 outline-none"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setMode("select")}
-                    className="flex-1 py-2 border border-dark-500 rounded-lg text-gray-400"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleYoutubeSubmit}
-                    className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-medium"
-                  >
-                    Transcribe
                   </button>
                 </div>
               </div>
