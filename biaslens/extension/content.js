@@ -335,6 +335,10 @@ function applyHighlights(findings) {
   
   console.log('[Factify] Applying highlights for', findings.length, 'findings');
   
+  // Build a full text map of the page for cross-node searching
+  const pageText = document.body.innerText || document.body.textContent;
+  const normalizedPageText = pageText.replace(/\s+/g, ' ').toLowerCase();
+  
   // For each finding, try multiple search strategies
   findings.forEach((finding, index) => {
     if (!finding.quote || finding.quote.length < 3) {
@@ -352,47 +356,44 @@ function applyHighlights(findings) {
     // Try to find and highlight using multiple strategies
     let found = false;
     
-    // Strategy 1: Exact match
+    // Strategy 1: Exact match in single text node
     found = tryHighlightExact(searchText, category, colors, findingId, finding);
     if (found) { console.log('[Factify] Found with exact match'); return; }
     
-    // Strategy 2: Normalized whitespace and punctuation
-    const normalizedSearch = searchText.replace(/\s+/g, ' ').replace(/['']/g, "'").replace(/[""]/g, '"');
-    found = tryHighlightExact(normalizedSearch, category, colors, findingId, finding);
-    if (found) { console.log('[Factify] Found with normalized search'); return; }
-    
-    // Strategy 3: Try first 30 chars
-    if (searchText.length > 30) {
-      found = tryHighlightExact(searchText.substring(0, 30).trim(), category, colors, findingId, finding);
-      if (found) { console.log('[Factify] Found with first 30 chars'); return; }
-    }
-    
-    // Strategy 4: Try middle portion
-    if (searchText.length > 40) {
-      const midStart = Math.floor(searchText.length / 4);
-      const midPortion = searchText.substring(midStart, midStart + 30).trim();
-      found = tryHighlightExact(midPortion, category, colors, findingId, finding);
-      if (found) { console.log('[Factify] Found with middle portion'); return; }
-    }
-    
-    // Strategy 5: Extract longest word sequence (3+ words)
-    const words = searchText.split(/\s+/).filter(w => w.length > 2);
-    if (words.length >= 3) {
-      const phrase = words.slice(0, 4).join(' ');
-      found = tryHighlightExact(phrase, category, colors, findingId, finding);
-      if (found) { console.log('[Factify] Found with word sequence'); return; }
-    }
-    
-    // Strategy 6: Try each sentence fragment
-    const sentences = searchText.split(/[.!?]/);
-    for (const sentence of sentences) {
-      if (sentence.trim().length > 10) {
-        found = tryHighlightExact(sentence.trim(), category, colors, findingId, finding);
-        if (found) { console.log('[Factify] Found with sentence fragment'); return; }
+    // Strategy 2: Try unique phrases from the quote (5-8 word chunks)
+    const words = searchText.split(/\s+/).filter(w => w.length > 0);
+    for (let phraseLen = Math.min(8, words.length); phraseLen >= 4 && !found; phraseLen--) {
+      for (let start = 0; start <= words.length - phraseLen && !found; start++) {
+        const phrase = words.slice(start, start + phraseLen).join(' ');
+        if (phrase.length >= 15) {
+          found = tryHighlightExact(phrase, category, colors, findingId, finding);
+          if (found) { console.log('[Factify] Found with phrase:', phrase.substring(0, 30)); return; }
+        }
       }
     }
     
-    console.log('[Factify] Could not find text for finding', index);
+    // Strategy 3: Try distinctive 3-4 word phrases
+    for (let i = 0; i < words.length - 2 && !found; i++) {
+      const threeWords = words.slice(i, i + 3).join(' ');
+      if (threeWords.length >= 12) {
+        found = tryHighlightExact(threeWords, category, colors, findingId, finding);
+        if (found) { console.log('[Factify] Found with 3 words:', threeWords); return; }
+      }
+    }
+    
+    // Strategy 4: Try quoted text if present
+    const quotedMatch = searchText.match(/"([^"]+)"|'([^']+)'|"([^"]+)"/);
+    if (quotedMatch) {
+      const quoted = quotedMatch[1] || quotedMatch[2] || quotedMatch[3];
+      if (quoted && quoted.length > 10) {
+        found = tryHighlightExact(quoted, category, colors, findingId, finding);
+        if (found) { console.log('[Factify] Found quoted text'); return; }
+      }
+    }
+    
+    console.log('[Factify] Could not find text for finding', index, '- quote:', searchText.substring(0, 60));
+  });
+}
   });
 }
 
