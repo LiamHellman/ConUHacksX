@@ -1,7 +1,14 @@
 // server/llm.js
 import OpenAI from "openai";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let client = null;
+
+function getClient() {
+  if (!client) {
+    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return client;
+}
 
 const ARGUMENT_SCHEMA = {
   name: "argument_analysis",
@@ -147,7 +154,7 @@ export async function analyzeWithLLM(text, settings = {}) {
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   // Using the Responses API; structured outputs are configured via text.format. :contentReference[oaicite:2]{index=2}
-  const resp = await client.responses.create({
+  const resp = await getClient().responses.create({
     model,
     input: [
       { role: "system", content: system },
