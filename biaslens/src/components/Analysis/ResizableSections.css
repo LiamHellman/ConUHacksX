@@ -14,7 +14,7 @@
   /* Optional: add border for clarity */
 }
 .resizable-sections .left {
-  flex: 0 0 320px;
+  flex: 0 1 320px;
   background: var(--tw-prose-bg, #18181b);
   border-right: 1px solid #27272a;
 }
@@ -23,7 +23,7 @@
   background: var(--tw-prose-bg, #23232a);
 }
 .resizable-sections .right {
-  flex: 0 0 340px;
+  flex: 0 1 340px;
   background: var(--tw-prose-bg, #18181b);
   border-left: 1px solid #27272a;
 }
