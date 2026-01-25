@@ -174,10 +174,11 @@ const BRAND_RGB = "var(--brand, var(--type-factcheck, 168 85 247))"; // fallback
 const brandBg = (a) => `rgb(${BRAND_RGB} / ${a})`;
 const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
 
-export default function AnalysisPage() {
   const [history, setHistory] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [activeDocId, setActiveDocId] = useState(null);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
 
   // Multi-upload queue (text files)
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -436,133 +437,140 @@ export default function AnalysisPage() {
       />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* LEFT: Upload + Sessions */}
-        <div className="w-80 border-r border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full">
-          <div className="flex-shrink-0 border-b border-dark-700/50">
-            <UploadPanel
-              onFilesUpload={setUploadedFiles}
-              onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
-              onTextPaste={setPastedText}
-              onMediaTranscribe={(file, text, type, batchId) => {
-                let entry = mediaBatchToSessionRef.current.get(batchId);
-
-                // First media doc in this batch: create singleton-titled session (file name)
-                if (!entry) {
-                  const firstTitle = file.name;
-                  const sessionId = createSessionWithDocs({ title: firstTitle, docs: [] });
-                  entry = { sessionId, count: 0, firstTitle, upgraded: false };
-                  mediaBatchToSessionRef.current.set(batchId, entry);
-                }
-
-                entry.count += 1;
-
-                // Second doc confirms it's a batch: upgrade title to "firstTitle …" once
-                if (entry.count === 2 && !entry.upgraded) {
-                  renameSession(entry.sessionId, `${entry.firstTitle} …`);
-                  entry.upgraded = true;
-                }
-
-                const doc = makeDoc({
-                  title: file.name,
-                  content: text,
-                  type: type === "youtube" ? "youtube" : type,
-                });
-
-                addDocToSession(entry.sessionId, doc);
-              }}
-              uploadedFile={uploadedFiles?.[0] ?? null}
-              pastedText={pastedText}
-            />
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="px-5 py-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: brandFg(1) }}
-                  />
-                  Recent Sessions
-                </h3>
-
-                {history.length > 0 && (
-                  <button
-                    onClick={handleClearHistory}
-                    className="text-[10px] text-gray-500 hover:text-gray-300 uppercase tracking-widest"
-                    title="Clear history"
-                  >
-                    Clear
-                  </button>
+        {/* Collapsible LEFT: Upload + Sessions */}
+        {leftOpen && (
+          <div className="w-80 border-r border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full relative">
+            <button
+              className="absolute top-2 right-2 z-10 text-xs text-gray-400 hover:text-white bg-dark-800 rounded px-2 py-1 border border-dark-700"
+              onClick={() => setLeftOpen(false)}
+              title="Collapse sidebar"
+            >
+              ⟨
+            </button>
+            {/* ...existing code... */}
+            <div className="flex-shrink-0 border-b border-dark-700/50">
+              <UploadPanel
+                onFilesUpload={setUploadedFiles}
+                onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
+                onTextPaste={setPastedText}
+                onMediaTranscribe={(file, text, type, batchId) => {
+                  let entry = mediaBatchToSessionRef.current.get(batchId);
+                  if (!entry) {
+                    const firstTitle = file.name;
+                    const sessionId = createSessionWithDocs({ title: firstTitle, docs: [] });
+                    entry = { sessionId, count: 0, firstTitle, upgraded: false };
+                    mediaBatchToSessionRef.current.set(batchId, entry);
+                  }
+                  entry.count += 1;
+                  if (entry.count === 2 && !entry.upgraded) {
+                    renameSession(entry.sessionId, `${entry.firstTitle} …`);
+                    entry.upgraded = true;
+                  }
+                  const doc = makeDoc({
+                    title: file.name,
+                    content: text,
+                    type: type === "youtube" ? "youtube" : type,
+                  });
+                  addDocToSession(entry.sessionId, doc);
+                }}
+                uploadedFile={uploadedFiles?.[0] ?? null}
+                pastedText={pastedText}
+              />
+            </div>
+            {/* ...existing code... */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {/* ...existing code... */}
+              <div className="px-5 py-6">
+                {/* ...existing code... */}
+                <div className="flex items-center justify-between mb-4">
+                  {/* ...existing code... */}
+                  <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: brandFg(1) }}
+                    />
+                    Recent Sessions
+                  </h3>
+                  {history.length > 0 && (
+                    <button
+                      onClick={handleClearHistory}
+                      className="text-[10px] text-gray-500 hover:text-gray-300 uppercase tracking-widest"
+                      title="Clear history"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {/* ...existing code... */}
+                {history.length === 0 ? (
+                  <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
+                    <p className="text-xs text-gray-600 italic">No recent analyses yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {/* ...existing code... */}
+                    {history.map((item) => {
+                      const session = normalizeSession(item);
+                      const firstDocType = session.docs?.[0]?.type || "text";
+                      let Icon = FileText;
+                      if (firstDocType === "video") Icon = VideoIcon;
+                      if (firstDocType === "youtube") Icon = Youtube;
+                      if (firstDocType === "audio") Icon = Music;
+                      const analyzedCount = (session.docs || []).filter((d) => d.results).length;
+                      const isActive = activeSessionId === session.id;
+                      const docCount = (session.docs || []).length;
+                      const displayTitle =
+                        docCount === 1 ? (session.docs?.[0]?.title || session.title) : session.title;
+                      return (
+                        <button
+                          key={session.id}
+                          onClick={() => handleResumeSession(session)}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${
+                            isActive
+                              ? "text-white"
+                              : "bg-dark-800/40 border-dark-700 text-gray-400 hover:border-dark-600 hover:bg-dark-800"
+                          }`}
+                          style={
+                            isActive
+                              ? {
+                                  backgroundColor: brandBg(0.10),
+                                  borderColor: brandBg(0.50),
+                                }
+                              : undefined
+                          }
+                        >
+                          <Icon
+                            size={16}
+                            className={isActive ? "" : "text-gray-500 group-hover:text-gray-400"}
+                            style={isActive ? { color: brandFg(0.95) } : undefined}
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm truncate font-medium">{displayTitle}</span>
+                            {docCount > 1 && (
+                              <span className="text-[10px] text-gray-500">
+                                {docCount} docs
+                                {analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-
-              {history.length === 0 ? (
-                <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
-                  <p className="text-xs text-gray-600 italic">No recent analyses yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {history.map((item) => {
-                    const session = normalizeSession(item);
-                    const firstDocType = session.docs?.[0]?.type || "text";
-
-                    let Icon = FileText;
-                    if (firstDocType === "video") Icon = VideoIcon;
-                    if (firstDocType === "youtube") Icon = Youtube;
-                    if (firstDocType === "audio") Icon = Music;
-
-                    const analyzedCount = (session.docs || []).filter((d) => d.results).length;
-
-                    const isActive = activeSessionId === session.id;
-                    const docCount = (session.docs || []).length;
-
-                    // For single-doc sessions, show the file name; for batch sessions, show session.title (first file + ellipsis)
-                    const displayTitle =
-                      docCount === 1 ? (session.docs?.[0]?.title || session.title) : session.title;
-
-                    return (
-                      <button
-                        key={session.id}
-                        onClick={() => handleResumeSession(session)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${
-                          isActive
-                            ? "text-white"
-                            : "bg-dark-800/40 border-dark-700 text-gray-400 hover:border-dark-600 hover:bg-dark-800"
-                        }`}
-                        style={
-                          isActive
-                            ? {
-                                backgroundColor: brandBg(0.10),
-                                borderColor: brandBg(0.50),
-                              }
-                            : undefined
-                        }
-                      >
-                        <Icon
-                          size={16}
-                          className={isActive ? "" : "text-gray-500 group-hover:text-gray-400"}
-                          style={isActive ? { color: brandFg(0.95) } : undefined}
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm truncate font-medium">{displayTitle}</span>
-
-                          {/* Only show doc count line for batch sessions */}
-                          {docCount > 1 && (
-                            <span className="text-[10px] text-gray-500">
-                              {docCount} docs
-                              {analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
-        </div>
+        )}
+        {!leftOpen && (
+          <button
+            className="w-6 h-full flex items-center justify-center bg-dark-900 border-r border-dark-700 text-gray-400 hover:text-white z-10"
+            onClick={() => setLeftOpen(true)}
+            title="Expand sidebar"
+          >
+            ⟩
+          </button>
+        )}
 
         {/* CENTER: Document tabs + DocumentViewer */}
         <div className="flex-1 bg-dark-800 min-w-0 flex flex-col">
@@ -571,7 +579,6 @@ export default function AnalysisPage() {
               {activeSession.docs.map((doc) => {
                 const isActive = activeDoc?.id === doc.id;
                 const hasResults = !!doc.results;
-
                 return (
                   <button
                     key={doc.id}
@@ -612,7 +619,6 @@ export default function AnalysisPage() {
               })}
             </div>
           )}
-
           <div className="flex-1 min-h-0">
             <DocumentViewer
               content={documentContent}
@@ -623,16 +629,34 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        {/* RIGHT: Insights */}
-        <div className="flex-1 min-w-0 border-l border-dark-700 bg-dark-900">
-          <InsightsPanel
-            results={resultsForPanel}
-            checks={checks}
-            selectedFinding={selectedFinding}
-            onSelectFinding={handleSelectFinding}
-            isAnalyzing={isAnalyzing}
-          />
-        </div>
+        {/* Collapsible RIGHT: Insights */}
+        {rightOpen && (
+          <div className="flex-1 min-w-0 border-l border-dark-700 bg-dark-900 relative">
+            <button
+              className="absolute top-2 left-2 z-10 text-xs text-gray-400 hover:text-white bg-dark-800 rounded px-2 py-1 border border-dark-700"
+              onClick={() => setRightOpen(false)}
+              title="Collapse insights"
+            >
+              ⟩
+            </button>
+            <InsightsPanel
+              results={resultsForPanel}
+              checks={checks}
+              selectedFinding={selectedFinding}
+              onSelectFinding={handleSelectFinding}
+              isAnalyzing={isAnalyzing}
+            />
+          </div>
+        )}
+        {!rightOpen && (
+          <button
+            className="w-6 h-full flex items-center justify-center bg-dark-900 border-l border-dark-700 text-gray-400 hover:text-white z-10"
+            onClick={() => setRightOpen(true)}
+            title="Expand insights"
+          >
+            ⟨
+          </button>
+        )}
       </div>
     </AnimatedContent>
   );
