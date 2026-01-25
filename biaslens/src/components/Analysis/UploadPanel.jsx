@@ -133,24 +133,29 @@ export default function UploadPanel({
   const handleYoutubeSubmit = async () => {
     if (!youtubeUrl.trim()) return;
     setIsTranscribing(true);
+    setMediaFile({ name: `YouTube Video`, type: "video/youtube" });
 
     try {
+      console.log("Fetching YouTube transcript from:", `${API_URL}/api/youtube`);
       const response = await fetch(`${API_URL}/api/youtube`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: youtubeUrl }),
       });
 
-      if (!response.ok) throw new Error("YouTube transcription failed");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "YouTube transcription failed");
+      }
+      
       const data = await response.json();
+      console.log("YouTube transcript received:", data.transcript?.slice(0, 100));
 
-      setIsTranscribing(false);
       if (onMediaTranscribe) {
-        // We pass an object that has a 'name' and a 'type'
         onMediaTranscribe(
           {
-            name: `YouTube: ${youtubeUrl.split("v=")[1]?.slice(0, 5) || "Video"}`,
-            type: "video/youtube", // AnalysisPage uses this to set the icon
+            name: `YouTube: ${youtubeUrl.split("v=")[1]?.slice(0, 8) || "Video"}`,
+            type: "video/youtube",
           },
           data.transcript,
         );
@@ -158,7 +163,10 @@ export default function UploadPanel({
       setYoutubeUrl("");
     } catch (error) {
       console.error("YT Error:", error);
+      alert("Failed to get YouTube transcript: " + error.message);
+    } finally {
       setIsTranscribing(false);
+      setMediaFile(null);
     }
   };
   const handleFile = (file) => {

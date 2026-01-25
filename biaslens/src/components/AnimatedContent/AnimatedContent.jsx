@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { gsap } from 'gsap';
 
 const AnimatedContent = ({
@@ -17,8 +17,14 @@ const AnimatedContent = ({
   ...props
 }) => {
   const ref = useRef(null);
+  const hasAnimated = useRef(false);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    // Only animate once
+    if (hasAnimated.current) return;
+    hasAnimated.current = true;
+
     const el = ref.current;
     if (!el) return;
 
@@ -30,11 +36,13 @@ const AnimatedContent = ({
       [axis]: offset,
       scale,
       opacity: animateOpacity ? initialOpacity : 1,
-      visibility: 'visible'
     });
 
+    // Make visible before animating
+    setIsVisible(true);
+
     // Animate immediately
-    const tl = gsap.to(el, {
+    gsap.to(el, {
       [axis]: 0,
       scale: 1,
       opacity: 1,
@@ -43,25 +51,15 @@ const AnimatedContent = ({
       delay,
       onComplete
     });
-
-    return () => {
-      tl.kill();
-    };
-  }, [
-    distance,
-    direction,
-    reverse,
-    duration,
-    ease,
-    initialOpacity,
-    animateOpacity,
-    scale,
-    delay,
-    onComplete
-  ]);
+  }, []); // Empty deps - only run once on mount
 
   return (
-    <div ref={ref} className={className} style={{ visibility: 'hidden' }} {...props}>
+    <div 
+      ref={ref} 
+      className={className} 
+      style={{ visibility: isVisible ? 'visible' : 'hidden' }} 
+      {...props}
+    >
       {children}
     </div>
   );
