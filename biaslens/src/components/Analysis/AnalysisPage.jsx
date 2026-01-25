@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import UploadPanel from "./UploadPanel";
 import ControlBar from "./ControlBar";
 import DocumentViewer from "./DocumentViewer";
@@ -6,6 +6,135 @@ import InsightsPanel from "./InsightsPanel";
 import AnimatedContent from "../AnimatedContent/AnimatedContent";
 import { analyzeText } from "../../api/analyze";
 import { FileText, Youtube, Music, Video as VideoIcon } from "lucide-react";
+
+/**
+ * Map UI toggle keys -> finding.type values coming from llm.js
+ * (Your ControlBar uses `fallacies`, but llm.js outputs `type: "fallacy"`.)
+ */
+const CHECK_TO_TYPES = {
+  bias: new Set(["bias"]),
+  fallacies: new Set(["fallacy"]),
+  tactic: new Set(["tactic"]),
+  // factcheck is a score-only toggle in your current schema; no highlights unless you add a `factcheck` finding type
+  factcheck: new Set(["factcheck", "claim"]),
+};
+
+function severityRank(sev) {
+  switch (sev) {
+    case "high":
+      return 3;
+    case "medium":
+      return 2;
+    case "low":
+    default:
+      return 1;
+  }
+}
+
+/**
+ * Given overlapping findings, produce a NON-overlapping list suitable for DocumentViewer.
+ * We do this by:
+ *  - Partitioning text into boundary intervals (all starts/ends)
+ *  - For each interval, picking the "best" covering finding by:
+ *      severity DESC, confidence DESC, length DESC
+ *  - Merging adjacent intervals that select the same finding
+ *
+ * This ensures:
+ *  - Only one highlight per character (DocumentViewer needs this)
+ *  - Disabling a category can reveal underlying segments from other categories
+ */
+function resolveOverlapsIntoSegments(text, findings) {
+  if (!text || !Array.isArray(findings) || findings.length === 0) return [];
+
+  const n = text.length;
+
+  // Collect boundaries
+  const boundaries = new Set([0, n]);
+  for (const f of findings) {
+    if (!f) continue;
+    const s = Math.max(0, Math.min(n, f.start));
+    const e = Math.max(0, Math.min(n, f.end));
+    if (e > s) {
+      boundaries.add(s);
+      boundaries.add(e);
+    }
+  }
+
+  const pts = Array.from(boundaries).sort((a, b) => a - b);
+
+  // Helper: best finding among candidates
+  const pickBest = (cands) => {
+    let best = null;
+    let bestScore = -Infinity;
+    for (const f of cands) {
+      const sRank = severityRank(f.severity);
+      const conf = typeof f.confidence === "number" ? f.confidence : 0;
+      const len = Math.max(0, (f.end ?? 0) - (f.start ?? 0));
+      // weight severity heavily, then confidence, then length
+      const score = sRank * 1000 + conf * 100 + len * 0.001;
+      if (score > bestScore) {
+        bestScore = score;
+        best = f;
+      }
+    }
+    return best;
+  };
+
+  // Build chosen segments
+  const segments = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if (b <= a) continue;
+
+    // All findings that fully cover [a, b)
+    const cands = findings.filter((f) => f.start <= a && f.end >= b);
+    if (cands.length === 0) continue;
+
+    const best = pickBest(cands);
+    if (!best) continue;
+
+    segments.push({
+      // Keep the same ID so selection from InsightsPanel still matches
+      ...best,
+      start: a,
+      end: b,
+      quote: text.slice(a, b),
+    });
+  }
+
+  if (segments.length === 0) return [];
+
+  // Merge adjacent segments with same id + type + severity (so you don’t create tons of tiny spans)
+  const merged = [];
+  let cur = segments[0];
+
+  for (let i = 1; i < segments.length; i++) {
+    const nxt = segments[i];
+    const same =
+      nxt.id === cur.id &&
+      nxt.type === cur.type &&
+      nxt.severity === cur.severity &&
+      nxt.start === cur.end;
+
+    if (same) {
+      cur = {
+        ...cur,
+        end: nxt.end,
+        quote: text.slice(cur.start, nxt.end),
+      };
+    } else {
+      merged.push(cur);
+      cur = nxt;
+    }
+  }
+  merged.push(cur);
+
+  // Ensure sorted + non-overlapping
+  merged.sort((x, y) => x.start - y.start);
+
+  return merged;
+}
 
 export default function AnalysisPage() {
   const [history, setHistory] = useState([]);
@@ -42,6 +171,7 @@ export default function AnalysisPage() {
     if (history.length === 0) localStorage.removeItem("biaslens_history");
     else localStorage.setItem("biaslens_history", JSON.stringify(history));
   }, [history]);
+
   const addToHistory = (title, text, type) => {
     const newEntry = {
       id: Date.now(),
@@ -54,6 +184,7 @@ export default function AnalysisPage() {
     setActiveId(newEntry.id);
     setDocumentContent(text);
     setResults(null);
+    setSelectedFinding(null);
   };
 
   const handleResume = (item) => {
@@ -102,8 +233,8 @@ export default function AnalysisPage() {
 
       setHistory((prev) =>
         prev.map((item) =>
-          item.id === activeId ? { ...item, results: data } : item,
-        ),
+          item.id === activeId ? { ...item, results: data } : item
+        )
       );
     } catch (e) {
       console.error(e);
@@ -111,6 +242,44 @@ export default function AnalysisPage() {
       setIsAnalyzing(false);
     }
   };
+
+  /**
+   * 1) Filter findings by enabled categories (so toggles remove INSIGHTS and eligible highlights)
+   * 2) Resolve overlaps into non-overlapping segments for DocumentViewer (so it renders correctly)
+   */
+  const enabledFindings = useMemo(() => {
+    const all = results?.findings ?? [];
+    if (!Array.isArray(all) || all.length === 0) return [];
+
+    // Which types are enabled right now?
+    const enabledTypes = new Set();
+    for (const [checkKey, typeSet] of Object.entries(CHECK_TO_TYPES)) {
+      if (checks[checkKey]) {
+        for (const t of typeSet) enabledTypes.add(t);
+      }
+    }
+
+    // If you want factcheck toggle to ONLY affect the score and NOT any highlights,
+    // remove "factcheck"/"claim" from CHECK_TO_TYPES.factcheck above.
+    return all.filter((f) => enabledTypes.has(f.type));
+  }, [results, checks]);
+
+  const docFindings = useMemo(() => {
+    return resolveOverlapsIntoSegments(documentContent, enabledFindings);
+  }, [documentContent, enabledFindings]);
+
+  // If selected finding becomes disabled, clear selection
+  useEffect(() => {
+    if (!selectedFinding) return;
+    const stillVisible = enabledFindings.some((f) => f.id === selectedFinding.id);
+    if (!stillVisible) setSelectedFinding(null);
+  }, [enabledFindings, selectedFinding]);
+
+  // Wrap results for InsightsPanel so it shows only enabled findings
+  const resultsForPanel = useMemo(() => {
+    if (!results) return results;
+    return { ...results, findings: enabledFindings };
+  }, [results, enabledFindings]);
 
   return (
     <AnimatedContent className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
@@ -136,7 +305,7 @@ export default function AnalysisPage() {
                 addToHistory(
                   file.name,
                   text,
-                  file.type === "video/youtube" ? "youtube" : "video",
+                  file.type === "video/youtube" ? "youtube" : "video"
                 )
               }
               uploadedFile={uploadedFile}
@@ -219,7 +388,7 @@ export default function AnalysisPage() {
         <div className="flex-1 bg-dark-800 min-w-0">
           <DocumentViewer
             content={documentContent}
-            findings={results?.findings}
+            findings={docFindings}
             selectedFinding={selectedFinding}
             onSelectFinding={setSelectedFinding}
           />
@@ -228,7 +397,7 @@ export default function AnalysisPage() {
         {/* --- RIGHT PANEL: Analysis Insights --- */}
         <div className="w-96 border-l border-dark-700 bg-dark-900 flex-shrink-0">
           <InsightsPanel
-            results={results}
+            results={resultsForPanel}
             checks={checks}
             selectedFinding={selectedFinding}
             onSelectFinding={setSelectedFinding}
