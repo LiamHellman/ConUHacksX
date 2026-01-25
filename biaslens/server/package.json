@@ -10,8 +10,7 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "multer": "^2.0.2",
-    "openai": "^6.16.0",
-    "youtube-transcript": "^1.2.1"
+    "openai": "^6.16.0"
   },
   "engines": {
     "node": ">=18"
