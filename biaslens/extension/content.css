@@ -42,6 +42,32 @@
   }
 }
 
+/* Highlight styles for analyzed text */
+.factify-highlight {
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.factify-highlight:hover {
+  filter: brightness(1.2);
+}
+
+.factify-highlight[data-category="fallacy"] {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-bottom: 2px solid rgba(239, 68, 68, 0.6) !important;
+}
+
+.factify-highlight[data-category="bias"] {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-bottom: 2px solid rgba(245, 158, 11, 0.6) !important;
+}
+
+.factify-highlight[data-category="tactic"] {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.6) !important;
+}
+
 /* Inline results panel */
 #factify-results-panel {
   position: fixed;

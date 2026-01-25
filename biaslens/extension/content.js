@@ -2,6 +2,14 @@
 let factifyButton = null;
 let resultsPanel = null;
 let isProcessingClick = false;
+let highlights = []; // Track highlighted elements for cleanup
+
+// Highlight colors matching the app
+const HIGHLIGHT_COLORS = {
+  fallacy: { bg: 'rgba(239, 68, 68, 0.25)', border: 'rgba(239, 68, 68, 0.6)' },
+  bias: { bg: 'rgba(245, 158, 11, 0.25)', border: 'rgba(245, 158, 11, 0.6)' },
+  tactic: { bg: 'rgba(59, 130, 246, 0.25)', border: 'rgba(59, 130, 246, 0.6)' }
+};
 
 // Listen for text selection
 document.addEventListener('mouseup', (e) => {
@@ -188,6 +196,11 @@ function showResultsPanel(loading, data, error) {
         </div>
       `;
     }
+    
+    // Apply highlights to the page
+    if (data.findings && data.findings.length > 0) {
+      applyHighlights(data.findings);
+    }
   }
   
   resultsPanel.innerHTML = `
@@ -214,6 +227,102 @@ function hideResultsPanel() {
     resultsPanel.remove();
     resultsPanel = null;
   }
+  // Also remove highlights when closing the panel
+  removeHighlights();
+}
+
+// Remove all highlights from the page
+function removeHighlights() {
+  highlights.forEach(el => {
+    if (el && el.parentNode) {
+      const parent = el.parentNode;
+      parent.replaceChild(document.createTextNode(el.textContent), el);
+      parent.normalize(); // Merge adjacent text nodes
+    }
+  });
+  highlights = [];
+}
+
+// Highlight text on the page based on findings
+function applyHighlights(findings) {
+  if (!findings || findings.length === 0) return;
+  
+  // Get all text nodes in the body
+  const walker = document.createTreeWalker(
+    document.body,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        // Skip our own elements and script/style tags
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, script, style, noscript')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  
+  const textNodes = [];
+  let node;
+  while (node = walker.nextNode()) {
+    textNodes.push(node);
+  }
+  
+  // For each finding, try to find and highlight the quote
+  findings.forEach(finding => {
+    if (!finding.quote || finding.quote.length < 5) return;
+    
+    const category = finding.category || 'tactic';
+    const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
+    const searchText = finding.quote.trim();
+    
+    // Search through text nodes
+    for (let i = 0; i < textNodes.length; i++) {
+      const textNode = textNodes[i];
+      if (!textNode.parentNode) continue; // Already processed
+      
+      const text = textNode.textContent;
+      const index = text.toLowerCase().indexOf(searchText.toLowerCase());
+      
+      if (index !== -1) {
+        // Found the text, split and wrap
+        const before = text.substring(0, index);
+        const match = text.substring(index, index + searchText.length);
+        const after = text.substring(index + searchText.length);
+        
+        const span = document.createElement('span');
+        span.className = 'factify-highlight';
+        span.dataset.category = category;
+        span.dataset.label = finding.label || finding.categoryId || category;
+        span.style.cssText = `
+          background: ${colors.bg};
+          border-bottom: 2px solid ${colors.border};
+          padding: 1px 2px;
+          border-radius: 2px;
+          cursor: pointer;
+          transition: background 0.2s;
+        `;
+        span.textContent = match;
+        
+        // Tooltip on hover
+        span.title = `${finding.label || category}: ${finding.explanation}`;
+        
+        // Create new structure
+        const fragment = document.createDocumentFragment();
+        if (before) fragment.appendChild(document.createTextNode(before));
+        fragment.appendChild(span);
+        if (after) fragment.appendChild(document.createTextNode(after));
+        
+        textNode.parentNode.replaceChild(fragment, textNode);
+        highlights.push(span);
+        
+        break; // Only highlight first occurrence
+      }
+    }
+  });
 }
 
 // Listen for messages from popup and background
