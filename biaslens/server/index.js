@@ -1,42 +1,19 @@
-// server/index.js
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-
-// Load .env from server directory
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-dotenv.config({ path: `${__dirname}/../.env` });
-
 import fs from "fs";
 import path from "path";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { YtTranscript } from "yt-transcript";
 import { analyzeWithLLM } from "./llm.js";
+import ytdl from "@distube/ytdl-core"; //
 
-// YouTube transcript fetcher using yt-transcript
-async function fetchYouTubeTranscript(videoId) {
-  const yt = new YtTranscript({ videoId });
-  const transcript = await yt.getTranscript();
-  
-  if (!transcript || transcript.length === 0) {
-    throw new Error("No transcript available for this video");
-  }
-  
-  const text = transcript
-    .map(seg => seg.text || '')
-    .filter(t => t.trim())
-    .join(' ');
-  
-  if (!text) {
-    throw new Error("Could not extract transcript text");
-  }
-  
-  return text;
-}
+// Load .env from root directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 // Initialize App and OpenAI
 const app = express();
@@ -55,9 +32,10 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "2mb" }));
 
-// --- ROUTE: Audio/Video Transcription (Whisper) ---
+app.use(express.json({ limit: "5mb" }));
+
+// --- ROUTE: Audio/Video Transcription (File Upload) ---
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   let tempPathWithExt = null;
   try {
@@ -77,39 +55,75 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     console.error("OpenAI Whisper Error:", err.message);
     return res.status(500).send("Transcription failed");
   } finally {
-    if (tempPathWithExt && fs.existsSync(tempPathWithExt))
-      fs.unlinkSync(tempPathWithExt);
-    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    if (tempPathWithExt && fs.existsSync(tempPathWithExt)) {
+      try {
+        fs.unlinkSync(tempPathWithExt);
+      } catch (e) {}
+    }
+    if (req.file && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {}
+    }
   }
 });
 
-// --- ROUTE: YouTube Transcription (using captions) ---
+// --- NEW ROUTE: YouTube Transcription ---
 app.post("/api/youtube", async (req, res) => {
+  const { url } = req.body;
+  const tempId = Date.now();
+  const tempFilePath = path.resolve(__dirname, `uploads/yt_${tempId}.webm`);
+
   try {
-    const { url } = req.body;
-    if (!url) return res.status(400).json({ error: "No URL provided" });
-
-    console.log(`🚀 Fetching YouTube captions for: ${url}`);
-
-    // Extract video ID from URL
-    const videoIdMatch = url.match(/(?:v=|\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-    if (!videoIdMatch) {
-      return res.status(400).json({ error: "Invalid YouTube URL" });
+    if (!url || !ytdl.validateURL(url)) {
+      return res.status(400).send("Invalid YouTube URL");
     }
-    const videoId = videoIdMatch[1];
 
-    // Fetch transcript using custom function
-    const transcript = await fetchYouTubeTranscript(videoId);
+    console.log(`Downloading YouTube audio: ${url}`);
 
-    console.log("✅ Transcript fetched successfully, length:", transcript.length);
+    // Stream audio from YouTube to a file
+    // We use a Promise to wait for the download to finish before sending to OpenAI
+    await new Promise((resolve, reject) => {
+      const stream = ytdl(url, {
+        quality: "lowestaudio", // Get audio only to save bandwidth
+        filter: "audioonly",
+      });
 
-    return res.json({ transcript });
-  } catch (error) {
-    console.error("❌ YouTube Route Error:", error.message);
-    res.status(500).json({ 
-      error: "YouTube transcription failed. Video may not have captions.", 
-      details: error.message 
+      const fileWriter = fs.createWriteStream(tempFilePath);
+
+      stream.pipe(fileWriter);
+
+      stream.on("error", reject);
+      fileWriter.on("finish", resolve);
+      fileWriter.on("error", reject);
     });
+
+    console.log("Download complete. Transcribing...");
+
+    const transcription = await client.audio.transcriptions.create({
+      file: fs.createReadStream(tempFilePath),
+      model: "whisper-1",
+    });
+
+    return res.json({ transcript: transcription.text });
+  } catch (err) {
+    console.error("YouTube Error:", err);
+    // Handle 403 Forbidden (common with cloud IPs)
+    if (err.statusCode === 403) {
+      return res
+        .status(403)
+        .send(
+          "Server blocked by YouTube. Try a different video or upload manually.",
+        );
+    }
+    return res.status(500).send("YouTube processing failed");
+  } finally {
+    // Cleanup
+    if (fs.existsSync(tempFilePath)) {
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (e) {}
+    }
   }
 });
 
