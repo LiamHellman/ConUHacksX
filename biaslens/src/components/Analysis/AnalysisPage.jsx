@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { applyThemeVars } from "../../theme/colors";
 import UploadPanel from "./UploadPanel";
 import ControlBar from "./ControlBar";
 import DocumentViewer from "./DocumentViewer";
@@ -29,101 +30,98 @@ function severityRank(sev) {
   }
 }
 
-  /**
-   * Given overlapping findings, produce a NON-overlapping list suitable for DocumentViewer.
-   * We do this by:
-   *  - Partitioning text into boundary intervals (all starts/ends)
-   *  - For each interval, picking the "best" covering finding by:
-   *      severity DESC, confidence DESC, length DESC
-   *  - Merging adjacent intervals that select the same finding
-   */
-  // Replace resolveOverlapsIntoSegments with this:
-  function buildHighlightSpans(text, findings) {
-    if (!text || !Array.isArray(findings) || findings.length === 0) return [];
+/**
+ * Given overlapping findings, produce a NON-overlapping list suitable for DocumentViewer.
+ * We do this by:
+ *  - Partitioning text into boundary intervals (all starts/ends)
+ *  - For each interval, picking the "best" covering finding by:
+ *      severity DESC, confidence DESC, length DESC
+ *  - Merging adjacent intervals that select the same finding-set
+ */
+function buildHighlightSpans(text, findings) {
+  if (!text || !Array.isArray(findings) || findings.length === 0) return [];
 
-    const n = text.length;
+  const n = text.length;
 
-    const boundaries = new Set([0, n]);
-    for (const f of findings) {
-      if (!f) continue;
-      const s = Math.max(0, Math.min(n, f.start));
-      const e = Math.max(0, Math.min(n, f.end));
-      if (e > s) {
-        boundaries.add(s);
-        boundaries.add(e);
-      }
+  const boundaries = new Set([0, n]);
+  for (const f of findings) {
+    if (!f) continue;
+    const s = Math.max(0, Math.min(n, f.start));
+    const e = Math.max(0, Math.min(n, f.end));
+    if (e > s) {
+      boundaries.add(s);
+      boundaries.add(e);
     }
-
-    const pts = Array.from(boundaries).sort((a, b) => a - b);
-
-    const pickBest = (cands) => {
-      let best = null;
-      let bestScore = -Infinity;
-
-      for (const f of cands) {
-        const sRank = severityRank(f.severity);
-        const conf = typeof f.confidence === "number" ? f.confidence : 0;
-        const len = Math.max(0, (f.end ?? 0) - (f.start ?? 0));
-        const score = sRank * 1000 + conf * 100 + len * 0.001;
-        if (score > bestScore) {
-          bestScore = score;
-          best = f;
-        }
-      }
-      return best;
-    };
-
-    // Build raw spans
-    const spans = [];
-    for (let i = 0; i < pts.length - 1; i++) {
-      const a = pts[i];
-      const b = pts[i + 1];
-      if (b <= a) continue;
-
-      const active = findings.filter((f) => f.start <= a && f.end >= b);
-      if (active.length === 0) continue;
-
-      // Stable key so we can merge adjacent spans with same active set
-      const key = active
-        .map((f) => f.id)
-        .sort()
-        .join("|");
-
-      spans.push({
-        start: a,
-        end: b,
-        quote: text.slice(a, b),
-        findings: active,
-        primary: pickBest(active),
-        _key: key,
-      });
-    }
-
-    if (spans.length === 0) return [];
-
-    // Merge adjacent spans if the active finding-set is identical
-    const merged = [];
-    let cur = spans[0];
-
-    for (let i = 1; i < spans.length; i++) {
-      const nxt = spans[i];
-      if (nxt.start === cur.end && nxt._key === cur._key) {
-        cur = {
-          ...cur,
-          end: nxt.end,
-          quote: text.slice(cur.start, nxt.end),
-          // primary should remain the "best" among the set (same set anyway)
-        };
-      } else {
-        merged.push(cur);
-        cur = nxt;
-      }
-    }
-    merged.push(cur);
-
-    return merged.map(({ _key, ...rest }) => rest);
   }
 
+  const pts = Array.from(boundaries).sort((a, b) => a - b);
+
+  const pickBest = (cands) => {
+    let best = null;
+    let bestScore = -Infinity;
+
+    for (const f of cands) {
+      const sRank = severityRank(f.severity);
+      const conf = typeof f.confidence === "number" ? f.confidence : 0;
+      const len = Math.max(0, (f.end ?? 0) - (f.start ?? 0));
+      const score = sRank * 1000 + conf * 100 + len * 0.001;
+      if (score > bestScore) {
+        bestScore = score;
+        best = f;
+      }
+    }
+    return best;
+  };
+
+  // Build raw spans
+  const spans = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    if (b <= a) continue;
+
+    const active = findings.filter((f) => f.start <= a && f.end >= b);
+    if (active.length === 0) continue;
+
+    // Stable key so we can merge adjacent spans with same active set
+    const key = active
+      .map((f) => f.id)
+      .sort()
+      .join("|");
+
+    spans.push({
+      start: a,
+      end: b,
+      quote: text.slice(a, b),
+      findings: active,
+      primary: pickBest(active),
+      _key: key,
+    });
+  }
+
+  if (spans.length === 0) return [];
+
+  // Merge adjacent spans if the active finding-set is identical
+  const merged = [];
+  let cur = spans[0];
+
+  for (let i = 1; i < spans.length; i++) {
+    const nxt = spans[i];
+    if (nxt.start === cur.end && nxt._key === cur._key) {
+      cur = {
+        ...cur,
+        end: nxt.end,
+        quote: text.slice(cur.start, nxt.end),
+      };
+    } else {
+      merged.push(cur);
+      cur = nxt;
+    }
+  }
+  merged.push(cur);
+
+  return merged.map(({ _key, ...rest }) => rest);
+}
 
 function uid() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -147,7 +145,6 @@ function makeDoc({ title, content, type }) {
 function normalizeSession(item) {
   if (!item) return null;
   if (item.docs && Array.isArray(item.docs)) {
-    // ensure activeDocId exists
     const docs = item.docs || [];
     return {
       ...item,
@@ -161,7 +158,6 @@ function normalizeSession(item) {
     type: item.type || "text",
   });
 
-  // preserve old results on doc
   doc.results = item.results ?? null;
 
   return {
@@ -171,6 +167,11 @@ function normalizeSession(item) {
     activeDocId: doc.id,
   };
 }
+
+// Small helpers for theme-driven accents (OKLab-derived RGB via CSS vars)
+const BRAND_RGB = "var(--brand, var(--type-factcheck, 168 85 247))"; // fallback to violet-ish if missing
+const brandBg = (a) => `rgb(${BRAND_RGB} / ${a})`;
+const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
 
 export default function AnalysisPage() {
   const [history, setHistory] = useState([]);
@@ -191,6 +192,11 @@ export default function AnalysisPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedFinding, setSelectedFinding] = useState(null);
 
+  // Initialize OKLab/OKLCH theme vars once
+  useEffect(() => {
+    applyThemeVars();
+  }, []);
+
   // ---- persistence: load ----
   useEffect(() => {
     const saved = localStorage.getItem("biaslens_history");
@@ -201,7 +207,6 @@ export default function AnalysisPage() {
       const normalized = (parsed || []).map(normalizeSession).filter(Boolean);
       setHistory(normalized);
 
-      // restore active session if possible
       const first = normalized[0] || null;
       if (first) {
         setActiveSessionId(first.id);
@@ -262,12 +267,11 @@ export default function AnalysisPage() {
         return {
           ...next,
           docs: nextDocs,
-          activeDocId: next.activeDocId || doc.id, // keep first doc active
+          activeDocId: next.activeDocId || doc.id,
         };
       })
     );
 
-    // if user is currently viewing this session, ensure doc selection is sane
     setActiveSessionId(sessionId);
     setActiveDocId((cur) => cur || doc.id);
     setSelectedFinding(null);
@@ -343,16 +347,13 @@ export default function AnalysisPage() {
         temperature: 0.2,
       });
 
-      // write results onto the active doc in history
       setHistory((prev) =>
         prev.map((s) => {
           if (s.id !== activeSessionId) return s;
           const next = normalizeSession(s);
           return {
             ...next,
-            docs: (next.docs || []).map((d) =>
-              d.id === activeDoc.id ? { ...d, results: data } : d
-            ),
+            docs: (next.docs || []).map((d) => (d.id === activeDoc.id ? { ...d, results: data } : d)),
           };
         })
       );
@@ -391,7 +392,7 @@ export default function AnalysisPage() {
     if (!stillVisible) setSelectedFinding(null);
   }, [enabledFindings, selectedFinding]);
 
-  // Panel sees only enabled findings; Summary remains unaffected in InsightsPanel (per your change)
+  // Panel sees only enabled findings; Summary remains unaffected in InsightsPanel
   const resultsForPanel = useMemo(() => {
     if (!results) return results;
     return { ...results, findings: enabledFindings };
@@ -416,7 +417,6 @@ export default function AnalysisPage() {
               onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
               onTextPaste={setPastedText}
               onMediaTranscribe={(file, text, type, batchId) => {
-                // 1) find/create the session for this batch
                 let sessionId = mediaBatchToSessionRef.current.get(batchId);
 
                 if (!sessionId) {
@@ -424,11 +424,10 @@ export default function AnalysisPage() {
                   mediaBatchToSessionRef.current.set(batchId, sessionId);
                 }
 
-                // 2) add a doc/tab into that session
                 const doc = makeDoc({
                   title: file.name,
                   content: text,
-                  type: type === "youtube" ? "youtube" : type, // video/audio/youtube
+                  type: type === "youtube" ? "youtube" : type,
                 });
 
                 addDocToSession(sessionId, doc);
@@ -442,7 +441,10 @@ export default function AnalysisPage() {
             <div className="px-5 py-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: brandFg(1) }}
+                  />
                   Recent Sessions
                 </h3>
 
@@ -464,7 +466,6 @@ export default function AnalysisPage() {
               ) : (
                 <div className="space-y-2">
                   {history.map((item) => {
-                    // session icon: use first doc type if present
                     const session = normalizeSession(item);
                     const firstDocType = session.docs?.[0]?.type || "text";
 
@@ -475,23 +476,30 @@ export default function AnalysisPage() {
 
                     const analyzedCount = (session.docs || []).filter((d) => d.results).length;
 
+                    const isActive = activeSessionId === session.id;
+
                     return (
                       <button
                         key={session.id}
                         onClick={() => handleResumeSession(session)}
                         className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${
-                          activeSessionId === session.id
-                            ? "bg-purple-500/10 border-purple-500/50 text-white"
+                          isActive
+                            ? "text-white"
                             : "bg-dark-800/40 border-dark-700 text-gray-400 hover:border-dark-600 hover:bg-dark-800"
                         }`}
+                        style={
+                          isActive
+                            ? {
+                                backgroundColor: brandBg(0.10),
+                                borderColor: brandBg(0.50),
+                              }
+                            : undefined
+                        }
                       >
                         <Icon
                           size={16}
-                          className={
-                            activeSessionId === session.id
-                              ? "text-purple-400"
-                              : "text-gray-500 group-hover:text-gray-400"
-                          }
+                          className={isActive ? "" : "text-gray-500 group-hover:text-gray-400"}
+                          style={isActive ? { color: brandFg(0.95) } : undefined}
                         />
                         <div className="flex flex-col min-w-0">
                           <span className="text-sm truncate font-medium">{session.title}</span>
@@ -522,19 +530,28 @@ export default function AnalysisPage() {
                     key={doc.id}
                     onClick={() => {
                       setActiveDocId(doc.id);
-                      // keep session-level activeDocId in sync for persistence
                       setHistory((prev) =>
                         prev.map((s) =>
-                          s.id === activeSessionId ? { ...normalizeSession(s), activeDocId: doc.id } : s
+                          s.id === activeSessionId
+                            ? { ...normalizeSession(s), activeDocId: doc.id }
+                            : s
                         )
                       );
                       setSelectedFinding(null);
                     }}
                     className={`px-3 py-1.5 rounded-lg text-sm border whitespace-nowrap transition-all flex items-center gap-2 ${
                       isActive
-                        ? "bg-purple-500/10 border-purple-500/40 text-white"
+                        ? "text-white"
                         : "bg-dark-800/40 border-dark-700 text-gray-400 hover:bg-dark-800 hover:border-dark-600"
                     }`}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: brandBg(0.10),
+                            borderColor: brandBg(0.40),
+                          }
+                        : undefined
+                    }
                     title={doc.title}
                   >
                     <span className="max-w-[220px] truncate">{doc.title}</span>
