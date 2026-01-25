@@ -39,11 +39,9 @@ export default function AnalysisPage() {
 
   // --- PERSISTENCE: Save history ---
   useEffect(() => {
-    if (history.length > 0) {
-      localStorage.setItem("biaslens_history", JSON.stringify(history));
-    }
+    if (history.length === 0) localStorage.removeItem("biaslens_history");
+    else localStorage.setItem("biaslens_history", JSON.stringify(history));
   }, [history]);
-
   const addToHistory = (title, text, type) => {
     const newEntry = {
       id: Date.now(),
@@ -82,6 +80,15 @@ export default function AnalysisPage() {
       setPastedText("");
     }
   }, [pastedText]);
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    setActiveId(null);
+    setDocumentContent("");
+    setResults(null);
+    setSelectedFinding(null);
+    localStorage.removeItem("biaslens_history");
+  };
 
   const handleAnalyze = async () => {
     if (!documentContent) return;
@@ -140,10 +147,22 @@ export default function AnalysisPage() {
           {/* Bottom scrollable part: History List */}
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             <div className="px-5 py-6">
-              <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                Recent Sessions
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                  Recent Sessions
+                </h3>
+
+                {history.length > 0 && (
+                  <button
+                    onClick={handleClearHistory}
+                    className="text-[10px] text-gray-500 hover:text-gray-300 uppercase tracking-widest"
+                    title="Clear history"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
 
               {history.length === 0 ? (
                 <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
