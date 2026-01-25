@@ -11,7 +11,7 @@
     "express": "^5.2.1",
     "multer": "^2.0.2",
     "openai": "^6.16.0",
-    "youtubei.js": "^16.0.1"
+    "yt-transcript": "^0.0.2"
   },
   "engines": {
     "node": ">=18"
