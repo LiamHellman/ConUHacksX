@@ -1,9 +1,13 @@
 // server/index.js
 import dotenv from "dotenv";
-dotenv.config();
-
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+
+// Load .env from server directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenv.config({ path: `${__dirname}/../.env` });
+
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -35,10 +39,6 @@ async function fetchYouTubeTranscript(videoId) {
   
   return text;
 }
-
-// Setup Environment Variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Initialize App and OpenAI
 const app = express();
