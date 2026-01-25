@@ -143,7 +143,12 @@ function ringClassForType(type) {
   }
 }
 
-export default function DocumentViewer({ content, spans, selectedFinding, onSelectFinding }) {
+export default function DocumentViewer({
+  content,
+  spans,
+  selectedFinding,
+  onSelectFinding,
+}) {
   const containerRef = useRef(null);
   const [renderSegments, setRenderSegments] = useState([]);
 
@@ -156,7 +161,9 @@ export default function DocumentViewer({ content, spans, selectedFinding, onSele
       return;
     }
 
-    const hs = Array.isArray(spans) ? [...spans].sort((a, b) => a.start - b.start) : [];
+    const hs = Array.isArray(spans)
+      ? [...spans].sort((a, b) => a.start - b.start)
+      : [];
 
     if (hs.length === 0) {
       setRenderSegments([{ text: content, span: null }]);
@@ -193,6 +200,20 @@ export default function DocumentViewer({ content, spans, selectedFinding, onSele
     );
   }
 
+  const hasSelection = !!selectedFinding;
+
+  const segIsSelected = (seg) => {
+    if (!hasSelection || !seg?.span) return false;
+    const fList = seg.span.findings || [];
+    return fList.some((f) => f.id === selectedFinding.id);
+  };
+
+  const ringClass = hasSelection
+    ? `ring-2 ring-offset-2 ring-offset-dark-800 ${ringClassForType(
+        selectedFinding.type
+      )}`
+    : "";
+
   return (
     <div className="h-full flex flex-col">
       <div className="px-6 py-4 border-b border-dark-700 flex items-center justify-between">
@@ -218,46 +239,107 @@ export default function DocumentViewer({ content, spans, selectedFinding, onSele
       <div ref={containerRef} className="flex-1 overflow-y-auto p-6">
         <div className="prose prose-invert max-w-none">
           <p className="text-gray-300 leading-relaxed whitespace-pre-wrap text-base">
-            {renderSegments.map((seg, idx) => {
-              if (!seg.span) return <span key={idx}>{seg.text}</span>;
+            {(() => {
+              const out = [];
+              let i = 0;
 
-              const fList = seg.span.findings || [];
-              const primary = seg.span.primary || pickPrimary(fList);
-              const mix = blendedBg(fList);
+              while (i < renderSegments.length) {
+                const seg = renderSegments[i];
 
-              const isSelected =
-                selectedFinding && fList.some((f) => f.id === selectedFinding.id);
+                // Plain (non-highlight) text: render as-is.
+                if (!seg.span) {
+                  out.push(<span key={`t-${i}`}>{seg.text}</span>);
+                  i++;
+                  continue;
+                }
 
-              const ring = isSelected
-                ? `ring-2 ring-offset-2 ring-offset-dark-800 ${ringClassForType(
-                    selectedFinding.type
-                  )}`
-                : "";
+                // Highlighted but NOT part of current selection: render normally (no ring).
+                if (!segIsSelected(seg)) {
+                  const fList = seg.span.findings || [];
+                  const primary = seg.span.primary || pickPrimary(fList);
+                  const mix = blendedBg(fList);
 
-              if (!mix) return <span key={idx}>{seg.text}</span>;
-
-              // Default alpha is computed from overlap/severity.
-              // On hover, drop to 0.10 (like your previous “fade” behavior).
-              const alpha = hoveredIdx === idx ? 0.10 : mix.baseAlpha;
-
-              return (
-                <span
-                  key={idx}
-                  className={`${baseClass} ${ring}`}
-                  style={{ backgroundColor: `rgba(${mix.r}, ${mix.g}, ${mix.b}, ${alpha})` }}
-                  onMouseEnter={() => setHoveredIdx(idx)}
-                  onMouseLeave={() => setHoveredIdx(null)}
-                  onClick={() => onSelectFinding(primary)}
-                  title={
-                    fList.length > 1
-                      ? `Overlaps: ${fList.map((f) => f.label).join(", ")}`
-                      : primary?.label || ""
+                  if (!mix) {
+                    out.push(<span key={`h-${i}`}>{seg.text}</span>);
+                    i++;
+                    continue;
                   }
-                >
-                  {seg.text}
-                </span>
-              );
-            })}
+
+                  const alpha = hoveredIdx === i ? 0.10 : mix.baseAlpha;
+
+                  out.push(
+                    <span
+                      key={`h-${i}`}
+                      className={baseClass}
+                      style={{
+                        backgroundColor: `rgba(${mix.r}, ${mix.g}, ${mix.b}, ${alpha})`,
+                      }}
+                      onMouseEnter={() => setHoveredIdx(i)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      onClick={() => onSelectFinding(primary)}
+                      title={
+                        fList.length > 1
+                          ? `Overlaps: ${fList.map((f) => f.label).join(", ")}`
+                          : primary?.label || ""
+                      }
+                    >
+                      {seg.text}
+                    </span>
+                  );
+
+                  i++;
+                  continue;
+                }
+
+                // Selected run: group consecutive selected segments and wrap them in ONE ring.
+                const start = i;
+                const group = [];
+                while (i < renderSegments.length && segIsSelected(renderSegments[i])) {
+                  group.push({ seg: renderSegments[i], idx: i });
+                  i++;
+                }
+
+                out.push(
+                  <span
+                    key={`sel-${start}`}
+                    // box-decoration-clone makes the ring behave better across line wraps
+                    className={`box-decoration-clone rounded px-0.5 -mx-0.5 ${ringClass}`}
+                  >
+                    {group.map(({ seg: gSeg, idx }) => {
+                      const fList = gSeg.span.findings || [];
+                      const primary = gSeg.span.primary || pickPrimary(fList);
+                      const mix = blendedBg(fList);
+
+                      if (!mix) return <span key={`sel-inner-${idx}`}>{gSeg.text}</span>;
+
+                      const alpha = hoveredIdx === idx ? 0.10 : mix.baseAlpha;
+
+                      return (
+                        <span
+                          key={`sel-inner-${idx}`}
+                          className={baseClass}
+                          style={{
+                            backgroundColor: `rgba(${mix.r}, ${mix.g}, ${mix.b}, ${alpha})`,
+                          }}
+                          onMouseEnter={() => setHoveredIdx(idx)}
+                          onMouseLeave={() => setHoveredIdx(null)}
+                          onClick={() => onSelectFinding(primary)}
+                          title={
+                            fList.length > 1
+                              ? `Overlaps: ${fList.map((f) => f.label).join(", ")}`
+                              : primary?.label || ""
+                          }
+                        >
+                          {gSeg.text}
+                        </span>
+                      );
+                    })}
+                  </span>
+                );
+              }
+
+              return out;
+            })()}
           </p>
         </div>
       </div>

@@ -329,6 +329,15 @@ export default function AnalysisPage() {
     setSelectedFinding(null);
   };
 
+  const handleSelectFinding = (finding) => {
+    if (!finding) {
+      setSelectedFinding(null);
+      return;
+    }
+
+    setSelectedFinding((prev) => (prev?.id === finding.id ? null : finding));
+  };
+
   const handleClearHistory = () => {
     setHistory([]);
     setActiveSessionId(null);
@@ -571,7 +580,7 @@ export default function AnalysisPage() {
               content={documentContent}
               spans={docSpans}
               selectedFinding={selectedFinding}
-              onSelectFinding={setSelectedFinding}
+              onSelectFinding={handleSelectFinding}
             />
           </div>
         </div>
@@ -582,7 +591,7 @@ export default function AnalysisPage() {
             results={resultsForPanel}
             checks={checks}
             selectedFinding={selectedFinding}
-            onSelectFinding={setSelectedFinding}
+            onSelectFinding={handleSelectFinding}
             isAnalyzing={isAnalyzing}
           />
         </div>
