@@ -1,119 +1,203 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from "react";
 
-export default function DocumentViewer({ 
-  content, 
-  findings, 
-  selectedFinding,
-  onSelectFinding 
-}) {
+/**
+ * Dark-theme friendly OKLCH palette (no "success green"):
+ * - bias: magenta
+ * - fallacy: amber
+ * - tactic: cyan
+ * - factcheck: violet (reserved / optional)
+ */
+const TYPE_OKLCH = {
+  bias: { L: 0.72, C: 0.14, h: 340 },
+  fallacy: { L: 0.74, C: 0.13, h: 75 },
+  tactic: { L: 0.74, C: 0.12, h: 210 },
+  factcheck: { L: 0.72, C: 0.13, h: 280 },
+};
+
+function severityAlpha(sev) {
+  switch (sev) {
+    case "high":
+      return 0.40;
+    case "medium":
+      return 0.26;
+    case "low":
+    default:
+      return 0.14;
+  }
+}
+
+// --- OKLCH -> OKLab
+function oklchToOklab({ L, C, h }) {
+  const hr = (h * Math.PI) / 180;
+  const a = C * Math.cos(hr);
+  const b = C * Math.sin(hr);
+  return { L, a, b };
+}
+
+// --- OKLab -> linear sRGB (Björn Ottosson OKLab)
+function oklabToLinearSRGB({ L, a, b }) {
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+
+  const r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  const bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+
+  return { r, g, b: bl };
+}
+
+function linearToSRGBChannel(x) {
+  x = Math.min(1.0, Math.max(0.0, x));
+  return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+}
+
+/**
+ * Blend in OKLab space (commutative):
+ * - weight each category color by severityAlpha
+ * - mix OKLab via weighted average
+ * - compute a combined alpha: 1 - Π(1 - a_i), then cap
+ */
+function blendedBg(findings) {
+  const cands = (findings || []).filter(Boolean);
+  if (cands.length === 0) return null;
+
+  let wSum = 0;
+  let LSum = 0,
+    aSum = 0,
+    bSum = 0;
+
+  let alphaComp = 1;
+
+  for (const f of cands) {
+    const oklch = TYPE_OKLCH[f.type] || TYPE_OKLCH.factcheck;
+    const lab = oklchToOklab(oklch);
+    const w = severityAlpha(f.severity);
+
+    wSum += w;
+    LSum += lab.L * w;
+    aSum += lab.a * w;
+    bSum += lab.b * w;
+
+    alphaComp *= 1 - w;
+  }
+
+  const labMix = { L: LSum / wSum, a: aSum / wSum, b: bSum / wSum };
+  const lin = oklabToLinearSRGB(labMix);
+
+  const r = Math.round(255 * linearToSRGBChannel(lin.r));
+  const g = Math.round(255 * linearToSRGBChannel(lin.g));
+  const b = Math.round(255 * linearToSRGBChannel(lin.b));
+
+  const baseAlpha = Math.min(0.58, 1 - alphaComp);
+
+  return { r, g, b, baseAlpha };
+}
+
+function severityRank(sev) {
+  switch (sev) {
+    case "high":
+      return 3;
+    case "medium":
+      return 2;
+    case "low":
+    default:
+      return 1;
+  }
+}
+
+function pickPrimary(findings) {
+  let best = null;
+  let bestScore = -Infinity;
+
+  for (const f of findings || []) {
+    const sRank = severityRank(f.severity);
+    const conf = typeof f.confidence === "number" ? f.confidence : 0;
+    const len = Math.max(0, (f.end ?? 0) - (f.start ?? 0));
+    const score = sRank * 1000 + conf * 100 + len * 0.001;
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = f;
+    }
+  }
+  return best;
+}
+
+function ringClassForType(type) {
+  switch (type) {
+    case "bias":
+      return "ring-pink-400";
+    case "fallacy":
+      return "ring-amber-400";
+    case "tactic":
+      return "ring-blue-400";
+    case "factcheck":
+      return "ring-purple-400";
+    default:
+      return "ring-purple-400";
+  }
+}
+
+export default function DocumentViewer({ content, spans, selectedFinding, onSelectFinding }) {
   const containerRef = useRef(null);
-  const [highlightedContent, setHighlightedContent] = useState([]);
+  const [renderSegments, setRenderSegments] = useState([]);
+
+  // Optional: local hover alpha without relying on CSS files
+  const [hoveredIdx, setHoveredIdx] = useState(null);
 
   useEffect(() => {
-    if (!content || !findings || findings.length === 0) {
-      setHighlightedContent([{ text: content, type: null, finding: null }]);
+    if (!content) {
+      setRenderSegments([]);
       return;
     }
 
-    // Sort findings by start position
-    const sortedFindings = [...findings].sort((a, b) => a.start - b.start);
-    
-    const segments = [];
+    const hs = Array.isArray(spans) ? [...spans].sort((a, b) => a.start - b.start) : [];
+
+    if (hs.length === 0) {
+      setRenderSegments([{ text: content, span: null }]);
+      return;
+    }
+
+    const segs = [];
     let lastEnd = 0;
 
-    sortedFindings.forEach((finding) => {
-      // Add unhighlighted text before this finding
-      if (finding.start > lastEnd) {
-        segments.push({
-          text: content.slice(lastEnd, finding.start),
-          type: null,
-          finding: null
-        });
+    for (const sp of hs) {
+      if (sp.start > lastEnd) {
+        segs.push({ text: content.slice(lastEnd, sp.start), span: null });
       }
+      segs.push({ text: content.slice(sp.start, sp.end), span: sp });
+      lastEnd = sp.end;
+    }
 
-      // Add highlighted segment
-      segments.push({
-        text: content.slice(finding.start, finding.end),
-        type: finding.type,
-        finding: finding
-      });
-
-      lastEnd = finding.end;
-    });
-
-    // Add remaining unhighlighted text
     if (lastEnd < content.length) {
-      segments.push({
-        text: content.slice(lastEnd),
-        type: null,
-        finding: null
-      });
+      segs.push({ text: content.slice(lastEnd), span: null });
     }
 
-    setHighlightedContent(segments);
-  }, [content, findings]);
+    setRenderSegments(segs);
+  }, [content, spans]);
 
-  const getHighlightClass = (type, severity = 'low', isSelected) => {
-    const base = 'cursor-pointer transition-all duration-200 rounded px-0.5 -mx-0.5';
-    const selected = isSelected ? 'ring-2 ring-offset-2 ring-offset-dark-800' : '';
-
-    const sev = {
-      low:    { s: 'bg-opacity-100', v: 'bg-opacity-100' },    // unused placeholders
-      medium: { s: 'bg-opacity-100', v: 'bg-opacity-100' },
-      high:   { s: 'bg-opacity-100', v: 'bg-opacity-100' },
-    };
-
-    // Explicit classes so Tailwind definitely generates them
-    const pick = (low, med, high) => (severity === 'high' ? high : severity === 'medium' ? med : low);
-
-    switch (type) {
-      case 'bias': {
-        const bg = pick('bg-pink-500/15', 'bg-pink-500/30', 'bg-pink-500/45');
-        const hover = 'hover:bg-pink-500/10';
-        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-pink-400' : ''}`;
-      }
-      case 'fallacy': {
-        const bg = pick('bg-amber-500/15', 'bg-amber-500/30', 'bg-amber-500/45');
-        const hover = 'hover:bg-amber-500/10';
-        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-amber-400' : ''}`;
-      }
-      case 'tactic': {
-        const bg = pick('bg-blue-500/15', 'bg-blue-500/30', 'bg-blue-500/45');
-        const hover = 'hover:bg-blue-500/10';
-        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-blue-400' : ''}`;
-      }
-      case 'factcheck': {
-        const bg = pick('bg-purple-500/15', 'bg-purple-500/30', 'bg-purple-500/45');
-        const hover = 'hover:bg-purple-500/10';
-        return `${base} ${selected} ${bg} ${hover} ${isSelected ? 'ring-purple-400' : ''}`;
-      }
-      default:
-        return '';
-    }
-  };
+  const baseClass =
+    "cursor-pointer transition-all duration-200 rounded px-0.5 -mx-0.5 hover:brightness-110";
 
   if (!content) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8">
-        <div className="w-20 h-20 rounded-2xl bg-dark-700 flex items-center justify-center mb-6">
-          <svg className="w-10 h-10 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <h3 className="text-xl font-semibold text-white mb-2">No Document Loaded</h3>
-        <p className="text-gray-500 max-w-sm">
-          Upload a file or paste text in the left panel to begin analysis
-        </p>
+        {/* Keep your existing empty state here if you had one */}
+        <p className="text-gray-500 text-sm">No document loaded.</p>
       </div>
     );
   }
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="px-6 py-4 border-b border-dark-700 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">Document</h2>
-        {findings && findings.length > 0 && (
+        {spans && spans.length > 0 && (
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-pink-400" />
@@ -131,30 +215,49 @@ export default function DocumentViewer({
         )}
       </div>
 
-      {/* Content */}
-      <div 
-        ref={containerRef}
-        className="flex-1 overflow-y-auto p-6"
-      >
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-6">
         <div className="prose prose-invert max-w-none">
           <p className="text-gray-300 leading-relaxed whitespace-pre-wrap text-base">
-            {highlightedContent.map((segment, idx) => (
-              segment.type ? (
+            {renderSegments.map((seg, idx) => {
+              if (!seg.span) return <span key={idx}>{seg.text}</span>;
+
+              const fList = seg.span.findings || [];
+              const primary = seg.span.primary || pickPrimary(fList);
+              const mix = blendedBg(fList);
+
+              const isSelected =
+                selectedFinding && fList.some((f) => f.id === selectedFinding.id);
+
+              const ring = isSelected
+                ? `ring-2 ring-offset-2 ring-offset-dark-800 ${ringClassForType(
+                    selectedFinding.type
+                  )}`
+                : "";
+
+              if (!mix) return <span key={idx}>{seg.text}</span>;
+
+              // Default alpha is computed from overlap/severity.
+              // On hover, drop to 0.10 (like your previous “fade” behavior).
+              const alpha = hoveredIdx === idx ? 0.10 : mix.baseAlpha;
+
+              return (
                 <span
                   key={idx}
-                  className={getHighlightClass(
-                    segment.type,
-                    segment.finding?.severity,
-                    selectedFinding?.id === segment.finding?.id
-                  )}
-                  onClick={() => onSelectFinding(segment.finding)}
+                  className={`${baseClass} ${ring}`}
+                  style={{ backgroundColor: `rgba(${mix.r}, ${mix.g}, ${mix.b}, ${alpha})` }}
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  onClick={() => onSelectFinding(primary)}
+                  title={
+                    fList.length > 1
+                      ? `Overlaps: ${fList.map((f) => f.label).join(", ")}`
+                      : primary?.label || ""
+                  }
                 >
-                  {segment.text}
+                  {seg.text}
                 </span>
-              ) : (
-                <span key={idx}>{segment.text}</span>
-              )
-            ))}
+              );
+            })}
           </p>
         </div>
       </div>
