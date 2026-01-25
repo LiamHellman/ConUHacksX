@@ -8,85 +8,48 @@ import {
   Music,
   Loader2,
   Youtube,
+  Link as LinkIcon,
 } from "lucide-react";
 
-const API_URL = import.meta.env.PROD 
-  ? "https://factify-api.onrender.com" 
+// Helper to detect dev vs prod environment
+const API_URL = import.meta.env.PROD
+  ? "https://factify-api.onrender.com"
   : "http://localhost:5174";
 
 export default function UploadPanel({
   onFileUpload,
   onTextPaste,
+  onMediaTranscribe, // We reuse this for YouTube transcripts
   uploadedFile,
   pastedText,
-  onMediaTranscribe,
-  onHistoryUpdate,
 }) {
   const [isDragging, setIsDragging] = useState(false);
-  const [showTextInput, setShowTextInput] = useState(false);
+
+  // UI States
+  const [mode, setMode] = useState("select"); // 'select' | 'text' | 'youtube'
   const [textValue, setTextValue] = useState(pastedText || "");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+
+  // Processing States
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [mediaFile, setMediaFile] = useState(null);
-  const [youtubeUrl, setYoutubeUrl] = useState(""); // NEW: YT State
+  const [statusMessage, setStatusMessage] = useState("");
+  const [mediaFile, setMediaFile] = useState(null); // Used for visual feedback
+
   const fileInputRef = useRef(null);
 
-  const textFileTypes = [
-    "text/plain",
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ];
-
-  const audioFileTypes = [
-    "audio/mpeg",
-    "audio/mp3",
-    "audio/wav",
-    "audio/ogg",
-    "audio/m4a",
-    "audio/webm",
-  ];
-
-  const videoFileTypes = [
-    "video/mp4",
-    "video/webm",
-    "video/ogg",
-    "video/quicktime",
-    "video/x-msvideo",
-  ];
-
-  const isTextFile = (file) => {
-    return (
-      textFileTypes.includes(file.type) ||
-      file.name.endsWith(".txt") ||
-      file.name.endsWith(".pdf") ||
-      file.name.endsWith(".docx")
-    );
-  };
-
-  const isAudioFile = (file) => {
-    return (
-      audioFileTypes.includes(file.type) ||
-      file.name.endsWith(".mp3") ||
-      file.name.endsWith(".wav") ||
-      file.name.endsWith(".ogg") ||
-      file.name.endsWith(".m4a")
-    );
-  };
-
-  const isVideoFile = (file) => {
-    return (
-      videoFileTypes.includes(file.type) ||
-      file.name.endsWith(".mp4") ||
-      file.name.endsWith(".webm") ||
-      file.name.endsWith(".mov") ||
-      file.name.endsWith(".avi")
-    );
-  };
+  // File type checks
+  const isTextFile = (file) =>
+    ["text/plain", "application/pdf"].includes(file.type) ||
+    /\.(txt|pdf|docx)$/i.test(file.name);
+  const isAudioFile = (file) =>
+    file.type.startsWith("audio/") || /\.(mp3|wav|ogg|m4a)$/i.test(file.name);
+  const isVideoFile = (file) =>
+    file.type.startsWith("video/") || /\.(mp4|webm|mov)$/i.test(file.name);
 
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragging(true);
   };
-
   const handleDragLeave = (e) => {
     e.preventDefault();
     setIsDragging(false);
@@ -95,243 +58,205 @@ export default function UploadPanel({
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFile(files[0]);
+    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+  };
+
+  const handleFile = (file) => {
+    if (isTextFile(file)) {
+      onFileUpload(file);
+      resetUI();
+    } else if (isAudioFile(file) || isVideoFile(file)) {
+      transcribeFile(file);
     }
   };
 
-  // Inside UploadPanel.jsx -> transcribeMedia function
-  // Inside UploadPanel.jsx
-  const transcribeMedia = async (file) => {
+  // 1. Handle File Upload (Existing Logic)
+  const transcribeFile = async (file) => {
     setIsTranscribing(true);
+    setStatusMessage(`Extracting text from ${file.name}...`);
     setMediaFile(file);
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await fetch(`${API_URL}/api/upload`, {
+      const res = await fetch(`${API_URL}/api/upload`, {
         method: "POST",
         body: formData,
       });
+      if (!res.ok) throw new Error("Upload failed");
 
-      const data = await response.json();
-      setIsTranscribing(false);
-
-      if (onMediaTranscribe) {
-        // Determine type based on file properties
-        const type = file.type.startsWith("video") ? "video" : "audio";
-        onMediaTranscribe(file, data.transcript, type);
-      }
+      const data = await res.json();
+      onMediaTranscribe(
+        file,
+        data.transcript,
+        file.type.startsWith("video") ? "video" : "audio",
+      );
     } catch (error) {
-      console.error("Transcription Error:", error);
-      setIsTranscribing(false);
-    }
-  };
-  // Inside UploadPanel.jsx
-  const handleYoutubeSubmit = async () => {
-    if (!youtubeUrl.trim()) return;
-    setIsTranscribing(true);
-    setMediaFile({ name: `YouTube Video`, type: "video/youtube" });
-
-    try {
-      console.log("Fetching YouTube transcript from:", `${API_URL}/api/youtube`);
-      const response = await fetch(`${API_URL}/api/youtube`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: youtubeUrl }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "YouTube transcription failed");
-      }
-      
-      const data = await response.json();
-      console.log("YouTube transcript received:", data.transcript?.slice(0, 100));
-
-      if (onMediaTranscribe) {
-        onMediaTranscribe(
-          {
-            name: `YouTube: ${youtubeUrl.split("v=")[1]?.slice(0, 8) || "Video"}`,
-            type: "video/youtube",
-          },
-          data.transcript,
-        );
-      }
-      setYoutubeUrl("");
-    } catch (error) {
-      console.error("YT Error:", error);
-      alert("Failed to get YouTube transcript: " + error.message);
+      console.error(error);
+      alert("Transcription failed. Please try again.");
     } finally {
       setIsTranscribing(false);
       setMediaFile(null);
     }
   };
-  const handleFile = (file) => {
-    if (isTextFile(file)) {
-      onFileUpload(file);
-      setShowTextInput(false);
-      setMediaFile(null);
-    } else if (isAudioFile(file) || isVideoFile(file)) {
-      transcribeMedia(file);
-    }
-  };
 
-  const handleFileInput = (e) => {
-    if (e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+  // 2. Handle YouTube URL (New Logic)
+  const handleYoutubeSubmit = async () => {
+    if (!youtubeUrl.trim()) return;
+
+    setIsTranscribing(true);
+    setStatusMessage("Downloading & Transcribing YouTube Video...");
+
+    // Create a fake "file" object just for the UI history
+    const fakeFile = { name: youtubeUrl, type: "video/youtube" };
+    setMediaFile(fakeFile);
+
+    try {
+      const res = await fetch(`${API_URL}/api/youtube`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: youtubeUrl }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || "YouTube transcription failed");
+      }
+
+      const data = await res.json();
+      onMediaTranscribe(fakeFile, data.transcript, "youtube");
+      setYoutubeUrl("");
+      setMode("select");
+    } catch (error) {
+      console.error(error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsTranscribing(false);
+      setMediaFile(null);
     }
   };
 
   const handleTextSubmit = () => {
     if (textValue.trim()) {
       onTextPaste(textValue);
+      setMode("select");
     }
+  };
+
+  const resetUI = () => {
+    setMode("select");
+    setMediaFile(null);
+    setIsTranscribing(false);
+    setTextValue("");
+    setYoutubeUrl("");
   };
 
   const clearUpload = () => {
     onFileUpload(null);
     onTextPaste("");
-    setTextValue("");
-    setMediaFile(null);
-    setIsTranscribing(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    resetUI();
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // --- Render Helpers ---
   const getFileIcon = () => {
-    if (mediaFile) {
-      if (isVideoFile(mediaFile))
-        return <Video className="w-6 h-6 text-purple-400" />;
-      if (isAudioFile(mediaFile))
-        return <Music className="w-6 h-6 text-purple-400" />;
-    }
+    if (mediaFile?.type === "video/youtube")
+      return <Youtube className="w-6 h-6 text-red-500" />;
+    if (mediaFile && isVideoFile(mediaFile))
+      return <Video className="w-6 h-6 text-purple-400" />;
+    if (mediaFile && isAudioFile(mediaFile))
+      return <Music className="w-6 h-6 text-purple-400" />;
     return <FileText className="w-6 h-6 text-purple-400" />;
-  };
-
-  const getFileTypeLabel = () => {
-    if (mediaFile) {
-      if (isVideoFile(mediaFile)) return "Video";
-      if (isAudioFile(mediaFile)) return "Audio";
-    }
-    return "Document";
   };
 
   return (
     <div className="h-full flex flex-col">
       <div className="px-5 py-4 border-b border-dark-700">
         <h2 className="text-lg font-semibold text-white">Input</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Upload document, audio, video or YouTube link
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Upload file or paste URL</p>
       </div>
 
       <div className="flex-1 p-5 overflow-y-auto space-y-4">
+        {/* LOADING STATE */}
         {isTranscribing ? (
-          /* Transcribing state (Your existing loader) */
-          <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4">
-                <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-              </div>
-              <h3 className="text-white font-medium mb-2">
-                Transcribing Media
-              </h3>
-              <p className="text-sm text-gray-400 mb-4">
-                Extracting text from {mediaFile?.name}
-              </p>
-              <div className="w-full bg-dark-700 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-purple-500 h-full rounded-full animate-pulse"
-                  style={{ width: "60%" }}
-                />
-              </div>
+          <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 mx-auto">
+              <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+            </div>
+            <h3 className="text-white font-medium mb-2">Processing...</h3>
+            <p className="text-sm text-gray-400 mb-4">{statusMessage}</p>
+            <div className="w-full bg-dark-700 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-purple-500 h-full animate-pulse"
+                style={{ width: "60%" }}
+              />
             </div>
           </div>
         ) : !uploadedFile && !pastedText ? (
           <>
-            {/* NEW: YouTube Input Section */}
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase">
-                Analyze YouTube
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input
-                    type="text"
-                    placeholder="https://youtube.com/..."
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-dark-800 border border-dark-600 focus:border-red-500 rounded-lg text-sm text-white outline-none transition-all"
-                  />
-                </div>
-                <button
-                  onClick={handleYoutubeSubmit}
-                  disabled={!youtubeUrl.trim()}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-dark-700 text-white text-sm font-medium rounded-lg transition-colors"
+            {/* MAIN SELECTION SCREEN */}
+            {mode === "select" && (
+              <>
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-dark-500 hover:border-purple-500/50"
+                  }`}
                 >
-                  Load
-                </button>
-              </div>
-            </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.pdf,.docx,audio/*,video/*"
+                    onChange={(e) =>
+                      e.target.files.length > 0 && handleFile(e.target.files[0])
+                    }
+                    className="hidden"
+                  />
+                  <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
+                  <p className="text-white font-medium mb-1">Upload File</p>
+                  <p className="text-xs text-gray-600">Audio, Video, PDF</p>
+                </div>
 
-            <div className="flex items-center gap-4 my-2">
-              <div className="flex-1 h-px bg-dark-600" />
-              <span className="text-[10px] text-gray-600 uppercase">OR</span>
-              <div className="flex-1 h-px bg-dark-600" />
-            </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setMode("text")}
+                    className="flex flex-col items-center justify-center gap-2 py-4 border border-dark-500 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all"
+                  >
+                    <ClipboardPaste className="w-5 h-5" />
+                    <span className="text-sm">Paste Text</span>
+                  </button>
+                  <button
+                    onClick={() => setMode("youtube")}
+                    className="flex flex-col items-center justify-center gap-2 py-4 border border-dark-500 rounded-xl text-gray-400 hover:text-red-400 hover:border-red-500/50 transition-all"
+                  >
+                    <Youtube className="w-5 h-5" />
+                    <span className="text-sm">YouTube URL</span>
+                  </button>
+                </div>
+              </>
+            )}
 
-            {/* Drop zone (Your existing logic) */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-                isDragging
-                  ? "border-purple-500 bg-purple-500/10"
-                  : "border-dark-500 hover:border-purple-500/50"
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".txt,.pdf,.docx,audio/*,video/*"
-                onChange={handleFileInput}
-                className="hidden"
-              />
-              <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
-              <p className="text-white font-medium mb-1">Upload File</p>
-              <p className="text-xs text-gray-500">PDF, MP3, MP4, etc.</p>
-            </div>
-
-            {/* Text input toggle (Your existing logic) */}
-            {!showTextInput ? (
-              <button
-                onClick={() => setShowTextInput(true)}
-                className="w-full flex items-center justify-center gap-2 py-4 border border-dark-500 hover:border-purple-500/50 rounded-xl text-gray-400 hover:text-purple-400 transition-all"
-              >
-                <ClipboardPaste className="w-5 h-5" />
-                <span>Paste text directly</span>
-              </button>
-            ) : (
+            {/* PASTE TEXT MODE */}
+            {mode === "text" && (
               <div className="space-y-4">
                 <textarea
                   value={textValue}
                   onChange={(e) => setTextValue(e.target.value)}
-                  placeholder="Paste text..."
+                  placeholder="Paste text to analyze..."
                   className="w-full h-48 px-4 py-3 bg-dark-800 border border-dark-600 focus:border-purple-500 rounded-xl text-white resize-none outline-none"
                 />
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setShowTextInput(false)}
+                    onClick={() => setMode("select")}
                     className="flex-1 py-2 border border-dark-500 rounded-lg text-gray-400"
                   >
-                    Cancel
+                    Back
                   </button>
                   <button
                     onClick={handleTextSubmit}
@@ -342,37 +267,58 @@ export default function UploadPanel({
                 </div>
               </div>
             )}
+
+            {/* YOUTUBE MODE */}
+            {mode === "youtube" && (
+              <div className="space-y-4">
+                <div className="bg-dark-800 border border-dark-600 rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-3 text-red-400">
+                    <Youtube className="w-5 h-5" />
+                    <span className="font-medium text-white">YouTube Link</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    placeholder="https://youtube.com/watch?v=..."
+                    className="w-full px-3 py-2 bg-dark-900 border border-dark-700 rounded-lg text-white focus:border-red-500 outline-none"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setMode("select")}
+                    className="flex-1 py-2 border border-dark-500 rounded-lg text-gray-400"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleYoutubeSubmit}
+                    className="flex-1 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white font-medium"
+                  >
+                    Transcribe
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
-          /* File preview (Your existing logic) */
-          <div className="bg-dark-800 border border-dark-600 rounded-xl p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                {getFileIcon()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-white truncate">
-                  {uploadedFile
-                    ? uploadedFile.name
-                    : mediaFile
-                      ? mediaFile.name
-                      : "Pasted Text"}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  {uploadedFile
-                    ? `${(uploadedFile.size / 1024).toFixed(1)} KB`
-                    : mediaFile
-                      ? "Media Transcribed"
-                      : "Text Input"}
-                </p>
-              </div>
-              <button
-                onClick={clearUpload}
-                className="p-2 text-gray-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+          /* FILE SELECTED STATE */
+          <div className="bg-dark-800 border border-dark-600 rounded-xl p-5 flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              {getFileIcon()}
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-white truncate">
+                {uploadedFile?.name || mediaFile?.name || "Pasted Text"}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">Ready for analysis</p>
+            </div>
+            <button
+              onClick={clearUpload}
+              className="p-2 text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         )}
       </div>
