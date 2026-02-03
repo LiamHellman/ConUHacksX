@@ -16,7 +16,7 @@ export default function Hero({ onGetStarted }) {
     <div className="isolate">
       <section
         id="home"
-        className="relative min-h-screen flex items-center justify-center overflow-hidden"
+        className="relative min-h-screen flex items-center justify-center overflow-hidden hero-section"
       >
         {/* Plasma background */}
         <Plasma color="#4c1d95" speed={0.5} opacity={0.4} />
@@ -33,7 +33,7 @@ export default function Hero({ onGetStarted }) {
 
         <div className="relative z-10 max-w-5xl mx-auto px-8 text-center">
           {/* Main headline */}
-          <h1 className="text-6xl lg:text-7xl font-bold leading-relaxed tracking-tight mb-16">
+          <h1 className="text-6xl lg:text-7xl font-bold leading-relaxed tracking-tight mb-16 hero-headline">
             <ShinyText
               text="Make"
               color="#ffffff"

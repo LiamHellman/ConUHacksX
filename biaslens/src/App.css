@@ -1,3 +1,62 @@
+/* --- Mobile-specific fixes for dock, header, hero, and stacking --- */
+@media (max-width: 768px) {
+  /* Header and dock stacking */
+  .header-mobile-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    position: static !important;
+    z-index: 10;
+    background: transparent !important;
+  }
+  .dock-mobile {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    width: 100vw !important;
+    justify-content: center !important;
+    position: static !important;
+    z-index: 9;
+  }
+  .analyze-btn-mobile {
+    width: 90vw !important;
+    max-width: 400px;
+    margin: 0.5rem auto 1rem auto;
+    display: block;
+    font-size: 1.1rem;
+  }
+  /* Hero headline text wrapping */
+  .hero-headline {
+    font-size: 2rem !important;
+    line-height: 2.4rem !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+    margin-bottom: 2rem !important;
+  }
+  .hero-section {
+    padding-top: 2.5rem !important;
+    padding-bottom: 2.5rem !important;
+  }
+  /* General section spacing */
+  .section-mobile {
+    margin-bottom: 2rem !important;
+    padding-bottom: 1rem !important;
+  }
+  /* Prevent text overlap in feature grid */
+  .feature-grid {
+    display: flex;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+    align-items: stretch !important;
+    text-align: left !important;
+  }
+  .feature-grid > * {
+    width: 100% !important;
+    font-size: 1.1rem !important;
+    word-break: break-word !important;
+  }
+}
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
   .h-[calc(100vh-64px)] {
