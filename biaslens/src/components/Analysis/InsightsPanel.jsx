@@ -17,8 +17,10 @@ export default function InsightsPanel({
   selectedFinding,
   onSelectFinding,
   isAnalyzing,
+  forceTab,
 }) {
   const [activeTab, setActiveTab] = useState("summary");
+  const tabToShow = forceTab || activeTab;
   const [expandedFindingId, setExpandedFindingId] = useState(null);
 
   const tabs = [
@@ -97,40 +99,42 @@ export default function InsightsPanel({
       <ScoreCard
         label="Transparency"
         score={results?.scores?.tactic ?? 0}
-        type="tactic"
-        description="Detects hidden persuasive techniques"
-      />
-      <ScoreCard
-        label="Verifiability"
-        score={results?.scores?.factcheck ?? 0}
-        type="factcheck"
-        description="Ability to back claims with evidence"
-      />
+        return (
+          <div className="flex flex-col h-full">
+            {/* Tab bar (desktop only, not when forceTab is set) */}
+            {!forceTab && (
+              <div className="flex gap-2 border-b border-dark-700 bg-dark-900/40 px-4 py-2">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border whitespace-nowrap transition-all ${
+                      activeTab === tab.key
+                        ? "text-white bg-dark-800 border-dark-600"
+                        : "text-gray-400 bg-dark-800/40 border-dark-700 hover:bg-dark-800 hover:border-dark-600"
+                    }`}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
-      {results?.summary && (
-        <div className="mt-6 p-4 bg-dark-700/50 rounded-xl border border-dark-600">
-          <div className="flex items-start gap-3">
-            <Info
-              className="w-5 h-5 flex-shrink-0 mt-0.5"
-              style={{ color: brandFg(0.95) }}
-            />
-            <div>
-              <h4 className="text-sm font-medium text-white mb-1">
-                Executive Summary
-              </h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                {results.summary}
-              </p>
+            {/* Tab content */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {isAnalyzing ? (
+                renderLoading()
+              ) : tabToShow === "summary" ? (
+                renderSummary()
+              ) : tabToShow === "findings" ? (
+                renderFindings()
+              ) : (
+                renderEmptyState()
+              )}
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderFindings = () => (
-    <div className="p-5">
-      {!results?.findings || results.findings.length === 0 ? (
+        );
         <div className="text-center py-12">
           <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
           <p className="text-gray-500">No linguistic tricks detected</p>

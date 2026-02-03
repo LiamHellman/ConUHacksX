@@ -453,6 +453,10 @@ export default function AnalysisPage() {
             style={{ fontWeight: activeMobileTab === 'document' ? 'bold' : 'normal', padding: '0.5rem 1rem', borderRadius: '8px', background: activeMobileTab === 'document' ? 'rgba(139,92,246,0.15)' : 'transparent', color: '#fff', border: 'none' }}
           >Document</button>
           <button
+            onClick={() => setActiveMobileTab('findings')}
+            style={{ fontWeight: activeMobileTab === 'findings' ? 'bold' : 'normal', padding: '0.5rem 1rem', borderRadius: '8px', background: activeMobileTab === 'findings' ? 'rgba(139,92,246,0.15)' : 'transparent', color: '#fff', border: 'none' }}
+          >Findings</button>
+          <button
             onClick={() => setActiveMobileTab('summary')}
             style={{ fontWeight: activeMobileTab === 'summary' ? 'bold' : 'normal', padding: '0.5rem 1rem', borderRadius: '8px', background: activeMobileTab === 'summary' ? 'rgba(139,92,246,0.15)' : 'transparent', color: '#fff', border: 'none' }}
           >Summary</button>
@@ -463,7 +467,7 @@ export default function AnalysisPage() {
       <div className={isMobile ? '' : 'flex-1 flex flex-row md:flex-row flex-col overflow-hidden'}>
         {/* Input/Upload Panel & Sessions */}
         {(isMobile ? activeMobileTab === 'input' : true) && (
-          <div className={isMobile ? '' : 'w-80 md:w-80 w-full border-r md:border-r border-b md:border-b-0 border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full md:h-full h-auto'}>
+          <div className={isMobile ? 'mobile-tab-content' : 'w-80 md:w-80 w-full border-r md:border-r border-b md:border-b-0 border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full md:h-full h-auto'}>
             <div className="flex-shrink-0 border-b border-dark-700/50">
               <UploadPanel
                 onFilesUpload={setUploadedFiles}
@@ -552,7 +556,7 @@ export default function AnalysisPage() {
         )}
         {/* Document Viewer */}
         {(isMobile ? activeMobileTab === 'document' : true) && (
-          <div className={isMobile ? '' : 'flex-1 bg-dark-800 min-w-0 flex flex-col w-full'}>
+          <div className={isMobile ? 'mobile-tab-content' : 'flex-1 bg-dark-800 min-w-0 flex flex-col w-full'}>
             {activeSession?.docs?.length > 0 && (
               <div className="px-4 py-2 border-b border-dark-700 bg-dark-900/40 flex gap-2 overflow-x-auto custom-scrollbar">
                 {activeSession.docs.map((doc) => {
@@ -590,14 +594,27 @@ export default function AnalysisPage() {
           </div>
         )}
         {/* Insights/Summary Panel */}
-        {(isMobile ? activeMobileTab === 'summary' : true) && (
-          <div className={isMobile ? '' : 'flex-1 min-w-0 border-l md:border-l border-t md:border-t-0 border-dark-700 bg-dark-900 w-full'}>
+        {(isMobile ? activeMobileTab === 'findings' : true) && isMobile && (
+          <div className="mobile-tab-content">
             <InsightsPanel
               results={resultsForPanel}
               checks={checks}
               selectedFinding={selectedFinding}
               onSelectFinding={handleSelectFinding}
               isAnalyzing={isAnalyzing}
+              forceTab="findings"
+            />
+          </div>
+        )}
+        {(isMobile ? activeMobileTab === 'summary' : true) && (
+          <div className={isMobile ? 'mobile-tab-content' : 'flex-1 min-w-0 border-l md:border-l border-t md:border-t-0 border-dark-700 bg-dark-900 w-full'}>
+            <InsightsPanel
+              results={resultsForPanel}
+              checks={checks}
+              selectedFinding={selectedFinding}
+              onSelectFinding={handleSelectFinding}
+              isAnalyzing={isAnalyzing}
+              forceTab={isMobile ? 'summary' : undefined}
             />
           </div>
         )}

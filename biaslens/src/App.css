@@ -1,3 +1,38 @@
+/* Fix header overlap and ensure proper stacking */
+.header-mobile-stack, .header {
+  position: static !important;
+  z-index: 20;
+  background: var(--color-dark-950, #0a0a0b) !important;
+  width: 100vw;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  /* Make main app and tab content scrollable */
+  .mobile-tab-content {
+    min-height: 60vh;
+    max-height: 80vh;
+    overflow-y: auto !important;
+    padding-bottom: 2.5rem;
+  }
+  .feature-grid {
+    display: flex;
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+    align-items: stretch !important;
+    text-align: left !important;
+    margin-top: 2rem !important;
+  }
+  .feature-grid > * {
+    width: 100% !important;
+    font-size: 1.1rem !important;
+    word-break: break-word !important;
+    margin-bottom: 1.5rem !important;
+  }
+  .chrome-btn-section {
+    margin-bottom: 2.5rem !important;
+  }
+}
 /* --- Mobile-specific fixes for dock, header, hero, and stacking --- */
 @media (max-width: 768px) {
   /* Header and dock stacking */
