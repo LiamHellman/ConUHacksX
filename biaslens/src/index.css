@@ -1,3 +1,18 @@
+/* Responsive base font and container adjustments */
+@media (max-width: 768px) {
+  html {
+    font-size: 16px !important;
+  }
+  body {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  #root {
+    min-width: 0 !important;
+    width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+}
 @import "tailwindcss";
 
 @theme {
