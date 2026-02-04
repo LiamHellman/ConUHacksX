@@ -444,6 +444,145 @@ function scrollToFinding(findingId) {
   }, 2000);
 }
 
+// Helper: Get all text nodes within a root element
+function getTextNodes(root) {
+  const walker = document.createTreeWalker(
+    root,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode: (node) => {
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        if (parent.closest('#factify-results-panel, #factify-analyze-btn, script, style, noscript')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) nodes.push(n);
+  return nodes;
+}
+
+// Helper: Map global offset to {node, localOffset}
+function mapOffsetToNode(textNodes, offset) {
+  let count = 0;
+  for (const node of textNodes) {
+    const len = node.textContent.length;
+    if (offset < count + len) {
+      return { node, localOffset: offset - count };
+    }
+    count += len;
+  }
+  // fallback: end of last node
+  return { node: textNodes[textNodes.length - 1], localOffset: textNodes[textNodes.length - 1].textContent.length };
+}
+
+// Highlight spans in the DOM using start/end indices
+function highlightSpansInDom(root, text, spans) {
+  removeHighlights();
+  const textNodes = getTextNodes(root);
+  let globalOffset = 0;
+  for (const span of spans) {
+    const { start, end, primary } = span;
+    if (end <= start) continue;
+    // Map start/end to nodes
+    const startMap = mapOffsetToNode(textNodes, start);
+    const endMap = mapOffsetToNode(textNodes, end);
+    if (!startMap.node || !endMap.node) continue;
+    // If in same node
+    if (startMap.node === endMap.node) {
+      const node = startMap.node;
+      const before = node.textContent.slice(0, startMap.localOffset);
+      const match = node.textContent.slice(startMap.localOffset, endMap.localOffset);
+      const after = node.textContent.slice(endMap.localOffset);
+      const spanEl = document.createElement('span');
+      spanEl.className = 'factify-highlight';
+      spanEl.dataset.category = primary?.category || 'tactic';
+      spanEl.dataset.findingId = primary?.id || '';
+      spanEl.dataset.label = primary?.label || primary?.categoryId || '';
+      const colors = HIGHLIGHT_COLORS[primary?.category] || HIGHLIGHT_COLORS.tactic;
+      spanEl.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
+      spanEl.textContent = match;
+      spanEl.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
+      spanEl.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
+      });
+      const frag = document.createDocumentFragment();
+      if (before) frag.appendChild(document.createTextNode(before));
+      frag.appendChild(spanEl);
+      if (after) frag.appendChild(document.createTextNode(after));
+      node.parentNode.replaceChild(frag, node);
+      highlights.push(spanEl);
+    } else {
+      // Multi-node: split start, wrap all in-between, split end
+      // Start node
+      const startNode = startMap.node;
+      const startRest = startNode.textContent.slice(startMap.localOffset);
+      const before = startNode.textContent.slice(0, startMap.localOffset);
+      const startSpan = document.createElement('span');
+      startSpan.className = 'factify-highlight';
+      startSpan.dataset.category = primary?.category || 'tactic';
+      startSpan.dataset.findingId = primary?.id || '';
+      startSpan.dataset.label = primary?.label || primary?.categoryId || '';
+      const colors = HIGHLIGHT_COLORS[primary?.category] || HIGHLIGHT_COLORS.tactic;
+      startSpan.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
+      startSpan.textContent = startRest;
+      startSpan.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
+      startSpan.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
+      });
+      const startFrag = document.createDocumentFragment();
+      if (before) startFrag.appendChild(document.createTextNode(before));
+      startFrag.appendChild(startSpan);
+      startNode.parentNode.replaceChild(startFrag, startNode);
+      highlights.push(startSpan);
+      // Middle nodes
+      let idx = textNodes.indexOf(startNode) + 1;
+      while (idx < textNodes.length && textNodes[idx] !== endMap.node) {
+        const midNode = textNodes[idx];
+        const midSpan = document.createElement('span');
+        midSpan.className = 'factify-highlight';
+        midSpan.dataset.category = primary?.category || 'tactic';
+        midSpan.dataset.findingId = primary?.id || '';
+        midSpan.dataset.label = primary?.label || primary?.categoryId || '';
+        midSpan.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
+        midSpan.textContent = midNode.textContent;
+        midSpan.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
+        midSpan.addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
+        });
+        midNode.parentNode.replaceChild(midSpan, midNode);
+        highlights.push(midSpan);
+        idx++;
+      }
+      // End node
+      const endNode = endMap.node;
+      const endBefore = endNode.textContent.slice(0, endMap.localOffset);
+      const endAfter = endNode.textContent.slice(endMap.localOffset);
+      const endSpan = document.createElement('span');
+      endSpan.className = 'factify-highlight';
+      endSpan.dataset.category = primary?.category || 'tactic';
+      endSpan.dataset.findingId = primary?.id || '';
+      endSpan.dataset.label = primary?.label || primary?.categoryId || '';
+      endSpan.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
+      endSpan.textContent = endBefore;
+      endSpan.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
+      endSpan.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
+      });
+      const endFrag = document.createDocumentFragment();
+      endFrag.appendChild(endSpan);
+      if (endAfter) endFrag.appendChild(document.createTextNode(endAfter));
+      endNode.parentNode.replaceChild(endFrag, endNode);
+      highlights.push(endSpan);
+    }
+  }
+}
+
 // Listen for messages from popup and background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'getSelection') {
