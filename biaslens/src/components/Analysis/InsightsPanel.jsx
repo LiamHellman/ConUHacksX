@@ -17,6 +17,7 @@ export default function InsightsPanel({
   selectedFinding,
   onSelectFinding,
   isAnalyzing,
+  isMobile = false,
 }) {
   const [activeTab, setActiveTab] = useState("summary");
   const [expandedFindingId, setExpandedFindingId] = useState(null);
@@ -263,31 +264,39 @@ export default function InsightsPanel({
       </div>
 
       {/* The Content Area */}
-      <div className="flex-1 relative bg-dark-900">
-        {/* Summary Tab */}
-        <div
-          className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 space-y-4 ${
-            activeTab === "summary"
-              ? "opacity-100 z-10"
-              : "opacity-0 z-0 pointer-events-none"
-          }`}
-          style={{ transition: "none" }}
-        >
-          {renderSummary()}
+      {isMobile ? (
+        <div className="flex-1 bg-dark-900">
+          <div className="insights-content overflow-y-auto custom-scrollbar p-5">
+            {activeTab === "summary" ? renderSummary() : renderFindings()}
+          </div>
         </div>
+      ) : (
+        <div className="flex-1 relative bg-dark-900">
+          {/* Summary Tab */}
+          <div
+            className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 space-y-4 ${
+              activeTab === "summary"
+                ? "opacity-100 z-10"
+                : "opacity-0 z-0 pointer-events-none"
+            }`}
+            style={{ transition: "none" }}
+          >
+            {renderSummary()}
+          </div>
 
-        {/* Findings Tab */}
-        <div
-          className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 ${
-            activeTab === "findings"
-              ? "opacity-100 z-10"
-              : "opacity-0 z-0 pointer-events-none"
-          }`}
-          style={{ transition: "none" }}
-        >
-          {renderFindings()}
+          {/* Findings Tab */}
+          <div
+            className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 ${
+              activeTab === "findings"
+                ? "opacity-100 z-10"
+                : "opacity-0 z-0 pointer-events-none"
+            }`}
+            style={{ transition: "none" }}
+          >
+            {renderFindings()}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

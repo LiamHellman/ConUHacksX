@@ -185,6 +185,39 @@
     padding: 1rem !important;
   }
 
+  /* Header layout on mobile */
+  .header-root {
+    height: auto !important;
+    padding: 0.75rem 1rem !important;
+  }
+  .header-logo {
+    gap: 0.6rem !important;
+  }
+  .header-title {
+    font-size: 1rem !important;
+    white-space: nowrap;
+  }
+  .header-nav {
+    display: none !important;
+  }
+
+  /* Hero stats stack (prevent overlap) */
+  .hero-stats {
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+    text-align: left !important;
+    max-width: 100% !important;
+  }
+  .hero-stat-value {
+    font-size: 1.35rem !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+  }
+  .hero-stat-label {
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+  }
+
   .control-bar {
     height: auto !important;
     flex-direction: column !important;

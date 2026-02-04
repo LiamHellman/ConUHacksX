@@ -549,6 +549,7 @@ export default function AnalysisPage() {
               selectedFinding={selectedFinding}
               onSelectFinding={handleSelectFinding}
               isAnalyzing={isAnalyzing}
+              isMobile={isMobile}
             />
           </div>
         )}

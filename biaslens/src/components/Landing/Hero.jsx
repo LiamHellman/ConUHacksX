@@ -148,7 +148,7 @@ export default function Hero({ onGetStarted }) {
           </motion.div>
 
           {/* Stats */}
-          <div className="mt-20 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
+          <div className="hero-stats mt-20 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
             {[
               { value: "Explainable Results", label: "Every highlight shows why it matters" },
               { value: "Confidence Weighted Analysis", label: "No absolutes just transparent signals" },
@@ -165,10 +165,10 @@ export default function Hero({ onGetStarted }) {
                   ease: "easeOut",
                 }}
               >
-                <div className="text-3xl font-bold text-purple-400 mb-1">
+                <div className="hero-stat-value text-3xl font-bold text-purple-400 mb-1">
                   {stat.value}
                 </div>
-                <div className="text-sm text-gray-500">{stat.label}</div>
+                <div className="hero-stat-label text-sm text-gray-500">{stat.label}</div>
               </motion.div>
             ))}
           </div>
