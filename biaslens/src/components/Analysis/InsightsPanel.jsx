@@ -168,9 +168,11 @@ export default function InsightsPanel({
                     : undefined
                 }
               >
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <span className="font-medium text-white">{finding.label}</span>
-                  <div className="flex items-center gap-2">
+                <div className="finding-header flex items-start justify-between gap-3 mb-2">
+                  <span className="finding-title font-medium text-white">
+                    {finding.label}
+                  </span>
+                  <div className="finding-badges flex items-center gap-2">
                     <span
                       className="px-2 py-0.5 rounded text-xs font-medium"
                       style={getTypeBadgeStyle(finding.type)}

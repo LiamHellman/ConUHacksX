@@ -199,6 +199,36 @@
     padding: 0.6rem 0.75rem !important;
   }
 
+  /* Score cards: center values cleanly on mobile */
+  .analysis-page .scorecard-row {
+    align-items: center !important;
+    gap: 1rem !important;
+  }
+  .analysis-page .scorecard-circle {
+    width: 72px !important;
+    height: 72px !important;
+  }
+  .analysis-page .scorecard-value {
+    line-height: 1 !important;
+    display: inline-block;
+    transform: translateY(1px);
+  }
+
+  /* Findings header layout */
+  .analysis-page .finding-header {
+    align-items: center !important;
+    flex-wrap: wrap !important;
+  }
+  .analysis-page .finding-title {
+    flex: 1 1 auto;
+    min-width: 160px;
+  }
+  .analysis-page .finding-badges {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 0.4rem !important;
+  }
+
   /* Header layout on mobile */
   .header-root {
     height: auto !important;

@@ -70,10 +70,10 @@ export default function ScoreCard({
   const progressStroke = useMemo(() => typeFg(resolvedType, 1), [resolvedType]);
 
   return (
-    <div className="p-5 rounded-xl border" style={cardStyle}>
-      <div className="flex items-center gap-5">
+    <div className="scorecard p-5 rounded-xl border" style={cardStyle}>
+      <div className="scorecard-row flex items-center gap-5">
         {/* Circular progress */}
-        <div className="relative w-20 h-20 flex-shrink-0">
+        <div className="scorecard-circle relative w-20 h-20 flex-shrink-0">
           <svg className="w-20 h-20 transform -rotate-90">
             {/* Background circle */}
             <circle
@@ -102,14 +102,14 @@ export default function ScoreCard({
 
           {/* Score text */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xl font-bold" style={scoreStyle}>
+            <span className="scorecard-value text-xl font-bold" style={scoreStyle}>
               {Math.round(normalized)}
             </span>
           </div>
         </div>
 
         {/* Labels */}
-        <div className="flex-1">
+        <div className="scorecard-labels flex-1">
           <h3 className="text-white font-semibold mb-1">{label}</h3>
           <p className="text-sm text-gray-500">{description}</p>
         </div>
