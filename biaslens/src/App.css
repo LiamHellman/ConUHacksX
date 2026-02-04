@@ -203,29 +203,39 @@
   .analysis-page .scorecard-row {
     align-items: center !important;
     gap: 1rem !important;
+    flex-direction: row !important;
   }
   .analysis-page .scorecard-circle {
-    width: 72px !important;
-    height: 72px !important;
+    width: 80px !important;
+    height: 80px !important;
+  }
+  .analysis-page .scorecard-circle svg {
+    width: 100% !important;
+    height: 100% !important;
   }
   .analysis-page .scorecard-value {
     line-height: 1 !important;
     display: inline-block;
-    transform: translateY(1px);
+    transform: translateY(0);
   }
 
   /* Findings header layout */
   .analysis-page .finding-header {
     align-items: center !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
   }
   .analysis-page .finding-title {
     flex: 1 1 auto;
     min-width: 160px;
+    text-align: left !important;
   }
   .analysis-page .finding-badges {
     flex: 0 0 auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap !important;
+    flex-direction: row !important;
+    white-space: nowrap;
     gap: 0.4rem !important;
   }
 
