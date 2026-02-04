@@ -171,6 +171,9 @@
 
   .analysis-page .document-legend {
     font-size: 0.85rem !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    width: 100% !important;
   }
 
   /* Inputs inside upload panel */
@@ -183,6 +186,17 @@
   .analysis-page .insights-content .p-4,
   .analysis-page .insights-content .p-5 {
     padding: 1rem !important;
+  }
+
+  .analysis-page .insights-tabs {
+    gap: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .analysis-page .insights-tab-button {
+    min-height: 44px;
+    line-height: 1;
+    padding: 0.6rem 0.75rem !important;
   }
 
   /* Header layout on mobile */

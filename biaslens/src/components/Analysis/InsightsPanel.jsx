@@ -235,7 +235,7 @@ export default function InsightsPanel({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Tabs Header */}
-      <div className="border-b border-dark-700 px-4 py-3 flex gap-2 flex-shrink-0 bg-dark-900">
+      <div className="insights-tabs border-b border-dark-700 px-4 py-3 flex gap-2 flex-shrink-0 bg-dark-900">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = activeTab === t.key;
@@ -244,7 +244,7 @@ export default function InsightsPanel({
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-none border ${
+              className={`insights-tab-button flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-none border ${
                 active ? "text-white" : "text-gray-400 hover:text-gray-200 border-transparent"
               }`}
               style={
