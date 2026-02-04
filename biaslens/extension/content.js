@@ -200,7 +200,7 @@ function showResultsPanel(loading, data, error) {
     
     // Apply highlights to the page
     if (data.findings && data.findings.length > 0) {
-      applyHighlights(data.findings);
+      buildHighlightSpans(data.findings);
     }
   }
   
@@ -330,7 +330,7 @@ function removeHighlights() {
 }
 
 // Highlight text on the page based on findings
-function applyHighlights(findings) {
+function buildHighlightSpans(findings) {
   if (!findings || findings.length === 0) return;
   
   // Get all text nodes in the body

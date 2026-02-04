@@ -26,38 +26,35 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
+// Read user-selected analysis options from chrome.storage.local (factifyOptions) and pass them to the API, matching popup.js logic.
 async function showInlineResults(tabId, text) {
   // First show loading state
   chrome.tabs.sendMessage(tabId, {
     action: 'showResults',
     loading: true
   });
-  
   try {
+    // Read options from storage
+    const result = await chrome.storage.local.get(['factifyOptions']);
+    const options = result.factifyOptions || { bias: true, fallacy: true, ethics: false, tone: false };
+    const settings = {
+      detectBias: options.bias,
+      detectFallacies: options.fallacy,
+      detectEthicalConcerns: options.ethics,
+      analyzeTone: options.tone
+    };
     const response = await fetch(`${API_URL}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        text,
-        settings: {
-          detectBias: true,
-          detectFallacies: true,
-          detectEthicalConcerns: true,
-          analyzeTone: true
-        }
-      })
+      body: JSON.stringify({ text, settings })
     });
-    
     if (!response.ok) throw new Error('Analysis failed');
-    
     const data = await response.json();
-    
     chrome.tabs.sendMessage(tabId, {
       action: 'showResults',
       loading: false,
       data
     });
-    
   } catch (error) {
     chrome.tabs.sendMessage(tabId, {
       action: 'showResults',
@@ -66,3 +63,6 @@ async function showInlineResults(tabId, text) {
     });
   }
 }
+
+// TODO: Read analysis options from a shared config or expose toggles in the extension popup, matching the web app's checks (bias, fallacies, tactic)
+// For now, you can import a shared config or expose UI in popup.js/html for user toggles.
