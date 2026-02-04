@@ -17,6 +17,7 @@ export default function ControlBar({
   onAnalyze,
   isAnalyzing,
   hasContent,
+  isMobile = false,
 }) {
   const dockItems = [
     {
@@ -66,15 +67,20 @@ export default function ControlBar({
   const anyOn = Object.values(checks).some(Boolean);
   const enabled = hasContent && !isAnalyzing && anyOn;
 
+  const dockSizing = isMobile
+    ? { panelHeight: 48, baseItemSize: 38, magnification: 46, distance: 120 }
+    : { panelHeight: 56, baseItemSize: 44, magnification: 58, distance: 150 };
+
   return (
-    <div className="h-20 px-6 bg-dark-900 border-b border-dark-700 flex items-center justify-between overflow-visible">
+    <div className="control-bar h-20 px-6 bg-dark-900 border-b border-dark-700 flex items-center justify-between overflow-visible">
       <Dock
         // If Dock forwards item props, it can use `item.style(item.isActive)`
         items={dockItems}
-        panelHeight={56}
-        baseItemSize={44}
-        magnification={58}
-        distance={150}
+        panelHeight={dockSizing.panelHeight}
+        baseItemSize={dockSizing.baseItemSize}
+        magnification={dockSizing.magnification}
+        distance={dockSizing.distance}
+        className={isMobile ? "dock-panel--mobile" : ""}
       />
 
       <GlareHover
@@ -94,7 +100,7 @@ export default function ControlBar({
           onClick={onAnalyze}
           disabled={!enabled}
           className={`
-            flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold
+            analyze-button flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold
             transition-all duration-300
             ${enabled ? "text-white shadow-lg" : "bg-dark-700 text-gray-500 cursor-not-allowed"}
           `}

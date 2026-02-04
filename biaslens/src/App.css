@@ -56,6 +56,155 @@
     font-size: 1.1rem !important;
     word-break: break-word !important;
   }
+
+  /* Analysis page mobile layout */
+  .analysis-page {
+    height: auto !important;
+    min-height: 100vh;
+  }
+  .analysis-page .analysis-main {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .analysis-page .analysis-panel {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .analysis-page .analysis-panel--input,
+  .analysis-page .analysis-panel--document,
+  .analysis-page .analysis-panel--summary {
+    border: none !important;
+    background: var(--color-dark-900) !important;
+  }
+  .analysis-page .custom-scrollbar {
+    max-height: none !important;
+  }
+
+  /* Larger tap targets + readable text */
+  .analysis-page button,
+  .analysis-page input,
+  .analysis-page textarea,
+  .analysis-page select {
+    font-size: 16px !important;
+  }
+
+  .analysis-page button {
+    min-height: 44px;
+  }
+
+  .analysis-page input,
+  .analysis-page textarea,
+  .analysis-page select {
+    min-height: 44px;
+    border-radius: 12px;
+  }
+
+  .analysis-page h2,
+  .analysis-page h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .analysis-page p,
+  .analysis-page span,
+  .analysis-page li,
+  .analysis-page label {
+    line-height: 1.5 !important;
+  }
+
+  .mobile-tab-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-dark-950);
+    border-bottom: 1px solid var(--color-dark-700);
+  }
+  .mobile-tab-button {
+    flex: 1 1 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.6rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .mobile-tab-button.is-active {
+    background: rgba(139, 92, 246, 0.16);
+    border-color: rgba(139, 92, 246, 0.35);
+  }
+
+  /* Section paddings for readability */
+  .analysis-page .px-6,
+  .analysis-page .px-5,
+  .analysis-page .px-4 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  .analysis-page .py-6,
+  .analysis-page .py-4,
+  .analysis-page .py-2 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  /* Make tabs and pills easier to tap */
+  .analysis-page .rounded-lg,
+  .analysis-page .rounded-xl {
+    border-radius: 14px !important;
+  }
+
+  .analysis-page .text-sm {
+    font-size: 0.95rem !important;
+  }
+
+  .analysis-page .text-xs {
+    font-size: 0.85rem !important;
+  }
+
+  /* Document tabs row should wrap and stay usable */
+  .analysis-page .custom-scrollbar {
+    scrollbar-width: thin;
+  }
+
+  .analysis-page .document-legend {
+    font-size: 0.85rem !important;
+  }
+
+  /* Inputs inside upload panel */
+  .analysis-page .upload-content input,
+  .analysis-page .upload-content textarea {
+    width: 100% !important;
+  }
+
+  /* Findings cards spacing */
+  .analysis-page .insights-content .p-4,
+  .analysis-page .insights-content .p-5 {
+    padding: 1rem !important;
+  }
+
+  .control-bar {
+    height: auto !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem !important;
+  }
+  .control-bar .analyze-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .document-legend {
+    gap: 0.5rem !important;
+  }
+  .document-content,
+  .upload-content,
+  .insights-content {
+    padding: 1rem !important;
+  }
 }
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {

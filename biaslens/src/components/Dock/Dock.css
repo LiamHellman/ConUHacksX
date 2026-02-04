@@ -132,3 +132,22 @@
   backdrop-filter: blur(10px);
   z-index: 50;
 }
+
+@media (max-width: 768px) {
+  .dock-outer {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .dock-panel {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .dock-label {
+    display: none;
+  }
+}

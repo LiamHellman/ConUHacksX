@@ -234,7 +234,7 @@ export default function UploadPanel({
         </p>
       </div>
 
-      <div className="flex-1 p-5 overflow-y-auto space-y-4">
+      <div className="upload-content flex-1 p-5 overflow-y-auto space-y-4">
         {isTranscribing ? (
           <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6">
             <div className="flex flex-col items-center text-center">

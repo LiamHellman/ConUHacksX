@@ -71,8 +71,9 @@ const brandBg = (a) => `rgb(${BRAND_RGB} / ${a})`;
 const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
 
 export default function AnalysisPage() {
-    // Mobile tab state
-    const [activeMobileTab, setActiveMobileTab] = useState('input');
+  // Mobile tab state
+  const [activeMobileTab, setActiveMobileTab] = useState("input");
+  const [isMobile, setIsMobile] = useState(false);
 
   const [history, setHistory] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
@@ -95,6 +96,22 @@ export default function AnalysisPage() {
   // Initialize OKLab/OKLCH theme vars once
   useEffect(() => {
     applyThemeVars();
+  }, []);
+
+  // Track viewport size for responsive layout
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
   }, []);
 
   // ---- persistence: load ----
@@ -324,42 +341,68 @@ export default function AnalysisPage() {
     return { ...results, findings: enabledFindings };
   }, [results, enabledFindings]);
 
-  // Detect mobile (simple window width check)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-
   return (
-    <AnimatedContent className="h-[calc(100vh-64px)] flex flex-col bg-dark-950">
+    <AnimatedContent
+      className={`analysis-page h-[calc(100vh-64px)] flex flex-col bg-dark-950 ${
+        isMobile ? "analysis-mobile" : ""
+      }`}
+    >
       <ControlBar
         checks={checks}
         onToggleCheck={(key) => setChecks((prev) => ({ ...prev, [key]: !prev[key] }))}
         onAnalyze={handleAnalyze}
         isAnalyzing={isAnalyzing}
         hasContent={!!documentContent}
+        isMobile={isMobile}
       />
 
       {/* Mobile: Tab bar */}
       {isMobile && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', margin: '1rem 0' }}>
+        <div className="mobile-tab-bar">
           <button
-            onClick={() => setActiveMobileTab('input')}
-            style={{ fontWeight: activeMobileTab === 'input' ? 'bold' : 'normal', padding: '0.5rem 1rem', borderRadius: '8px', background: activeMobileTab === 'input' ? 'rgba(139,92,246,0.15)' : 'transparent', color: '#fff', border: 'none' }}
-          >Input</button>
+            onClick={() => setActiveMobileTab("input")}
+            className={`mobile-tab-button ${
+              activeMobileTab === "input" ? "is-active" : ""
+            }`}
+          >
+            Input
+          </button>
           <button
-            onClick={() => setActiveMobileTab('document')}
-            style={{ fontWeight: activeMobileTab === 'document' ? 'bold' : 'normal', padding: '0.5rem 1rem', borderRadius: '8px', background: activeMobileTab === 'document' ? 'rgba(139,92,246,0.15)' : 'transparent', color: '#fff', border: 'none' }}
-          >Document</button>
+            onClick={() => setActiveMobileTab("document")}
+            className={`mobile-tab-button ${
+              activeMobileTab === "document" ? "is-active" : ""
+            }`}
+          >
+            Document
+          </button>
           <button
-            onClick={() => setActiveMobileTab('summary')}
-            style={{ fontWeight: activeMobileTab === 'summary' ? 'bold' : 'normal', padding: '0.5rem 1rem', borderRadius: '8px', background: activeMobileTab === 'summary' ? 'rgba(139,92,246,0.15)' : 'transparent', color: '#fff', border: 'none' }}
-          >Summary</button>
+            onClick={() => setActiveMobileTab("summary")}
+            className={`mobile-tab-button ${
+              activeMobileTab === "summary" ? "is-active" : ""
+            }`}
+          >
+            Summary
+          </button>
         </div>
       )}
 
       {/* Main content: tabs for mobile, side-by-side for desktop */}
-      <div className={isMobile ? '' : 'flex-1 flex flex-row md:flex-row flex-col overflow-hidden'}>
+      <div
+        className={
+          isMobile
+            ? "analysis-main"
+            : "analysis-main flex-1 flex flex-row md:flex-row flex-col overflow-hidden"
+        }
+      >
         {/* Input/Upload Panel & Sessions */}
         {(isMobile ? activeMobileTab === 'input' : true) && (
-          <div className={isMobile ? '' : 'w-80 md:w-80 w-full border-r md:border-r border-b md:border-b-0 border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full md:h-full h-auto'}>
+          <div
+            className={
+              isMobile
+                ? "analysis-panel analysis-panel--input"
+                : "analysis-panel analysis-panel--input w-80 md:w-80 w-full border-r md:border-r border-b md:border-b-0 border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full md:h-full h-auto"
+            }
+          >
             <div className="flex-shrink-0 border-b border-dark-700/50">
               <UploadPanel
                 onFilesUpload={setUploadedFiles}
@@ -448,7 +491,13 @@ export default function AnalysisPage() {
         )}
         {/* Document Viewer */}
         {(isMobile ? activeMobileTab === 'document' : true) && (
-          <div className={isMobile ? '' : 'flex-1 bg-dark-800 min-w-0 flex flex-col w-full'}>
+          <div
+            className={
+              isMobile
+                ? "analysis-panel analysis-panel--document"
+                : "analysis-panel analysis-panel--document flex-1 bg-dark-800 min-w-0 flex flex-col w-full"
+            }
+          >
             {activeSession?.docs?.length > 0 && (
               <div className="px-4 py-2 border-b border-dark-700 bg-dark-900/40 flex gap-2 overflow-x-auto custom-scrollbar">
                 {activeSession.docs.map((doc) => {
@@ -487,7 +536,13 @@ export default function AnalysisPage() {
         )}
         {/* Insights/Summary Panel */}
         {(isMobile ? activeMobileTab === 'summary' : true) && (
-          <div className={isMobile ? '' : 'flex-1 min-w-0 border-l md:border-l border-t md:border-t-0 border-dark-700 bg-dark-900 w-full'}>
+          <div
+            className={
+              isMobile
+                ? "analysis-panel analysis-panel--summary"
+                : "analysis-panel analysis-panel--summary flex-1 min-w-0 border-l md:border-l border-t md:border-t-0 border-dark-700 bg-dark-900 w-full"
+            }
+          >
             <InsightsPanel
               results={resultsForPanel}
               checks={checks}

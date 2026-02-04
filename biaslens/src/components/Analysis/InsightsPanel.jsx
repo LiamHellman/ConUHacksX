@@ -266,7 +266,7 @@ export default function InsightsPanel({
       <div className="flex-1 relative bg-dark-900">
         {/* Summary Tab */}
         <div
-          className={`absolute inset-0 overflow-y-auto custom-scrollbar p-5 space-y-4 ${
+          className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 space-y-4 ${
             activeTab === "summary"
               ? "opacity-100 z-10"
               : "opacity-0 z-0 pointer-events-none"
@@ -278,7 +278,7 @@ export default function InsightsPanel({
 
         {/* Findings Tab */}
         <div
-          className={`absolute inset-0 overflow-y-auto custom-scrollbar p-5 ${
+          className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 ${
             activeTab === "findings"
               ? "opacity-100 z-10"
               : "opacity-0 z-0 pointer-events-none"

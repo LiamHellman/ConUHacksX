@@ -6,10 +6,26 @@ import './App.css';
 
 function App() {
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+
+    if (mq.addEventListener) mq.addEventListener('change', update);
+    else mq.addListener(update);
+
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', update);
+      else mq.removeListener(update);
+    };
+  }, []);
 
   // Hide scrollbar when showing analysis page
   useEffect(() => {
-    if (showAnalysis) {
+    if (showAnalysis && !isMobile) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -17,7 +33,7 @@ function App() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showAnalysis]);
+  }, [showAnalysis, isMobile]);
 
   return (
     <div className="min-h-screen bg-dark-950">
