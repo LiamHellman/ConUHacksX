@@ -94,17 +94,24 @@ function setupOptionButtons() {
   });
 }
 
+// Add debug logging for selection and analyze button
 function showSelectedText(text) {
+  console.log('[Factify Popup] showSelectedText called with:', text);
   if (text && text.trim()) {
     instructions.style.display = 'none';
     selectedTextContainer.style.display = 'block';
     selectedTextEl.textContent = text.length > 500 ? text.substring(0, 500) + '...' : text;
     analyzeBtn.disabled = false;
+    console.log('[Factify Popup] Analyze button enabled');
+  } else {
+    analyzeBtn.disabled = true;
+    console.log('[Factify Popup] No text, analyze button disabled');
   }
 }
 
 // Analyze button click
 analyzeBtn.addEventListener('click', async () => {
+  console.log('[Factify Popup] Analyze button clicked, currentSelectedText:', currentSelectedText);
   if (!currentSelectedText) return;
   
   const btnText = analyzeBtn.querySelector('.btn-text');
