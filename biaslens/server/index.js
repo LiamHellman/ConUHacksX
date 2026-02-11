@@ -4,15 +4,12 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import fs from "fs";
 import path from "path";
-import os from "os";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { execFile } from "child_process";
-import { promisify } from "util";
+import { YtTranscript } from "yt-transcript";
 
-const execFilePromise = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -25,55 +22,21 @@ const app = express();
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ dest: "uploads/" });
 
-async function runYtDlpWithFallback(url, outputPath) {
-  const bundledWinPath = path.resolve(__dirname, "yt-dlp.exe");
-  const configuredPath = process.env.YTDLP_PATH?.trim();
-  const platform = os.platform();
-
-  const ytdlpArgs = [
-    "-x",
-    "--audio-format",
-    "mp3",
-    "--force-overwrites",
-    "-o",
-    outputPath,
-    url,
-  ];
-
-  const attempts = [];
-
-  // Honor configured command/path, but avoid obvious Windows binary misconfig on non-Windows hosts.
-  if (configuredPath) {
-    const looksLikeWindowsExe = /\.exe(\s|$)/i.test(configuredPath);
-    if (!(platform !== "win32" && looksLikeWindowsExe)) {
-      attempts.push({ command: configuredPath, args: ytdlpArgs });
-    }
-  }
-
-  if (platform === "win32") {
-    attempts.push({ command: bundledWinPath, args: ytdlpArgs });
-  } else {
-    attempts.push({ command: "yt-dlp", args: ytdlpArgs });
-    attempts.push({ command: "python3", args: ["-m", "yt_dlp", ...ytdlpArgs] });
-    attempts.push({ command: "python", args: ["-m", "yt_dlp", ...ytdlpArgs] });
-  }
-
-  const errors = [];
-  for (const attempt of attempts) {
-    try {
-      await execFilePromise(attempt.command, attempt.args, {
-        windowsVerbatimArguments: platform === "win32",
-      });
-      return;
-    } catch (err) {
-      errors.push(`${attempt.command}: ${err?.message || "unknown error"}`);
-    }
-  }
-
-  throw new Error(
-    `yt-dlp invocation failed. Tried: ${errors.join(" | ")}. ` +
-      `Set YTDLP_PATH to a valid executable if needed.`,
-  );
+/**
+ * Extract video ID from various YouTube URL formats.
+ */
+function extractVideoId(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1);
+    if (u.searchParams.has('v')) return u.searchParams.get('v');
+    // /embed/ID or /v/ID
+    const m = u.pathname.match(/\/(embed|v)\/([^/?]+)/);
+    if (m) return m[2];
+  } catch (_) {}
+  // Bare ID fallback (11 chars)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+  return null;
 }
 
 // Middleware
@@ -86,44 +49,35 @@ app.use(
 );
 app.use(express.json({ limit: "2mb" }));
 
-// --- ROUTE: YouTube Transcription (yt-dlp + Whisper) ---
+// --- ROUTE: YouTube Transcription (captions via yt-transcript) ---
 app.post("/api/youtube", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
 
-  const timestamp = Date.now();
-  const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
+  const videoId = extractVideoId(url);
+  if (!videoId) return res.status(400).json({ error: "Could not extract video ID from URL" });
 
   try {
-    console.log(`🚀 Executing yt-dlp for: ${url}`);
+    console.log(`🚀 Fetching captions for video: ${videoId}`);
 
-    // 1. Download audio as MP3
-    await runYtDlpWithFallback(url, tempPath);
+    const yt = new YtTranscript({ videoId });
+    const segments = await yt.getTranscript();
 
-    console.log("✅ Download complete. Transcribing with OpenAI Whisper...");
+    if (!segments || segments.length === 0) {
+      return res.status(404).json({ error: "No captions/transcript available for this video." });
+    }
 
-    // 2. Send the downloaded MP3 to Whisper
-    const transcription = await client.audio.transcriptions.create({
-      file: fs.createReadStream(tempPath),
-      model: "whisper-1",
-    });
+    // Combine all caption segments into a single string
+    const transcript = segments.map(s => s.text).join(' ');
 
-    return res.json({ transcript: transcription.text });
+    console.log(`✅ Transcript fetched: ${transcript.length} chars`);
+    return res.json({ transcript });
   } catch (error) {
     console.error("❌ YouTube Route Error:", error.message);
     res.status(500).json({
       error: "YouTube processing failed.",
       details: error.message,
     });
-  } finally {
-    // 3. Always clean up the temp audio file
-    if (fs.existsSync(tempPath)) {
-      try {
-        fs.unlinkSync(tempPath);
-      } catch (e) {
-        console.error("Cleanup error:", e.message);
-      }
-    }
   }
 });
 
