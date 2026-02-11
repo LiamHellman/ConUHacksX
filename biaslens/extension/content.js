@@ -116,6 +116,22 @@ async function directAnalysis(text) {
     });
     if (!response.ok) throw new Error('Analysis failed (' + response.status + ')');
     const data = await response.json();
+    
+    // Filter findings by active option toggles
+    try {
+      const result = await chrome.storage.local.get(['factifyOptions']);
+      const opts = result.factifyOptions || { bias: true, fallacy: true, tactic: true };
+      if (data.findings) {
+        const active = [];
+        if (opts.bias) active.push('bias');
+        if (opts.fallacy) active.push('fallacy');
+        if (opts.tactic) active.push('tactic');
+        if (active.length < 3) {
+          data.findings = data.findings.filter(f => active.includes(f.category));
+        }
+      }
+    } catch (_) {}
+    
     showResultsPanel(false, data, null);
   } catch (err) {
     showResultsPanel(false, null, err.message);
@@ -276,7 +292,16 @@ function addFindingClickHandlers() {
 
 // Scroll to and highlight a highlight span on the page
 function scrollToHighlight(findingId) {
-  const highlightEl = document.querySelector(`.factify-highlight[data-finding-id="${findingId}"]`);
+  // Find any highlight span whose data-finding-ids list contains this ID
+  const allHighlights = document.querySelectorAll('.factify-highlight[data-finding-ids]');
+  let highlightEl = null;
+  for (const el of allHighlights) {
+    const ids = (el.dataset.findingIds || '').split(',');
+    if (ids.includes(findingId)) {
+      highlightEl = el;
+      break;
+    }
+  }
   if (!highlightEl) return;
   
   // Scroll into view
@@ -461,31 +486,54 @@ function buildHighlightSpans(findings) {
       // Does any highlight fully cover this segment?
       const gSegStart = globalStart + segStart;
       const gSegEnd   = globalStart + segEnd;
-      const covering  = intersecting.find(r => r.start <= gSegStart && r.end >= gSegEnd);
+      const covering  = intersecting.filter(r => r.start <= gSegStart && r.end >= gSegEnd);
 
-      if (covering) {
-        const { category, findingId, finding } = covering;
+      if (covering.length > 0) {
+        // Use the first finding's category for the primary color,
+        // but store ALL finding IDs so every panel item can target this span
+        const primary = covering[0];
+        const { category, finding } = primary;
         const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
+        const allIds = covering.map(c => c.findingId);
+        const allLabels = covering.map(c => {
+          const f = c.finding;
+          return `${f.label || f.categoryId || c.category}: ${f.explanation}`;
+        });
+
+        // If multiple categories overlap, use a combined border
+        const uniqueCategories = [...new Set(covering.map(c => c.category))];
+        let borderStyle;
+        if (uniqueCategories.length > 1) {
+          // Multi-category: thicker dashed border
+          const borderColors = uniqueCategories.map(cat => {
+            const c = HIGHLIGHT_COLORS[cat] || HIGHLIGHT_COLORS.tactic;
+            return c.border;
+          });
+          borderStyle = `border-bottom: 3px solid ${borderColors[0]}; border-image: linear-gradient(to right, ${borderColors.join(', ')}) 1;`;
+        } else {
+          borderStyle = `border-bottom: 2px solid ${colors.border};`;
+        }
 
         const span = document.createElement('span');
         span.className = 'factify-highlight';
         span.dataset.category = category;
-        span.dataset.findingId = findingId;
-        span.dataset.label = finding.label || finding.categoryId || category;
+        span.dataset.findingIds = allIds.join(',');
+        span.dataset.label = covering.map(c => c.finding.label || c.finding.categoryId || c.category).join(' | ');
         span.style.cssText = `
           background: ${colors.bg};
-          border-bottom: 2px solid ${colors.border};
+          ${borderStyle}
           padding: 1px 2px;
           border-radius: 2px;
           cursor: pointer;
           transition: background 0.2s;
         `;
         span.textContent = segText;
-        span.title = `${finding.label || category}: ${finding.explanation}`;
+        span.title = allLabels.join('\n');
         span.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          scrollToFinding(findingId);
+          // Scroll to the first finding in the panel
+          scrollToFinding(primary.findingId);
         });
 
         fragment.appendChild(span);

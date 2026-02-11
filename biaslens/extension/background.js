@@ -38,20 +38,29 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // Perform analysis via API
 async function doAnalysis(text) {
   const result = await chrome.storage.local.get(['factifyOptions']);
-  const options = result.factifyOptions || { bias: true, fallacy: true, ethics: false, tone: false };
-  const settings = {
-    detectBias: options.bias,
-    detectFallacies: options.fallacy,
-    detectEthicalConcerns: options.ethics,
-    analyzeTone: options.tone
-  };
+  const options = result.factifyOptions || { bias: true, fallacy: true, tactic: true };
+  
   const response = await fetch(`${API_URL}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, settings })
+    body: JSON.stringify({ text, settings: {} })
   });
   if (!response.ok) throw new Error('Analysis failed');
-  return await response.json();
+  const data = await response.json();
+  
+  // Filter findings based on active category toggles
+  if (data.findings) {
+    const activeCategories = [];
+    if (options.bias) activeCategories.push('bias');
+    if (options.fallacy) activeCategories.push('fallacy');
+    if (options.tactic) activeCategories.push('tactic');
+    
+    if (activeCategories.length < 3) {
+      data.findings = data.findings.filter(f => activeCategories.includes(f.category));
+    }
+  }
+  
+  return data;
 }
 
 // Show inline results for context menu (no sendResponse available)

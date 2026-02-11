@@ -16,8 +16,7 @@ const copyRewriteBtn = document.getElementById('copyRewrite');
 // Options
 const optBias = document.getElementById('optBias');
 const optFallacy = document.getElementById('optFallacy');
-const optEthics = document.getElementById('optEthics');
-const optTone = document.getElementById('optTone');
+const optTactic = document.getElementById('optTactic');
 
 let currentSelectedText = '';
 
@@ -25,8 +24,7 @@ let currentSelectedText = '';
 const defaultOptions = {
   bias: true,
   fallacy: true,
-  ethics: false,
-  tone: false
+  tactic: true
 };
 
 // Initialize popup
@@ -93,8 +91,7 @@ async function loadOptions() {
   // Apply saved state to buttons
   optBias.classList.toggle('active', options.bias);
   optFallacy.classList.toggle('active', options.fallacy);
-  optEthics.classList.toggle('active', options.ethics);
-  optTone.classList.toggle('active', options.tone);
+  optTactic.classList.toggle('active', options.tactic !== false);
 }
 
 // Save options to storage
@@ -102,20 +99,37 @@ async function saveOptions() {
   const options = {
     bias: optBias.classList.contains('active'),
     fallacy: optFallacy.classList.contains('active'),
-    ethics: optEthics.classList.contains('active'),
-    tone: optTone.classList.contains('active')
+    tactic: optTactic.classList.contains('active')
   };
   await chrome.storage.local.set({ factifyOptions: options });
 }
 
 // Set up click handlers for option buttons
 function setupOptionButtons() {
-  [optBias, optFallacy, optEthics, optTone].forEach(btn => {
+  [optBias, optFallacy, optTactic].forEach(btn => {
     btn.addEventListener('click', () => {
       btn.classList.toggle('active');
       saveOptions();
     });
   });
+}
+
+// Filter analysis results based on which category toggles are active
+function filterResults(data, settings) {
+  if (!data || !data.findings) return data;
+  
+  const activeCategories = [];
+  if (settings.detectBias) activeCategories.push('bias');
+  if (settings.detectFallacies) activeCategories.push('fallacy');
+  if (settings.detectTactics) activeCategories.push('tactic');
+  
+  // If all are active, no filtering needed
+  if (activeCategories.length === 3) return data;
+  
+  return {
+    ...data,
+    findings: data.findings.filter(f => activeCategories.includes(f.category))
+  };
 }
 
 // Add debug logging for selection and analyze button
@@ -150,8 +164,7 @@ analyzeBtn.addEventListener('click', async () => {
     const settings = {
       detectBias: optBias.classList.contains('active'),
       detectFallacies: optFallacy.classList.contains('active'),
-      detectEthicalConcerns: optEthics.classList.contains('active'),
-      analyzeTone: optTone.classList.contains('active')
+      detectTactics: optTactic.classList.contains('active')
     };
     
     // Also show loading state on the page
@@ -171,13 +184,16 @@ analyzeBtn.addEventListener('click', async () => {
     if (!response.ok) throw new Error('Analysis failed');
     
     const data = await response.json();
-    displayResults(data);
+    
+    // Filter findings based on active options
+    const filteredData = filterResults(data, settings);
+    displayResults(filteredData);
 
-    // Forward results to the content script so highlights appear on the page
+    // Forward filtered results to the content script so highlights appear on the page
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.id) {
-        chrome.tabs.sendMessage(tab.id, { action: 'showResults', loading: false, data });
+        chrome.tabs.sendMessage(tab.id, { action: 'showResults', loading: false, data: filteredData });
       }
     } catch (_) {}
     
@@ -228,9 +244,15 @@ function displayResults(data) {
         'bias': 'Bias Detected',
         'tactic': 'Persuasion Tactic'
       };
+      const dotColors = {
+        'bias': '#c44030',
+        'fallacy': '#b8860b',
+        'tactic': '#2e7d6e'
+      };
+      const dotColor = dotColors[category] || '#6b6b6b';
       findingsHtml += `
         <div class="finding-item ${category}">
-          <div class="finding-type">${categoryLabels[category] || 'Finding'}</div>
+          <div class="finding-type"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${dotColor};margin-right:4px;vertical-align:middle;"></span>${categoryLabels[category] || 'Finding'}</div>
           <div class="finding-text"><strong>${finding.label || finding.categoryId || category}:</strong> ${finding.explanation}</div>
           ${finding.quote ? `<div class="finding-quote">"${finding.quote}"</div>` : ''}
         </div>
