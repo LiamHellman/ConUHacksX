@@ -67,7 +67,7 @@ function showFactifyButton(x, y, text) {
   // Store the selected text
   factifyButton.dataset.text = text;
   
-  factifyButton.addEventListener('click', (e) => {
+  factifyButton.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -79,13 +79,36 @@ function showFactifyButton(x, y, text) {
     
     hideFactifyButton();
     
-    // Store in chrome storage and trigger analysis
-    chrome.storage.local.set({ selectedText }, () => {
+    // Show loading panel immediately
+    showResultsPanel(true, null, null);
+    
+    // Store in chrome storage
+    try {
+      await chrome.storage.local.set({ selectedText });
+    } catch (_) {}
+    
+    // Try sending to background for analysis
+    try {
       chrome.runtime.sendMessage({ 
         action: 'analyzeText', 
         text: selectedText 
       });
-    });
+    } catch (err) {
+      // If background script is unavailable, do direct fetch
+      console.warn('[Factify] Background script unavailable, fetching directly:', err);
+      try {
+        const response = await fetch('https://factify-api.onrender.com/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: selectedText, settings: {} })
+        });
+        if (!response.ok) throw new Error('Analysis failed');
+        const data = await response.json();
+        showResultsPanel(false, data, null);
+      } catch (fetchErr) {
+        showResultsPanel(false, null, fetchErr.message);
+      }
+    }
   });
   
   document.body.appendChild(factifyButton);

@@ -1,5 +1,5 @@
 /* Factify floating button — Paper editorial style */
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+/* NOTE: @import blocked in content scripts by CSP. Fonts use system fallbacks. */
 
 #factify-analyze-btn {
   position: absolute;
@@ -13,7 +13,7 @@
   border-radius: 0;
   box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.03);
   cursor: pointer;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', -apple-system, 'Segoe UI', system-ui, sans-serif;
   animation: factify-fade-in 0.2s ease-out;
   user-select: none;
   color: #1a1a1a;
@@ -26,11 +26,12 @@
 }
 
 #factify-analyze-btn .factify-icon {
-  font-size: 14px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   color: #c44030;
   font-weight: 700;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 #factify-analyze-btn .factify-text {
@@ -39,6 +40,7 @@
   color: #1a1a1a;
   white-space: nowrap;
   letter-spacing: 0.3px;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
 }
 
 @keyframes factify-fade-in {
@@ -92,7 +94,7 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
   z-index: 2147483647;
   overflow: hidden;
-  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   animation: factify-slide-in 0.3s ease-out;
   resize: both;
   display: flex;
@@ -127,7 +129,7 @@
   font-size: 18px;
   font-weight: 400;
   color: #1a1a1a;
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 #factify-results-panel .factify-close {
@@ -186,7 +188,7 @@
   font-size: 22px;
   font-weight: 700;
   color: #c44030;
-  font-family: 'DM Serif Display', Georgia, serif;
+  font-family: Georgia, 'Times New Roman', serif;
   position: relative;
   z-index: 1;
 }
