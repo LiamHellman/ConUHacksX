@@ -27,11 +27,20 @@ const upload = multer({ dest: "uploads/" });
 // Middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://factify.tech",
-      "https://www.factify.tech",
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      // Allow localhost, factify.tech, and chrome extensions
+      if (
+        origin.startsWith('http://localhost') ||
+        origin.startsWith('https://factify.tech') ||
+        origin.startsWith('https://www.factify.tech') ||
+        origin.startsWith('chrome-extension://')
+      ) {
+        return callback(null, true);
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
     methods: ["GET", "POST"],
     credentials: true,
   }),

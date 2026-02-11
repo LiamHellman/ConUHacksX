@@ -4,11 +4,32 @@ const API_URL = 'https://factify-api.onrender.com';
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'analyzeText') {
-    // Open the popup - Chrome doesn't allow programmatic popup opening,
-    // so we'll show inline results instead
-    showInlineResults(sender.tab.id, request.text);
+    // Run analysis and send response back via sendResponse
+    doAnalysis(request.text)
+      .then(data => {
+        // Also push results to the content script's panel
+        if (sender.tab?.id) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            action: 'showResults',
+            loading: false,
+            data
+          }).catch(() => {});
+        }
+        sendResponse({ success: true, data });
+      })
+      .catch(err => {
+        if (sender.tab?.id) {
+          chrome.tabs.sendMessage(sender.tab.id, {
+            action: 'showResults',
+            loading: false,
+            error: err.message
+          }).catch(() => {});
+        }
+        sendResponse({ success: false, error: err.message });
+      });
+    return true; // keep message channel open for async sendResponse
   }
-  return true;
+  return false;
 });
 
 // Context menu for right-click analysis
@@ -26,43 +47,43 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-// Read user-selected analysis options from chrome.storage.local (factifyOptions) and pass them to the API, matching popup.js logic.
+// Perform analysis via API
+async function doAnalysis(text) {
+  const result = await chrome.storage.local.get(['factifyOptions']);
+  const options = result.factifyOptions || { bias: true, fallacy: true, ethics: false, tone: false };
+  const settings = {
+    detectBias: options.bias,
+    detectFallacies: options.fallacy,
+    detectEthicalConcerns: options.ethics,
+    analyzeTone: options.tone
+  };
+  const response = await fetch(`${API_URL}/api/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, settings })
+  });
+  if (!response.ok) throw new Error('Analysis failed');
+  return await response.json();
+}
+
+// Show inline results for context menu (no sendResponse available)
 async function showInlineResults(tabId, text) {
-  // First show loading state
   chrome.tabs.sendMessage(tabId, {
     action: 'showResults',
     loading: true
-  });
+  }).catch(() => {});
   try {
-    // Read options from storage
-    const result = await chrome.storage.local.get(['factifyOptions']);
-    const options = result.factifyOptions || { bias: true, fallacy: true, ethics: false, tone: false };
-    const settings = {
-      detectBias: options.bias,
-      detectFallacies: options.fallacy,
-      detectEthicalConcerns: options.ethics,
-      analyzeTone: options.tone
-    };
-    const response = await fetch(`${API_URL}/api/analyze`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, settings })
-    });
-    if (!response.ok) throw new Error('Analysis failed');
-    const data = await response.json();
+    const data = await doAnalysis(text);
     chrome.tabs.sendMessage(tabId, {
       action: 'showResults',
       loading: false,
       data
-    });
+    }).catch(() => {});
   } catch (error) {
     chrome.tabs.sendMessage(tabId, {
       action: 'showResults',
       loading: false,
       error: error.message
-    });
+    }).catch(() => {});
   }
 }
-
-// TODO: Read analysis options from a shared config or expose toggles in the extension popup, matching the web app's checks (bias, fallacies, tactic)
-// For now, you can import a shared config or expose UI in popup.js/html for user toggles.

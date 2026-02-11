@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "Analyze any text for bias, logical fallacies, and get AI-powered rewrites",
   "permissions": ["activeTab", "storage", "contextMenus"],
+  "host_permissions": ["https://factify-api.onrender.com/*"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Factify",

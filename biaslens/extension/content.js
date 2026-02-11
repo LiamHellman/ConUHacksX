@@ -87,27 +87,21 @@ function showFactifyButton(x, y, text) {
       await chrome.storage.local.set({ selectedText });
     } catch (_) {}
     
-    // Try sending to background for analysis
+    // Send to background for analysis and wait for response
     try {
-      chrome.runtime.sendMessage({ 
+      const data = await chrome.runtime.sendMessage({ 
         action: 'analyzeText', 
         text: selectedText 
       });
-    } catch (err) {
-      // If background script is unavailable, do direct fetch
-      console.warn('[Factify] Background script unavailable, fetching directly:', err);
-      try {
-        const response = await fetch('https://factify-api.onrender.com/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: selectedText, settings: {} })
-        });
-        if (!response.ok) throw new Error('Analysis failed');
-        const data = await response.json();
-        showResultsPanel(false, data, null);
-      } catch (fetchErr) {
-        showResultsPanel(false, null, fetchErr.message);
+      // Background will respond with { success, data } or { success, error }
+      if (data && data.success && data.data) {
+        showResultsPanel(false, data.data, null);
+      } else if (data && data.error) {
+        showResultsPanel(false, null, data.error);
       }
+    } catch (err) {
+      console.error('[Factify] Analysis failed:', err);
+      showResultsPanel(false, null, err.message || 'Analysis failed. Please try again.');
     }
   });
   
