@@ -151,7 +151,7 @@ export default function DocumentViewer({
   if (!content) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8">
-        <p className="text-text-faint text-sm">No document loaded.</p>
+        <p className="text-text-faint text-sm italic">No document loaded</p>
       </div>
     );
   }

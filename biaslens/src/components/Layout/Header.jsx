@@ -1,4 +1,4 @@
-import { Eye } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 export default function Header({ showAnalysis, onBackToHome }) {
   const handleLogoClick = () => {
@@ -14,13 +14,15 @@ export default function Header({ showAnalysis, onBackToHome }) {
   };
 
   return (
-    <header className="header-root h-16 px-6 bg-cream border-b border-rule flex items-center justify-between sticky top-0 z-50 flex-nowrap">
+    <header className="header-root h-16 px-6 bg-cream flex items-center justify-between sticky top-0 z-50 flex-nowrap">
       {/* Logo */}
       <button
         onClick={handleLogoClick}
         className="header-logo flex items-center gap-3 hover:opacity-70 transition-opacity"
       >
-        <Eye className="w-5 h-5 text-accent" />
+        {showAnalysis && (
+          <ArrowLeft className="w-4 h-4 text-text-muted" />
+        )}
         <span className="header-title text-xl text-text-primary" style={{ fontFamily: "var(--font-serif)" }}>
           Factify
         </span>
@@ -28,14 +30,9 @@ export default function Header({ showAnalysis, onBackToHome }) {
 
       {/* Nav */}
       <nav className="header-nav flex items-center gap-8">
-        {!showAnalysis && (
-          <a
-            href="#about"
-            className="text-text-muted hover:text-text-primary transition-colors text-sm font-medium"
-          >
-            About
-          </a>
-        )}
+        <span className="text-text-muted text-sm font-medium">
+          Bias &amp; Fallacy Detection
+        </span>
       </nav>
     </header>
   );

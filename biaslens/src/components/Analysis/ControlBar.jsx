@@ -1,5 +1,4 @@
-import { Zap, Scale, AlertOctagon, Brain } from "lucide-react";
-import Dock from "../Dock/Dock";
+import { ArrowRight, Brain, Scale, AlertOctagon } from "lucide-react";
 
 // Paper palette category colors
 const CATEGORY_COLORS = {
@@ -16,71 +15,80 @@ export default function ControlBar({
   hasContent,
   isMobile = false,
 }) {
-  const dockItems = [
+  const toggleItems = [
     {
-      icon: <Brain size={22} />,
+      key: "bias",
+      icon: <Brain size={16} />,
       label: "Bias Detection",
-      onClick: () => onToggleCheck("bias"),
+      color: CATEGORY_COLORS.bias,
       isActive: checks.bias,
-      type: "bias",
-      className: "dock-item--bias",
     },
     {
-      icon: <Scale size={22} />,
+      key: "fallacies",
+      icon: <Scale size={16} />,
       label: "Logical Fallacies",
-      onClick: () => onToggleCheck("fallacies"),
+      color: CATEGORY_COLORS.fallacy,
       isActive: checks.fallacies,
-      type: "fallacy",
-      className: "dock-item--fallacy",
     },
     {
-      icon: <AlertOctagon size={22} />,
+      key: "tactic",
+      icon: <AlertOctagon size={16} />,
       label: "Tactics",
-      onClick: () => onToggleCheck("tactic"),
+      color: CATEGORY_COLORS.tactic,
       isActive: checks.tactic,
-      type: "tactic",
-      className: "dock-item--tactic",
     },
   ];
 
   const anyOn = Object.values(checks).some(Boolean);
   const enabled = hasContent && !isAnalyzing && anyOn;
 
-  const dockSizing = isMobile
-    ? { panelHeight: 48, baseItemSize: 38, magnification: 46, distance: 120 }
-    : { panelHeight: 56, baseItemSize: 44, magnification: 58, distance: 150 };
-
   return (
-    <div className="control-bar h-16 px-6 bg-white border-b border-rule flex items-center justify-between overflow-visible">
-      <Dock
-        items={dockItems}
-        panelHeight={dockSizing.panelHeight}
-        baseItemSize={dockSizing.baseItemSize}
-        magnification={dockSizing.magnification}
-        distance={dockSizing.distance}
-        className={isMobile ? "dock-panel--mobile" : ""}
-      />
+    <div className="control-bar h-14 px-6 bg-cream border-b border-rule flex items-center justify-between overflow-visible">
+      {/* Toggle Pills */}
+      <div className="flex items-center gap-2">
+        {toggleItems.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => onToggleCheck(item.key)}
+            className={`
+              flex items-center gap-2 px-4 py-2 text-sm font-medium border transition-colors duration-150
+              ${item.isActive
+                ? "bg-white border-rule text-text-primary"
+                : "bg-transparent border-transparent text-text-muted hover:text-text-body hover:border-rule-light"
+              }
+            `}
+          >
+            <span
+              className="w-2 h-2 rounded-full flex-shrink-0"
+              style={{ backgroundColor: item.color }}
+            />
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
 
+      {/* Analyze Button */}
       <button
         onClick={onAnalyze}
         disabled={!enabled}
         className={`
-          analyze-button flex items-center gap-2 px-6 py-2.5 font-semibold
+          analyze-button flex items-center gap-2 px-5 py-2 font-medium text-sm
           transition-colors duration-200
           ${enabled
-            ? "bg-accent hover:bg-accent-hover text-white"
-            : "bg-cream-darker text-text-faint cursor-not-allowed"
+            ? "text-text-primary hover:text-accent"
+            : "text-text-faint cursor-not-allowed"
           }
         `}
       >
         {isAnalyzing ? (
           <>
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-text-faint/30 border-t-accent rounded-full animate-spin" />
             <span>Analyzing...</span>
           </>
         ) : (
           <>
-            <Zap className="w-5 h-5" />
+            <ArrowRight className="w-4 h-4" />
             <span>Analyze</span>
           </>
         )}

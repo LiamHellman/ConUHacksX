@@ -230,7 +230,7 @@ export default function UploadPanel({
       <div className="px-5 py-4 border-b border-rule">
         <h2 className="text-lg font-semibold text-text-primary" style={{ fontFamily: "var(--font-serif)" }}>Input</h2>
         <p className="text-sm text-text-muted mt-1">
-          Upload document, audio, video or YouTube link
+          Upload document or paste text
         </p>
       </div>
 
@@ -257,43 +257,13 @@ export default function UploadPanel({
           </div>
         ) : !uploadedFile && !pastedText ? (
           <>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-text-muted uppercase">
-                Analyze YouTube
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-faint" />
-                  <input
-                    type="text"
-                    placeholder="https://youtube.com/..."
-                    value={youtubeUrl}
-                    onChange={(e) => setYoutubeUrl(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-white border border-rule focus:border-accent text-sm text-text-primary outline-none transition-all"
-                  />
-                </div>
-                <button
-                  onClick={handleYoutubeSubmit}
-                  disabled={!youtubeUrl.trim()}
-                  className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:bg-cream-darker disabled:text-text-faint text-white text-sm font-medium transition-colors"
-                >
-                  Load
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 my-2">
-              <div className="flex-1 h-px bg-rule" />
-              <span className="text-[10px] text-text-faint uppercase">OR</span>
-              <div className="flex-1 h-px bg-rule" />
-            </div>
-
+            {/* Upload File Area */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`relative border-2 border-dashed p-8 text-center cursor-pointer transition-all ${
+              className={`relative border border-dashed p-6 text-center cursor-pointer transition-all ${
                 isDragging
                   ? "border-accent bg-accent/5"
                   : "border-rule hover:border-accent/50"
@@ -307,45 +277,32 @@ export default function UploadPanel({
                 onChange={handleFileInput}
                 className="hidden"
               />
-              <Upload className="w-8 h-8 mx-auto mb-4 text-text-muted" />
-              <p className="text-text-primary font-medium mb-1">Upload File</p>
-              <p className="text-xs text-text-faint">
-                PDF, MP3, MP4, etc. (multi-select supported)
-              </p>
+              <Upload className="w-6 h-6 mx-auto mb-3 text-text-muted" />
+              <p className="text-text-primary font-medium text-sm">Upload File</p>
             </div>
 
-            {!showTextInput ? (
-              <button
-                onClick={() => setShowTextInput(true)}
-                className="w-full flex items-center justify-center gap-2 py-4 border border-rule hover:border-accent/50 text-text-muted hover:text-accent transition-all"
-              >
-                <ClipboardPaste className="w-5 h-5" />
-                <span>Paste text directly</span>
-              </button>
-            ) : (
-              <div className="space-y-4">
-                <textarea
-                  value={textValue}
-                  onChange={(e) => setTextValue(e.target.value)}
-                  placeholder="Paste text..."
-                  className="w-full h-48 px-4 py-3 bg-white border border-rule focus:border-accent text-text-body resize-none outline-none"
-                />
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowTextInput(false)}
-                    className="flex-1 py-2 border border-rule text-text-muted"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleTextSubmit}
-                    className="flex-1 py-2 bg-accent text-white"
-                  >
-                    Use Text
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* OR Divider */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-px bg-rule" />
+              <span className="text-[10px] text-text-faint uppercase">OR</span>
+              <div className="flex-1 h-px bg-rule" />
+            </div>
+
+            {/* Paste Text Area */}
+            <textarea
+              value={textValue}
+              onChange={(e) => setTextValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  handleTextSubmit();
+                }
+              }}
+              onBlur={() => {
+                if (textValue.trim()) handleTextSubmit();
+              }}
+              placeholder="Paste text..."
+              className="w-full h-32 px-4 py-3 bg-white border border-rule focus:border-accent text-text-body text-sm resize-none outline-none"
+            />
           </>
         ) : (
           <div className="bg-white border border-rule p-5">
