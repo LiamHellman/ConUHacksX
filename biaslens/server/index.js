@@ -8,10 +8,7 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { execFile } from "child_process";
-import { promisify } from "util";
 
-const execFilePromise = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -40,41 +37,80 @@ function extractVideoId(url) {
 }
 
 /**
- * Download YouTube audio using yt-dlp (installed via pip).
- * Tries: yt-dlp binary, python3 -m yt_dlp, python -m yt_dlp.
+ * Fetch YouTube transcript by scraping the watch page for caption tracks.
+ * Works with both manual and auto-generated captions. No external dependencies.
  */
-async function downloadYouTubeAudio(videoUrl, outputPath) {
-  const ytdlpArgs = [
-    "-x",
-    "--audio-format", "mp3",
-    "--force-overwrites",
-    "-o", outputPath,
-    videoUrl,
-  ];
+async function fetchYouTubeTranscript(videoId) {
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-  const attempts = [
-    { cmd: "yt-dlp", args: ytdlpArgs },
-    { cmd: "python3", args: ["-m", "yt_dlp", ...ytdlpArgs] },
-    { cmd: "python", args: ["-m", "yt_dlp", ...ytdlpArgs] },
-  ];
+  // 1. Fetch the YouTube watch page
+  const pageRes = await fetch(watchUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  });
+  if (!pageRes.ok) throw new Error(`Failed to fetch YouTube page (${pageRes.status})`);
+  const html = await pageRes.text();
 
-  // If YTDLP_PATH is set, try that first
-  if (process.env.YTDLP_PATH?.trim()) {
-    attempts.unshift({ cmd: process.env.YTDLP_PATH.trim(), args: ytdlpArgs });
+  // 2. Extract captions player response JSON
+  //    YouTube embeds this in a script tag as ytInitialPlayerResponse = {...};
+  const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\})\s*;\s*(?:var|const|let|<\/script)/s);
+  if (!playerMatch) {
+    throw new Error('Could not find player response on YouTube page');
   }
 
-  const errors = [];
-  for (const { cmd, args } of attempts) {
-    try {
-      console.log(`  Trying: ${cmd} ${args[0]}...`);
-      await execFilePromise(cmd, args, { timeout: 120000 });
-      return; // success
-    } catch (err) {
-      errors.push(`${cmd}: ${err?.message?.split('\n')[0] || 'unknown'}`);
-    }
+  let playerResponse;
+  try {
+    playerResponse = JSON.parse(playerMatch[1]);
+  } catch (e) {
+    throw new Error('Failed to parse YouTube player response JSON');
   }
 
-  throw new Error(`yt-dlp download failed. Tried: ${errors.join(' | ')}`);
+  // 3. Find caption tracks
+  const captions = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!captions || captions.length === 0) {
+    throw new Error('No captions available for this video (no auto-generated or manual subtitles found)');
+  }
+
+  // Prefer English, fall back to first available
+  let track = captions.find(t => t.languageCode === 'en');
+  if (!track) track = captions.find(t => t.languageCode?.startsWith('en'));
+  if (!track) track = captions[0]; // any language
+
+  const captionUrl = track.baseUrl;
+  if (!captionUrl) throw new Error('Caption track has no URL');
+
+  console.log(`  Using caption track: ${track.name?.simpleText || track.languageCode} (${track.kind || 'manual'})`);
+
+  // 4. Fetch the caption XML
+  const captionRes = await fetch(captionUrl);
+  if (!captionRes.ok) throw new Error(`Failed to fetch captions XML (${captionRes.status})`);
+  const xml = await captionRes.text();
+
+  // 5. Parse the XML to extract text segments
+  //    Format: <text start="1.23" dur="4.56">caption text here</text>
+  const segments = [];
+  const textRegex = /<text[^>]*>([\s\S]*?)<\/text>/g;
+  let match;
+  while ((match = textRegex.exec(xml)) !== null) {
+    let text = match[1]
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/<[^>]+>/g, '') // strip any inner tags
+      .trim();
+    if (text) segments.push(text);
+  }
+
+  if (segments.length === 0) {
+    throw new Error('Captions XML contained no text segments');
+  }
+
+  return segments.join(' ');
 }
 
 // Middleware
@@ -87,7 +123,7 @@ app.use(
 );
 app.use(express.json({ limit: "2mb" }));
 
-// --- ROUTE: YouTube Transcription (yt-dlp + Whisper) ---
+// --- ROUTE: YouTube Transcription (scrape captions directly) ---
 app.post("/api/youtube", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
@@ -95,42 +131,17 @@ app.post("/api/youtube", async (req, res) => {
   const videoId = extractVideoId(url);
   if (!videoId) return res.status(400).json({ error: "Could not extract video ID from URL" });
 
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const timestamp = Date.now();
-  const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
-
   try {
-    console.log(`🚀 Downloading audio for: ${videoUrl}`);
-
-    // 1. Download audio as MP3 via yt-dlp
-    await downloadYouTubeAudio(videoUrl, tempPath);
-
-    // Verify file exists
-    if (!fs.existsSync(tempPath)) {
-      throw new Error("Audio download completed but file not found");
-    }
-
-    console.log("✅ Download complete. Transcribing with OpenAI Whisper...");
-
-    // 2. Transcribe with Whisper
-    const transcription = await client.audio.transcriptions.create({
-      file: fs.createReadStream(tempPath),
-      model: "whisper-1",
-    });
-
-    console.log(`✅ Transcription complete: ${transcription.text.length} chars`);
-    return res.json({ transcript: transcription.text });
+    console.log(`🚀 Fetching transcript for video: ${videoId}`);
+    const transcript = await fetchYouTubeTranscript(videoId);
+    console.log(`✅ Transcript fetched: ${transcript.length} chars`);
+    return res.json({ transcript });
   } catch (error) {
     console.error("❌ YouTube Route Error:", error.message);
     res.status(500).json({
       error: "YouTube processing failed.",
       details: error.message,
     });
-  } finally {
-    // Always clean up temp file
-    if (fs.existsSync(tempPath)) {
-      try { fs.unlinkSync(tempPath); } catch (_) {}
-    }
   }
 });
 
