@@ -1,101 +1,58 @@
 import { useRef, useEffect, useState } from "react";
 
 /**
- * Dark-theme friendly OKLCH palette (no "success green"):
- * - bias: magenta
- * - fallacy: amber
- * - tactic: cyan
- * - factcheck: violet (reserved / optional)
+ * Paper-theme editorial palette:
+ * - bias: muted red #c44030
+ * - fallacy: dark gold #b8860b
+ * - tactic: teal #2e7d6e
+ * - factcheck: muted purple (reserved)
  */
-const TYPE_OKLCH = {
-  bias: { L: 0.72, C: 0.14, h: 340 },
-  fallacy: { L: 0.74, C: 0.13, h: 75 },
-  tactic: { L: 0.74, C: 0.12, h: 210 },
-  factcheck: { L: 0.72, C: 0.13, h: 280 },
+const TYPE_COLORS = {
+  bias:      { r: 196, g: 64,  b: 48  },
+  fallacy:   { r: 184, g: 134, b: 11  },
+  tactic:    { r: 46,  g: 125, b: 110 },
+  factcheck: { r: 120, g: 80,  b: 160 },
 };
 
 function severityAlpha(sev) {
   switch (sev) {
     case "high":
-      return 0.40;
+      return 0.18;
     case "medium":
-      return 0.26;
+      return 0.12;
     case "low":
     default:
-      return 0.14;
+      return 0.07;
   }
 }
 
-// --- OKLCH -> OKLab
-function oklchToOklab({ L, C, h }) {
-  const hr = (h * Math.PI) / 180;
-  const a = C * Math.cos(hr);
-  const b = C * Math.sin(hr);
-  return { L, a, b };
-}
-
-// --- OKLab -> linear sRGB (Björn Ottosson OKLab)
-function oklabToLinearSRGB({ L, a, b }) {
-  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
-  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
-  const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
-
-  const l = l_ * l_ * l_;
-  const m = m_ * m_ * m_;
-  const s = s_ * s_ * s_;
-
-  const r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-  const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-  const bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
-
-  return { r, g, b: bl };
-}
-
-function linearToSRGBChannel(x) {
-  x = Math.min(1.0, Math.max(0.0, x));
-  return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
-}
-
 /**
- * Blend in OKLab space (commutative):
- * - weight each category color by severityAlpha
- * - mix OKLab via weighted average
- * - compute a combined alpha: 1 - Π(1 - a_i), then cap
+ * Simple blending for overlapping findings on paper/white background.
+ * Returns an { r, g, b, baseAlpha } for use in rgba().
  */
 function blendedBg(findings) {
   const cands = (findings || []).filter(Boolean);
   if (cands.length === 0) return null;
 
-  let wSum = 0;
-  let LSum = 0,
-    aSum = 0,
-    bSum = 0;
-
+  let rSum = 0, gSum = 0, bSum = 0, wSum = 0;
   let alphaComp = 1;
 
   for (const f of cands) {
-    const oklch = TYPE_OKLCH[f.type] || TYPE_OKLCH.factcheck;
-    const lab = oklchToOklab(oklch);
+    const col = TYPE_COLORS[f.type] || TYPE_COLORS.factcheck;
     const w = severityAlpha(f.severity);
-
+    rSum += col.r * w;
+    gSum += col.g * w;
+    bSum += col.b * w;
     wSum += w;
-    LSum += lab.L * w;
-    aSum += lab.a * w;
-    bSum += lab.b * w;
-
     alphaComp *= 1 - w;
   }
 
-  const labMix = { L: LSum / wSum, a: aSum / wSum, b: bSum / wSum };
-  const lin = oklabToLinearSRGB(labMix);
-
-  const r = Math.round(255 * linearToSRGBChannel(lin.r));
-  const g = Math.round(255 * linearToSRGBChannel(lin.g));
-  const b = Math.round(255 * linearToSRGBChannel(lin.b));
-
-  const baseAlpha = Math.min(0.40, 1 - alphaComp);
-
-  return { r, g, b, baseAlpha };
+  return {
+    r: Math.round(rSum / wSum),
+    g: Math.round(gSum / wSum),
+    b: Math.round(bSum / wSum),
+    baseAlpha: Math.min(0.20, 1 - alphaComp),
+  };
 }
 
 function severityRank(sev) {
@@ -128,18 +85,18 @@ function pickPrimary(findings) {
   return best;
 }
 
-function ringClassForType(type) {
+function borderColorForType(type) {
   switch (type) {
     case "bias":
-      return "ring-pink-400";
+      return "#c44030";
     case "fallacy":
-      return "ring-amber-400";
+      return "#b8860b";
     case "tactic":
-      return "ring-blue-400";
+      return "#2e7d6e";
     case "factcheck":
-      return "ring-purple-400";
+      return "#7850a0";
     default:
-      return "ring-purple-400";
+      return "#c44030";
   }
 }
 
@@ -189,13 +146,12 @@ export default function DocumentViewer({
   }, [content, spans]);
 
   const baseClass =
-    "cursor-pointer transition-all duration-200 rounded px-0.5 -mx-0.5 hover:brightness-110";
+    "cursor-pointer transition-all duration-200 px-0.5 -mx-0.5 hover:opacity-80";
 
   if (!content) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8">
-        {/* Keep your existing empty state here if you had one */}
-        <p className="text-gray-500 text-sm">No document loaded.</p>
+        <p className="text-text-faint text-sm">No document loaded.</p>
       </div>
     );
   }
@@ -208,37 +164,36 @@ export default function DocumentViewer({
     return fList.some((f) => f.id === selectedFinding.id);
   };
 
-  const ringClass = hasSelection
-    ? `ring-2 ring-offset-2 ring-offset-dark-800 ${ringClassForType(
-        selectedFinding.type
-      )}`
-    : "";
+  // Bottom-border accent on selected text (editorial style)
+  const selectedBorderColor = hasSelection
+    ? borderColorForType(selectedFinding.type)
+    : "transparent";
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-6 py-4 border-b border-dark-700 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Document</h2>
+      <div className="px-6 py-4 border-b border-rule flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-text-primary" style={{ fontFamily: "var(--font-serif)" }}>Document</h2>
         {spans && spans.length > 0 && (
           <div className="document-legend flex items-center gap-4 text-sm flex-wrap">
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-pink-400" />
-              <span className="text-gray-400">Bias</span>
+              <span className="w-2 h-2" style={{ backgroundColor: "#c44030" }} />
+              <span className="text-text-muted">Bias</span>
             </span>
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-amber-400" />
-              <span className="text-gray-400">Fallacy</span>
+              <span className="w-2 h-2" style={{ backgroundColor: "#b8860b" }} />
+              <span className="text-text-muted">Fallacy</span>
             </span>
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-blue-400" />
-              <span className="text-gray-400">Tactic</span>
+              <span className="w-2 h-2" style={{ backgroundColor: "#2e7d6e" }} />
+              <span className="text-text-muted">Tactic</span>
             </span>
           </div>
         )}
       </div>
 
       <div ref={containerRef} className="document-content flex-1 overflow-y-auto p-6">
-        <div className="prose prose-invert max-w-none">
-          <p className="text-gray-300 leading-relaxed whitespace-pre-wrap text-base">
+        <div className="prose max-w-none">
+          <p className="text-text-body leading-relaxed whitespace-pre-wrap text-base">
             {(() => {
               const out = [];
               let i = 0;
@@ -291,7 +246,7 @@ export default function DocumentViewer({
                   continue;
                 }
 
-                // Selected run: group consecutive selected segments and wrap them in ONE ring.
+                // Selected run: group consecutive selected segments and wrap with bottom-border accent.
                 const start = i;
                 const group = [];
                 while (i < renderSegments.length && segIsSelected(renderSegments[i])) {
@@ -302,8 +257,11 @@ export default function DocumentViewer({
                 out.push(
                   <span
                     key={`sel-${start}`}
-                    // box-decoration-clone makes the ring behave better across line wraps
-                    className={`box-decoration-clone rounded px-0.5 -mx-0.5 ${ringClass}`}
+                    className="px-0.5 -mx-0.5"
+                    style={{
+                      borderBottom: `2px solid ${selectedBorderColor}`,
+                      paddingBottom: "1px",
+                    }}
                   >
                     {group.map(({ seg: gSeg, idx }) => {
                       const fList = gSeg.span.findings || [];

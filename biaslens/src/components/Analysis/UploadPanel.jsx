@@ -218,38 +218,38 @@ export default function UploadPanel({
   const getFileIcon = () => {
     if (mediaFile) {
       if (isVideoFile(mediaFile))
-        return <Video className="w-6 h-6 text-purple-400" />;
+        return <Video className="w-6 h-6 text-accent" />;
       if (isAudioFile(mediaFile))
-        return <Music className="w-6 h-6 text-purple-400" />;
+        return <Music className="w-6 h-6 text-accent" />;
     }
-    return <FileText className="w-6 h-6 text-purple-400" />;
+    return <FileText className="w-6 h-6 text-accent" />;
   };
 
   return (
     <div className="h-full flex flex-col">
-      <div className="px-5 py-4 border-b border-dark-700">
-        <h2 className="text-lg font-semibold text-white">Input</h2>
-        <p className="text-sm text-gray-500 mt-1">
+      <div className="px-5 py-4 border-b border-rule">
+        <h2 className="text-lg font-semibold text-text-primary" style={{ fontFamily: "var(--font-serif)" }}>Input</h2>
+        <p className="text-sm text-text-muted mt-1">
           Upload document, audio, video or YouTube link
         </p>
       </div>
 
       <div className="upload-content flex-1 p-5 overflow-y-auto space-y-4">
         {isTranscribing ? (
-          <div className="bg-dark-800 border border-purple-500/30 rounded-xl p-6">
+          <div className="bg-white border border-rule p-6">
             <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4">
-                <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+              <div className="w-16 h-16 flex items-center justify-center mb-4">
+                <Loader2 className="w-8 h-8 text-accent animate-spin" />
               </div>
-              <h3 className="text-white font-medium mb-2">
+              <h3 className="text-text-primary font-medium mb-2">
                 Transcribing Media
               </h3>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-text-muted mb-4">
                 Extracting text from {mediaFile?.name}
               </p>
-              <div className="w-full bg-dark-700 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-cream-darker h-2 overflow-hidden">
                 <div
-                  className="bg-purple-500 h-full rounded-full animate-pulse"
+                  className="bg-accent h-full animate-pulse"
                   style={{ width: "60%" }}
                 />
               </div>
@@ -258,24 +258,24 @@ export default function UploadPanel({
         ) : !uploadedFile && !pastedText ? (
           <>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-400 uppercase">
+              <label className="text-xs font-medium text-text-muted uppercase">
                 Analyze YouTube
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-faint" />
                   <input
                     type="text"
                     placeholder="https://youtube.com/..."
                     value={youtubeUrl}
                     onChange={(e) => setYoutubeUrl(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-dark-800 border border-dark-600 focus:border-red-500 rounded-lg text-sm text-white outline-none transition-all"
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-rule focus:border-accent text-sm text-text-primary outline-none transition-all"
                   />
                 </div>
                 <button
                   onClick={handleYoutubeSubmit}
                   disabled={!youtubeUrl.trim()}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-dark-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:bg-cream-darker disabled:text-text-faint text-white text-sm font-medium transition-colors"
                 >
                   Load
                 </button>
@@ -283,9 +283,9 @@ export default function UploadPanel({
             </div>
 
             <div className="flex items-center gap-4 my-2">
-              <div className="flex-1 h-px bg-dark-600" />
-              <span className="text-[10px] text-gray-600 uppercase">OR</span>
-              <div className="flex-1 h-px bg-dark-600" />
+              <div className="flex-1 h-px bg-rule" />
+              <span className="text-[10px] text-text-faint uppercase">OR</span>
+              <div className="flex-1 h-px bg-rule" />
             </div>
 
             <div
@@ -293,10 +293,10 @@ export default function UploadPanel({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+              className={`relative border-2 border-dashed p-8 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? "border-purple-500 bg-purple-500/10"
-                  : "border-dark-500 hover:border-purple-500/50"
+                  ? "border-accent bg-accent/5"
+                  : "border-rule hover:border-accent/50"
               }`}
             >
               <input
@@ -307,9 +307,9 @@ export default function UploadPanel({
                 onChange={handleFileInput}
                 className="hidden"
               />
-              <Upload className="w-8 h-8 mx-auto mb-4 text-gray-400" />
-              <p className="text-white font-medium mb-1">Upload File</p>
-              <p className="text-xs text-gray-500">
+              <Upload className="w-8 h-8 mx-auto mb-4 text-text-muted" />
+              <p className="text-text-primary font-medium mb-1">Upload File</p>
+              <p className="text-xs text-text-faint">
                 PDF, MP3, MP4, etc. (multi-select supported)
               </p>
             </div>
@@ -317,7 +317,7 @@ export default function UploadPanel({
             {!showTextInput ? (
               <button
                 onClick={() => setShowTextInput(true)}
-                className="w-full flex items-center justify-center gap-2 py-4 border border-dark-500 hover:border-purple-500/50 rounded-xl text-gray-400 hover:text-purple-400 transition-all"
+                className="w-full flex items-center justify-center gap-2 py-4 border border-rule hover:border-accent/50 text-text-muted hover:text-accent transition-all"
               >
                 <ClipboardPaste className="w-5 h-5" />
                 <span>Paste text directly</span>
@@ -328,18 +328,18 @@ export default function UploadPanel({
                   value={textValue}
                   onChange={(e) => setTextValue(e.target.value)}
                   placeholder="Paste text..."
-                  className="w-full h-48 px-4 py-3 bg-dark-800 border border-dark-600 focus:border-purple-500 rounded-xl text-white resize-none outline-none"
+                  className="w-full h-48 px-4 py-3 bg-white border border-rule focus:border-accent text-text-body resize-none outline-none"
                 />
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowTextInput(false)}
-                    className="flex-1 py-2 border border-dark-500 rounded-lg text-gray-400"
+                    className="flex-1 py-2 border border-rule text-text-muted"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleTextSubmit}
-                    className="flex-1 py-2 bg-purple-600 rounded-lg text-white"
+                    className="flex-1 py-2 bg-accent text-white"
                   >
                     Use Text
                   </button>
@@ -348,20 +348,20 @@ export default function UploadPanel({
             )}
           </>
         ) : (
-          <div className="bg-dark-800 border border-dark-600 rounded-xl p-5">
+          <div className="bg-white border border-rule p-5">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 flex items-center justify-center flex-shrink-0">
                 {getFileIcon()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-white truncate">
+                <p className="font-medium text-text-primary truncate">
                   {uploadedFile
                     ? uploadedFile.name
                     : mediaFile
                     ? mediaFile.name
                     : "Pasted Text"}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-text-muted mt-1">
                   {uploadedFile
                     ? `${(uploadedFile.size / 1024).toFixed(1)} KB`
                     : mediaFile
@@ -371,7 +371,7 @@ export default function UploadPanel({
               </div>
               <button
                 onClick={clearUpload}
-                className="p-2 text-gray-400 hover:text-white"
+                className="p-2 text-text-muted hover:text-text-primary"
               >
                 <X className="w-5 h-5" />
               </button>

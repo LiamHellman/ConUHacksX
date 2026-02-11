@@ -3,7 +3,6 @@ import { Eye } from 'lucide-react';
 export default function Header({ showAnalysis, onBackToHome }) {
   const handleLogoClick = () => {
     onBackToHome();
-    // Scroll to top after a small delay to allow state change
     setTimeout(() => {
       const homeSection = document.getElementById('home');
       if (homeSection) {
@@ -15,22 +14,25 @@ export default function Header({ showAnalysis, onBackToHome }) {
   };
 
   return (
-    <header className="header-root h-16 px-6 bg-dark-900/80 backdrop-blur-xl border-b border-dark-700 flex items-center justify-between sticky top-0 z-50 flex-nowrap">
+    <header className="header-root h-16 px-6 bg-cream border-b border-rule flex items-center justify-between sticky top-0 z-50 flex-nowrap">
       {/* Logo */}
-      <button 
+      <button
         onClick={handleLogoClick}
-        className="header-logo flex items-center gap-3 hover:opacity-80 transition-opacity"
+        className="header-logo flex items-center gap-3 hover:opacity-70 transition-opacity"
       >
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
-          <Eye className="w-5 h-5 text-white" />
-        </div>
-        <span className="header-title text-xl font-bold text-white">Factify</span>
+        <Eye className="w-5 h-5 text-accent" />
+        <span className="header-title text-xl text-text-primary" style={{ fontFamily: "var(--font-serif)" }}>
+          Factify
+        </span>
       </button>
 
       {/* Nav */}
       <nav className="header-nav flex items-center gap-8">
         {!showAnalysis && (
-          <a href="#about" className="text-gray-400 hover:text-white transition-colors text-sm font-medium">
+          <a
+            href="#about"
+            className="text-text-muted hover:text-text-primary transition-colors text-sm font-medium"
+          >
             About
           </a>
         )}

@@ -2,14 +2,13 @@ import { useState } from "react";
 import { BarChart3, List, AlertCircle, Info, ChevronRight } from "lucide-react";
 import ScoreCard from "./ScoreCard";
 
-// Theme helpers (OKLab-derived RGB injected as CSS vars by applyThemeVars())
-const BRAND_RGB = "var(--brand, var(--type-factcheck, 168 85 247))";
-const brandBg = (a) => `rgb(${BRAND_RGB} / ${a})`;
-const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
-
-const typeRgbVar = (type) => `var(--type-${type}, 255 255 255)`;
-const typeBg = (type, a) => `rgb(${typeRgbVar(type)} / ${a})`;
-const typeFg = (type, a = 1) => `rgb(${typeRgbVar(type)} / ${a})`;
+// Paper palette category colors
+const TYPE_HEX = {
+  bias: "#c44030",
+  fallacy: "#b8860b",
+  tactic: "#2e7d6e",
+  factcheck: "#7850a0",
+};
 
 export default function InsightsPanel({
   results,
@@ -29,31 +28,26 @@ export default function InsightsPanel({
 
   const getSeverityBadge = (severity) => {
     const styles = {
-      low: "bg-gray-500/20 text-gray-400",
-      medium: "bg-amber-500/20 text-amber-400",
-      high: "bg-red-500/20 text-red-400",
+      low: { backgroundColor: "rgba(154,154,154,0.10)", color: "#6b6b6b" },
+      medium: { backgroundColor: "rgba(184,134,11,0.10)", color: "#b8860b" },
+      high: { backgroundColor: "rgba(196,64,48,0.10)", color: "#c44030" },
     };
     return styles[severity] || styles.low;
   };
 
-  // Theme-driven type badge style (no Tailwind palette dependency)
   const getTypeBadgeStyle = (type) => {
-    // Your finding types are: bias | fallacy | tactic (and you may add factcheck elsewhere)
-    const t = type || "bias";
+    const hex = TYPE_HEX[type] || TYPE_HEX.bias;
     return {
-      backgroundColor: typeBg(t, 0.16),
-      color: typeFg(t, 1),
-      border: `1px solid ${typeBg(t, 0.22)}`,
+      backgroundColor: `${hex}15`,
+      color: hex,
     };
   };
 
   const renderEmptyState = () => (
     <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-      <div className="w-16 h-16 rounded-2xl bg-dark-700 flex items-center justify-center mb-4">
-        <BarChart3 className="w-8 h-8 text-gray-500" />
-      </div>
-      <h3 className="text-lg font-semibold text-white mb-2">No Analysis Yet</h3>
-      <p className="text-gray-500 text-sm max-w-xs">
+      <BarChart3 className="w-8 h-8 text-text-faint mb-4" />
+      <h3 className="text-lg font-semibold text-text-primary mb-2" style={{ fontFamily: "var(--font-serif)" }}>No Analysis Yet</h3>
+      <p className="text-text-muted text-sm max-w-xs">
         Upload a document and click Analyze to see insights
       </p>
     </div>
@@ -61,28 +55,16 @@ export default function InsightsPanel({
 
   const renderLoading = () => (
     <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-        style={{ backgroundColor: brandBg(0.10) }}
-      >
-        <div
-          className="w-8 h-8 border-3 rounded-full animate-spin"
-          style={{
-            borderColor: brandBg(0.30),
-            borderTopColor: brandBg(1),
-          }}
-        />
-      </div>
-      <h3 className="text-lg font-semibold text-white mb-2">
+      <div className="w-8 h-8 border-2 border-rule border-t-accent rounded-full animate-spin mb-4" />
+      <h3 className="text-lg font-semibold text-text-primary mb-2" style={{ fontFamily: "var(--font-serif)" }}>
         Deconstructing Argument
       </h3>
-      <p className="text-gray-500 text-sm">Exposing persuasive tactics...</p>
+      <p className="text-text-muted text-sm">Exposing persuasive tactics...</p>
     </div>
   );
 
   const renderSummary = () => (
     <div className="p-5 space-y-4">
-      {/* NOTE: requires ScoreCard update to accept `type` instead of `color` */}
       <ScoreCard
         label="Neutrality"
         score={results?.scores?.bias ?? 0}
@@ -109,17 +91,14 @@ export default function InsightsPanel({
       />
 
       {results?.summary && (
-        <div className="mt-6 p-4 bg-dark-700/50 rounded-xl border border-dark-600">
+        <div className="mt-6 p-4 bg-white border border-rule">
           <div className="flex items-start gap-3">
-            <Info
-              className="w-5 h-5 flex-shrink-0 mt-0.5"
-              style={{ color: brandFg(0.95) }}
-            />
+            <Info className="w-5 h-5 flex-shrink-0 mt-0.5 text-text-muted" />
             <div>
-              <h4 className="text-sm font-medium text-white mb-1">
+              <h4 className="text-sm font-medium text-text-primary mb-1">
                 Executive Summary
               </h4>
-              <p className="text-sm text-gray-400 leading-relaxed">
+              <p className="text-sm text-text-muted leading-relaxed">
                 {results.summary}
               </p>
             </div>
@@ -133,13 +112,14 @@ export default function InsightsPanel({
     <div className="p-5">
       {!results?.findings || results.findings.length === 0 ? (
         <div className="text-center py-12">
-          <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-500">No linguistic tricks detected</p>
+          <AlertCircle className="w-12 h-12 text-text-faint mx-auto mb-3" />
+          <p className="text-text-muted">No linguistic tricks detected</p>
         </div>
       ) : (
         <div className="space-y-3">
           {results.findings.map((finding) => {
             const isSelected = selectedFinding?.id === finding.id;
+            const typeColor = TYPE_HEX[finding.type] || TYPE_HEX.bias;
 
             return (
               <div
@@ -152,37 +132,33 @@ export default function InsightsPanel({
                     onSelectFinding(finding);
                 }}
                 className={`
-                  w-full text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer
+                  w-full text-left p-4 border transition-all duration-200 cursor-pointer
                   ${
                     isSelected
-                      ? "bg-dark-700"
-                      : "bg-dark-800/50 border-dark-600 hover:border-dark-500 hover:bg-dark-700/50"
+                      ? "bg-white"
+                      : "bg-cream border-rule-light hover:border-rule hover:bg-white"
                   }
                 `}
                 style={
                   isSelected
-                    ? {
-                        borderColor: brandBg(0.50),
-                        boxShadow: `0 0 0 2px ${brandBg(0.18)}`,
-                      }
+                    ? { borderColor: typeColor }
                     : undefined
                 }
               >
                 <div className="finding-header flex items-start justify-between gap-3 mb-2">
-                  <span className="finding-title font-medium text-white">
+                  <span className="finding-title font-medium text-text-primary">
                     {finding.label}
                   </span>
                   <div className="finding-badges flex items-center gap-2">
                     <span
-                      className="px-2 py-0.5 rounded text-xs font-medium"
+                      className="px-2 py-0.5 text-xs font-medium"
                       style={getTypeBadgeStyle(finding.type)}
                     >
                       {finding.type}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-xs font-medium ${getSeverityBadge(
-                        finding.severity
-                      )}`}
+                      className="px-2 py-0.5 text-xs font-medium"
+                      style={getSeverityBadge(finding.severity)}
                     >
                       {finding.severity}
                     </span>
@@ -190,7 +166,7 @@ export default function InsightsPanel({
                 </div>
 
                 <p
-                  className={`text-sm text-gray-400 mb-3 ${
+                  className={`text-sm text-text-muted mb-3 ${
                     expandedFindingId === finding.id ? "" : "line-clamp-2"
                   }`}
                 >
@@ -205,14 +181,7 @@ export default function InsightsPanel({
                       prev === finding.id ? null : finding.id
                     );
                   }}
-                  className="flex items-center text-sm"
-                  style={{ color: brandFg(0.95) }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = brandFg(1);
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = brandFg(0.95);
-                  }}
+                  className="flex items-center text-sm text-accent hover:text-accent-hover"
                 >
                   <span>
                     {expandedFindingId === finding.id ? "Show less" : "Show more"}
@@ -237,7 +206,7 @@ export default function InsightsPanel({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Tabs Header */}
-      <div className="insights-tabs border-b border-dark-700 px-4 py-3 flex gap-2 flex-shrink-0 bg-dark-900">
+      <div className="insights-tabs border-b border-rule px-4 py-3 flex gap-2 flex-shrink-0 bg-cream-dark">
         {tabs.map((t) => {
           const Icon = t.icon;
           const active = activeTab === t.key;
@@ -246,17 +215,11 @@ export default function InsightsPanel({
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`insights-tab-button flex flex-1 items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-none border ${
-                active ? "text-white" : "text-gray-400 hover:text-gray-200 border-transparent"
-              }`}
-              style={
+              className={`insights-tab-button flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-none border ${
                 active
-                  ? {
-                      backgroundColor: brandBg(0.10),
-                      borderColor: brandBg(0.30),
-                    }
-                  : undefined
-              }
+                  ? "text-text-primary bg-white border-rule"
+                  : "text-text-muted hover:text-text-body border-transparent"
+              }`}
             >
               <Icon className="w-4 h-4" />
               {t.label}
@@ -265,16 +228,15 @@ export default function InsightsPanel({
         })}
       </div>
 
-      {/* The Content Area */}
+      {/* Content */}
       {isMobile ? (
-        <div className="flex-1 bg-dark-900">
+        <div className="flex-1 bg-cream-dark">
           <div className="insights-content overflow-y-auto custom-scrollbar p-5">
             {activeTab === "summary" ? renderSummary() : renderFindings()}
           </div>
         </div>
       ) : (
-        <div className="flex-1 relative bg-dark-900">
-          {/* Summary Tab */}
+        <div className="flex-1 relative bg-cream-dark">
           <div
             className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 space-y-4 ${
               activeTab === "summary"
@@ -286,7 +248,6 @@ export default function InsightsPanel({
             {renderSummary()}
           </div>
 
-          {/* Findings Tab */}
           <div
             className={`insights-content absolute inset-0 overflow-y-auto custom-scrollbar p-5 ${
               activeTab === "findings"

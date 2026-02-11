@@ -66,9 +66,9 @@ function normalizeSession(item) {
 }
 
 // Small helpers for theme-driven accents (OKLab-derived RGB via CSS vars)
-const BRAND_RGB = "var(--brand, var(--type-factcheck, 168 85 247))"; // fallback to violet-ish if missing
-const brandBg = (a) => `rgb(${BRAND_RGB} / ${a})`;
-const brandFg = (a = 1) => `rgb(${BRAND_RGB} / ${a})`;
+// Paper palette helpers
+const ACCENT = "#c44030";
+const ACCENT_HOVER = "#d4593a";
 
 export default function AnalysisPage() {
   // Mobile tab state
@@ -343,7 +343,7 @@ export default function AnalysisPage() {
 
   return (
     <AnimatedContent
-      className={`analysis-page h-[calc(100vh-64px)] flex flex-col bg-dark-950 ${
+      className={`analysis-page h-[calc(100vh-64px)] flex flex-col bg-cream ${
         isMobile ? "analysis-mobile" : ""
       }`}
     >
@@ -400,10 +400,10 @@ export default function AnalysisPage() {
             className={
               isMobile
                 ? "analysis-panel analysis-panel--input"
-                : "analysis-panel analysis-panel--input w-80 md:w-80 w-full border-r md:border-r border-b md:border-b-0 border-dark-700 bg-dark-900 flex flex-col flex-shrink-0 h-full md:h-full h-auto"
+                : "analysis-panel analysis-panel--input w-80 md:w-80 w-full border-r md:border-r border-b md:border-b-0 border-rule bg-cream-dark flex flex-col flex-shrink-0 h-full md:h-full h-auto"
             }
           >
-            <div className="flex-shrink-0 border-b border-dark-700/50">
+            <div className="flex-shrink-0 border-b border-rule">
               <UploadPanel
                 onFilesUpload={setUploadedFiles}
                 onFileUpload={(f) => setUploadedFiles(f ? [f] : [])}
@@ -435,14 +435,14 @@ export default function AnalysisPage() {
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <div className="px-5 py-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brandFg(1) }} />
+                  <h3 className="text-[10px] font-bold text-text-faint uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-accent" />
                     Recent Sessions
                   </h3>
                   {history.length > 0 && (
                     <button
                       onClick={handleClearHistory}
-                      className="text-[10px] text-gray-500 hover:text-gray-300 uppercase tracking-widest"
+                      className="text-[10px] text-text-faint hover:text-text-body uppercase tracking-widest"
                       title="Clear history"
                     >
                       Clear
@@ -450,8 +450,8 @@ export default function AnalysisPage() {
                   )}
                 </div>
                 {history.length === 0 ? (
-                  <div className="text-center py-8 px-4 border border-dashed border-dark-700 rounded-xl">
-                    <p className="text-xs text-gray-600 italic">No recent analyses yet</p>
+                  <div className="text-center py-8 px-4 border border-dashed border-rule">
+                    <p className="text-xs text-text-faint italic">No recent analyses yet</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -470,14 +470,14 @@ export default function AnalysisPage() {
                         <button
                           key={session.id}
                           onClick={() => handleResumeSession(session)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left group ${isActive ? "text-white" : "bg-dark-800/40 border-dark-700 text-gray-400 hover:border-dark-600 hover:bg-dark-800"}`}
-                          style={isActive ? { backgroundColor: brandBg(0.10), borderColor: brandBg(0.50) } : undefined}
+                          className={`w-full flex items-center gap-3 p-3 border transition-all text-left group ${isActive ? "text-text-primary bg-white" : "bg-cream border-rule-light text-text-muted hover:border-rule hover:bg-white"}`}
+                          style={isActive ? { borderColor: ACCENT } : undefined}
                         >
-                          <Icon size={16} className={isActive ? "" : "text-gray-500 group-hover:text-gray-400"} style={isActive ? { color: brandFg(0.95) } : undefined} />
+                          <Icon size={16} className={isActive ? "text-accent" : "text-text-faint group-hover:text-text-muted"} />
                           <div className="flex flex-col min-w-0">
-                            <span className="text-sm truncate font-medium">{displayTitle}</span>
+                            <span className="text-sm truncate font-medium text-text-primary">{displayTitle}</span>
                             {docCount > 1 && (
-                              <span className="text-[10px] text-gray-500">{docCount} docs{analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}</span>
+                              <span className="text-[10px] text-text-faint">{docCount} docs{analyzedCount > 0 ? ` • ${analyzedCount} analyzed` : ""}</span>
                             )}
                           </div>
                         </button>
@@ -495,11 +495,11 @@ export default function AnalysisPage() {
             className={
               isMobile
                 ? "analysis-panel analysis-panel--document"
-                : "analysis-panel analysis-panel--document flex-1 bg-dark-800 min-w-0 flex flex-col w-full"
+                : "analysis-panel analysis-panel--document flex-1 bg-white min-w-0 flex flex-col w-full"
             }
           >
             {activeSession?.docs?.length > 0 && (
-              <div className="px-4 py-2 border-b border-dark-700 bg-dark-900/40 flex gap-2 overflow-x-auto custom-scrollbar">
+              <div className="px-4 py-2 border-b border-rule bg-cream flex gap-2 overflow-x-auto custom-scrollbar">
                 {activeSession.docs.map((doc) => {
                   const isActive = activeDoc?.id === doc.id;
                   const hasResults = !!doc.results;
@@ -511,13 +511,13 @@ export default function AnalysisPage() {
                         setHistory((prev) => prev.map((s) => s.id === activeSessionId ? { ...normalizeSession(s), activeDocId: doc.id } : s));
                         setSelectedFinding(null);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-sm border whitespace-nowrap transition-all flex items-center gap-2 ${isActive ? "text-white" : "bg-dark-800/40 border-dark-700 text-gray-400 hover:bg-dark-800 hover:border-dark-600"}`}
-                      style={isActive ? { backgroundColor: brandBg(0.10), borderColor: brandBg(0.40) } : undefined}
+                      className={`px-3 py-1.5 text-sm border whitespace-nowrap transition-all flex items-center gap-2 ${isActive ? "text-text-primary bg-white" : "bg-cream border-rule-light text-text-muted hover:bg-white hover:border-rule"}`}
+                      style={isActive ? { borderColor: ACCENT } : undefined}
                       title={doc.title}
                     >
                       <span className="max-w-[220px] truncate">{doc.title}</span>
                       {hasResults && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">analyzed</span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-tactic/10 text-tactic">analyzed</span>
                       )}
                     </button>
                   );
@@ -540,7 +540,7 @@ export default function AnalysisPage() {
             className={
               isMobile
                 ? "analysis-panel analysis-panel--summary"
-                : "analysis-panel analysis-panel--summary flex-1 min-w-0 border-l md:border-l border-t md:border-t-0 border-dark-700 bg-dark-900 w-full"
+                : "analysis-panel analysis-panel--summary flex-1 min-w-0 border-l md:border-l border-t md:border-t-0 border-rule bg-cream-dark w-full"
             }
           >
             <InsightsPanel

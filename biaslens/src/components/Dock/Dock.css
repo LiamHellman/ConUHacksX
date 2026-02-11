@@ -1,19 +1,15 @@
-.dock-outer {
+﻿.dock-outer {
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: visible;
 }
 
-/* Theme fallbacks:
-   - --brand should be set by applyThemeVars()
-   - --type-bias / --type-fallacy / --type-tactic should be set similarly
-*/
 :root {
-  --brand: var(--type-factcheck, 168 85 247);
-  --type-bias: 236 72 153;
-  --type-fallacy: 245 158 11;
-  --type-tactic: 59 130 246;
+  --brand: 196 64 48;
+  --type-bias: 196 64 48;
+  --type-fallacy: 184 134 11;
+  --type-tactic: 46 125 110;
 }
 
 .dock-panel {
@@ -22,11 +18,10 @@
   align-items: flex-end;
   width: fit-content;
   gap: 0.75rem;
-  border-radius: 1rem;
-  background-color: rgba(15, 10, 25, 0.8);
-  border: 1px solid rgb(var(--brand) / 0.22);
+  border-radius: 0;
+  background-color: #fff;
+  border: 1px solid #c8c0b4;
   padding: 0.5rem 0.75rem;
-  backdrop-filter: blur(10px);
   overflow: visible;
 }
 
@@ -35,81 +30,69 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-
-  background-color: rgba(30, 25, 45, 0.9);
-  border: 1px solid rgba(100, 100, 120, 0.3);
-
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.2),
-    0 2px 4px -1px rgba(0, 0, 0, 0.1);
-
+  border-radius: 0;
+  background-color: #fff;
+  border: 1px solid #ddd6ca;
+  box-shadow: none;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .dock-item:hover {
-  border-color: rgb(var(--brand) / 0.55);
+  border-color: #c44030;
 }
 
 .dock-item--active {
-  background-color: rgb(var(--brand) / 0.16);
-  border-color: rgb(var(--brand) / 0.62);
-  box-shadow:
-    0 4px 6px -1px rgb(var(--brand) / 0.18),
-    0 0 20px rgb(var(--brand) / 0.14);
+  background-color: #fff;
+  border-color: #1a1a1a;
+  box-shadow: none;
 }
 
-/* Semantic active variants (driven by OKLab-derived vars) */
 .dock-item--active.dock-item--bias {
-  background-color: rgb(var(--type-bias) / 0.16);
-  border-color: rgb(var(--type-bias) / 0.62);
-  box-shadow:
-    0 4px 6px -1px rgb(var(--type-bias) / 0.18),
-    0 0 20px rgb(var(--type-bias) / 0.14);
+  border-color: #c44030;
+  background-color: rgba(196, 64, 48, 0.06);
+  box-shadow: none;
 }
 
 .dock-item--active.dock-item--fallacy {
-  background-color: rgb(var(--type-fallacy) / 0.16);
-  border-color: rgb(var(--type-fallacy) / 0.62);
-  box-shadow:
-    0 4px 6px -1px rgb(var(--type-fallacy) / 0.18),
-    0 0 20px rgb(var(--type-fallacy) / 0.14);
+  border-color: #b8860b;
+  background-color: rgba(184, 134, 11, 0.06);
+  box-shadow: none;
 }
 
 .dock-item--active.dock-item--tactic {
-  background-color: rgb(var(--type-tactic) / 0.16);
-  border-color: rgb(var(--type-tactic) / 0.62);
-  box-shadow:
-    0 4px 6px -1px rgb(var(--type-tactic) / 0.18),
-    0 0 20px rgb(var(--type-tactic) / 0.14);
+  border-color: #2e7d6e;
+  background-color: rgba(46, 125, 110, 0.06);
+  box-shadow: none;
 }
 
 .dock-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #a1a1aa;
+  color: #9a9a9a;
   transition: color 0.2s ease;
 }
 
-.dock-item:hover .dock-icon,
-.dock-item--active .dock-icon {
-  color: #fff;
+.dock-item:hover .dock-icon {
+  color: #3d3d3d;
 }
 
-/* Optional: tint icon to the semantic type while active (instead of white) */
+.dock-item--active .dock-icon {
+  color: #1a1a1a;
+}
+
 .dock-item--active.dock-item--bias .dock-icon {
-  color: rgb(var(--type-bias) / 1);
+  color: #c44030;
 }
 
 .dock-item--active.dock-item--fallacy .dock-icon {
-  color: rgb(var(--type-fallacy) / 1);
+  color: #b8860b;
 }
 
 .dock-item--active.dock-item--tactic .dock-icon {
-  color: rgb(var(--type-tactic) / 1);
+  color: #2e7d6e;
 }
 
 .dock-label {
@@ -118,18 +101,14 @@
   left: 50%;
   width: max-content;
   white-space: nowrap;
-  border-radius: 0.5rem;
-
-  border: 1px solid rgb(var(--brand) / 0.30);
-  background-color: rgba(15, 10, 25, 0.95);
-
+  border-radius: 0;
+  border: 1px solid #c8c0b4;
+  background-color: #fff;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #fff;
-
+  color: #1a1a1a;
   transform: translateX(-50%);
-  backdrop-filter: blur(10px);
   z-index: 50;
 }
 

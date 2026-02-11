@@ -1,9 +1,9 @@
-// src/theme/colors.js
+// src/theme/colors.js — Paper editorial palette
 export const TYPE_OKLCH = {
-  bias: { L: 0.72, C: 0.14, h: 340 },
-  fallacy: { L: 0.74, C: 0.13, h: 75 },
-  tactic: { L: 0.74, C: 0.12, h: 210 },
-  factcheck: { L: 0.72, C: 0.13, h: 280 },
+  bias:      { L: 0.55, C: 0.18, h: 25  },   // muted red #c44030
+  fallacy:   { L: 0.60, C: 0.14, h: 80  },   // dark gold #b8860b
+  tactic:    { L: 0.52, C: 0.10, h: 165 },   // teal #2e7d6e
+  factcheck: { L: 0.50, C: 0.12, h: 280 },   // kept for compat
 };
 
 // --- OKLCH -> OKLab
@@ -58,9 +58,13 @@ export const TYPE_SOLID = Object.fromEntries(
 
 // Optional: CSS variable payload, so components can just use var(--type-bias)
 export function applyThemeVars(root = document.documentElement) {
+  // Set OKLab-derived values (for blendedBg etc.)
   for (const [k, rgb] of Object.entries(TYPE_RGB)) {
-    root.style.setProperty(`--type-${k}`, `${rgb.r} ${rgb.g} ${rgb.b}`); // "r g b"
+    root.style.setProperty(`--type-${k}`, `${rgb.r} ${rgb.g} ${rgb.b}`);
   }
-  // If you want a single “brand” accent across UI:
-  root.style.setProperty(`--brand`, root.style.getPropertyValue(`--type-factcheck`));
+  // Paper palette hard overrides (exact hex conversions)
+  root.style.setProperty('--type-bias', '196 64 48');      // #c44030
+  root.style.setProperty('--type-fallacy', '184 134 11');   // #b8860b
+  root.style.setProperty('--type-tactic', '46 125 110');    // #2e7d6e
+  root.style.setProperty('--brand', '196 64 48');           // accent red
 }

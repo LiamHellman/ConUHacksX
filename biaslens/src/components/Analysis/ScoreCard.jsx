@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
-const BRAND_RGB = "var(--brand, var(--type-factcheck, 168 85 247))";
-const typeRgbVar = (type) => `var(--type-${type}, ${BRAND_RGB})`;
-const typeBg = (type, a) => `rgb(${typeRgbVar(type)} / ${a})`;
-const typeFg = (type, a = 1) => `rgb(${typeRgbVar(type)} / ${a})`;
+// Paper palette category colors
+const TYPE_HEX = {
+  bias: "#c44030",
+  fallacy: "#b8860b",
+  tactic: "#2e7d6e",
+  factcheck: "#7850a0",
+};
 
-// Backward-compatible mapping (old API: color="pink|amber|blue|purple")
+// Backward-compatible mapping
 const COLOR_TO_TYPE = {
   pink: "bias",
   amber: "fallacy",
@@ -16,9 +19,7 @@ const COLOR_TO_TYPE = {
 export default function ScoreCard({
   label,
   score,
-  // NEW API:
   type,
-  // OLD API (kept for compatibility):
   color,
   description,
   max = 100,
@@ -29,11 +30,12 @@ export default function ScoreCard({
     return "factcheck";
   }, [type, color]);
 
+  const typeColor = TYPE_HEX[resolvedType] || TYPE_HEX.factcheck;
+
   // Circle geometry
   const r = 36;
   const circumference = 2 * Math.PI * r;
 
-  // Normalize score
   const normalized = useMemo(() => {
     let v = Number(score);
     if (!Number.isFinite(v)) v = 0;
@@ -41,68 +43,51 @@ export default function ScoreCard({
     return v;
   }, [score, max]);
 
-  // Animate the fill procedurally by animating the value -> dashoffset
   const [animatedValue, setAnimatedValue] = useState(0);
 
   useEffect(() => {
     setAnimatedValue(normalized);
   }, [normalized]);
 
-  const fraction = max > 0 ? animatedValue / max : 0; // 0..1
-  const dashOffset = circumference * (1 - fraction); // 0 => full, C => empty
-
-  // Theme-driven styles
-  const cardStyle = useMemo(
-    () => ({
-      backgroundColor: typeBg(resolvedType, 0.10),
-      borderColor: typeBg(resolvedType, 0.22),
-    }),
-    [resolvedType]
-  );
-
-  const scoreStyle = useMemo(
-    () => ({
-      color: typeFg(resolvedType, 1),
-    }),
-    [resolvedType]
-  );
-
-  const progressStroke = useMemo(() => typeFg(resolvedType, 1), [resolvedType]);
+  const fraction = max > 0 ? animatedValue / max : 0;
+  const dashOffset = circumference * (1 - fraction);
 
   return (
-    <div className="scorecard p-5 rounded-xl border" style={cardStyle}>
+    <div
+      className="scorecard p-5 border bg-white"
+      style={{ borderColor: "#ddd6ca" }}
+    >
       <div className="scorecard-row flex items-center gap-5">
-        {/* Circular progress */}
+        {/* Circular progress — thin SVG ring */}
         <div className="scorecard-circle relative w-20 h-20 flex-shrink-0">
           <svg className="w-20 h-20 transform -rotate-90">
-            {/* Background circle */}
             <circle
               cx="40"
               cy="40"
               r={r}
-              stroke="currentColor"
-              strokeWidth="6"
+              stroke="#ede7db"
+              strokeWidth="4"
               fill="none"
-              className="text-dark-600"
             />
-            {/* Progress circle */}
             <circle
               cx="40"
               cy="40"
               r={r}
-              stroke={progressStroke}
-              strokeWidth="6"
+              stroke={typeColor}
+              strokeWidth="4"
               fill="none"
-              strokeLinecap="round"
+              strokeLinecap="butt"
               strokeDasharray={circumference}
               strokeDashoffset={dashOffset}
               className="transition-[stroke-dashoffset] duration-700 ease-out"
             />
           </svg>
 
-          {/* Score text */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="scorecard-value text-xl font-bold" style={scoreStyle}>
+            <span
+              className="scorecard-value text-xl font-bold"
+              style={{ color: typeColor, fontFamily: "var(--font-serif)" }}
+            >
               {Math.round(normalized)}
             </span>
           </div>
@@ -110,8 +95,8 @@ export default function ScoreCard({
 
         {/* Labels */}
         <div className="scorecard-labels flex-1">
-          <h3 className="text-white font-semibold mb-1">{label}</h3>
-          <p className="text-sm text-gray-500">{description}</p>
+          <h3 className="text-text-primary font-semibold mb-1">{label}</h3>
+          <p className="text-sm text-text-muted">{description}</p>
         </div>
       </div>
     </div>

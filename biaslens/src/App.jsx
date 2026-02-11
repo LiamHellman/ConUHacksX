@@ -36,12 +36,12 @@ function App() {
   }, [showAnalysis, isMobile]);
 
   return (
-    <div className="min-h-screen bg-dark-950">
-      <Header 
-        showAnalysis={showAnalysis} 
-        onBackToHome={() => setShowAnalysis(false)} 
+    <div className="min-h-screen bg-cream">
+      <Header
+        showAnalysis={showAnalysis}
+        onBackToHome={() => setShowAnalysis(false)}
       />
-      
+
       {showAnalysis ? (
         <AnalysisPage />
       ) : (
