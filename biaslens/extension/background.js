@@ -81,7 +81,14 @@ async function transcribeYouTubeUrl(url) {
   });
 
   if (!response.ok) {
-    throw new Error('YouTube transcription failed');
+    let details = '';
+    try {
+      const payload = await response.json();
+      details = payload?.details || payload?.error || '';
+    } catch (_) {
+      details = '';
+    }
+    throw new Error(details || `YouTube transcription failed (${response.status})`);
   }
 
   const data = await response.json();

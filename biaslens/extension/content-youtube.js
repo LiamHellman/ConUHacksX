@@ -154,6 +154,13 @@
   }
 
   function parseCaptionTracksFromDom() {
+    // Most reliable source on current YouTube pages.
+    const directTracks =
+      window?.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    if (Array.isArray(directTracks) && directTracks.length > 0) {
+      return directTracks;
+    }
+
     const scripts = Array.from(document.scripts || []);
     for (const script of scripts) {
       const content = script.textContent || "";
@@ -294,6 +301,33 @@
     document.body.appendChild(modal);
     textarea.focus();
   }
+
+  // Listen for messages from the popup requesting a transcript
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "getYouTubeTranscript") {
+      (async () => {
+        try {
+          let transcript = await getTranscriptFromCaptions();
+          if (!transcript || transcript.length < 30) {
+            transcript = await getTranscriptViaApi(window.location.href);
+          }
+          if (!transcript || transcript.length < 30) {
+            sendResponse({ ok: false, error: "No transcript available for this video." });
+          } else {
+            sendResponse({ ok: true, transcript });
+          }
+        } catch (err) {
+          sendResponse({ ok: false, error: err.message });
+        }
+      })();
+      return true; // keep the message channel open for async response
+    }
+    if (request.action === "isYouTubeVideo") {
+      const videoId = getVideoIdFromUrl();
+      sendResponse({ isYouTube: !!videoId, videoId });
+      return true;
+    }
+  });
 
   // Initial and ongoing checks (YouTube is a SPA).
   ensureButton();

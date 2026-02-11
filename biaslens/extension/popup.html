@@ -18,6 +18,31 @@
       <span class="tagline">Bias &amp; Fallacy Detection</span>
     </header>
 
+    <!-- YouTube Transcription Section (shown on YouTube pages) -->
+    <div class="youtube-section" id="youtubeSection" style="display: none;">
+      <div class="youtube-card">
+        <div class="youtube-icon-row">
+          <svg class="youtube-icon" viewBox="0 0 24 24" width="24" height="24" fill="none">
+            <rect x="2" y="4" width="20" height="16" rx="4" fill="#c44030"/>
+            <polygon points="10,8 10,16 16,12" fill="#fff"/>
+          </svg>
+          <span class="youtube-title">YouTube Video Detected</span>
+        </div>
+        <p class="youtube-desc" id="youtubeDesc">Transcribe this video and analyze it for bias, fallacies, and manipulation tactics.</p>
+        <button class="btn btn-youtube" id="youtubeTranscribeBtn">
+          <span class="btn-text" id="ytBtnText">Transcribe &amp; Analyze</span>
+          <span class="btn-loader" id="ytBtnLoader" style="display: none;"></span>
+        </button>
+        <div class="youtube-status" id="youtubeStatus" style="display: none;"></div>
+      </div>
+    </div>
+
+    <!-- Transcript Preview (shown after transcription) -->
+    <div class="transcript-section" id="transcriptSection" style="display: none;">
+      <label>Transcript Preview:</label>
+      <div class="transcript-text" id="transcriptText"></div>
+    </div>
+
     <div class="instructions" id="instructions">
       <p>Select text on any webpage, then click the Factify button that appears to analyze it.</p>
     </div>
