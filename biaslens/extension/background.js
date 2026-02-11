@@ -1,34 +1,22 @@
 // Background service worker
 const API_URL = 'https://factify-api.onrender.com';
 
-// Handle messages from content script
+// Handle messages from content script and popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'analyzeText') {
-    // Run analysis and send response back via sendResponse
+  if (request.action === 'analyzeText' && sender.tab?.id) {
+    const tabId = sender.tab.id;
+    // Show loading on the page
+    chrome.tabs.sendMessage(tabId, { action: 'showResults', loading: true }).catch(() => {});
+    // Do analysis and send results back
     doAnalysis(request.text)
       .then(data => {
-        // Also push results to the content script's panel
-        if (sender.tab?.id) {
-          chrome.tabs.sendMessage(sender.tab.id, {
-            action: 'showResults',
-            loading: false,
-            data
-          }).catch(() => {});
-        }
-        sendResponse({ success: true, data });
+        chrome.tabs.sendMessage(tabId, { action: 'showResults', loading: false, data }).catch(() => {});
       })
       .catch(err => {
-        if (sender.tab?.id) {
-          chrome.tabs.sendMessage(sender.tab.id, {
-            action: 'showResults',
-            loading: false,
-            error: err.message
-          }).catch(() => {});
-        }
-        sendResponse({ success: false, error: err.message });
+        chrome.tabs.sendMessage(tabId, { action: 'showResults', loading: false, error: err.message }).catch(() => {});
       });
-    return true; // keep message channel open for async sendResponse
   }
+  // Always return false — we don't use sendResponse
   return false;
 });
 

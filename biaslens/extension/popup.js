@@ -37,27 +37,51 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Set up toggle button click handlers
   setupOptionButtons();
   
-  // Get selected text from storage (set by content script)
-  const result = await chrome.storage.local.get(['selectedText']);
-  if (result.selectedText) {
-    currentSelectedText = result.selectedText;
-    showSelectedText(currentSelectedText);
-    // Clear storage
-    chrome.storage.local.remove(['selectedText']);
-  }
-  
-  // Also try to get selection from active tab
+  // Strategy 1: Get selected text from storage (stored whenever user selects text on page)
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab?.id) {
-      const response = await chrome.tabs.sendMessage(tab.id, { action: 'getSelection' });
-      if (response?.text) {
-        currentSelectedText = response.text;
-        showSelectedText(currentSelectedText);
-      }
+    const result = await chrome.storage.local.get(['selectedText']);
+    if (result.selectedText) {
+      currentSelectedText = result.selectedText;
+      showSelectedText(currentSelectedText);
     }
   } catch (e) {
-    // Content script might not be loaded
+    console.log('[Factify Popup] storage read failed:', e);
+  }
+  
+  // Strategy 2: Also try to query the active tab's selection directly
+  if (!currentSelectedText) {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        // Use scripting API to get selection (more reliable than messaging)
+        const results = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => window.getSelection().toString().trim()
+        });
+        const text = results?.[0]?.result;
+        if (text && text.length > 5) {
+          currentSelectedText = text;
+          showSelectedText(currentSelectedText);
+          // Also store it for consistency
+          chrome.storage.local.set({ selectedText: text });
+        }
+      }
+    } catch (e) {
+      console.log('[Factify Popup] scripting query failed:', e);
+      // Fallback: try messaging the content script
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab?.id) {
+          const response = await chrome.tabs.sendMessage(tab.id, { action: 'getSelection' });
+          if (response?.text && response.text.length > 5) {
+            currentSelectedText = response.text;
+            showSelectedText(currentSelectedText);
+          }
+        }
+      } catch (e2) {
+        console.log('[Factify Popup] message fallback failed:', e2);
+      }
+    }
   }
 });
 

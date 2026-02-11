@@ -34,6 +34,8 @@ document.addEventListener('mouseup', (e) => {
     
     if (text && text.length > 10) {
       showFactifyButton(e.clientX, e.clientY, text);
+      // Always store current selection so popup can access it
+      try { chrome.storage.local.set({ selectedText: text }); } catch(_) {}
     } else {
       hideFactifyButton();
     }
@@ -67,7 +69,7 @@ function showFactifyButton(x, y, text) {
   // Store the selected text
   factifyButton.dataset.text = text;
   
-  factifyButton.addEventListener('click', async (e) => {
+  factifyButton.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -82,26 +84,13 @@ function showFactifyButton(x, y, text) {
     // Show loading panel immediately
     showResultsPanel(true, null, null);
     
-    // Store in chrome storage
+    // Fire-and-forget to background — results come back via onMessage
     try {
-      await chrome.storage.local.set({ selectedText });
-    } catch (_) {}
-    
-    // Send to background for analysis and wait for response
-    try {
-      const data = await chrome.runtime.sendMessage({ 
-        action: 'analyzeText', 
-        text: selectedText 
-      });
-      // Background will respond with { success, data } or { success, error }
-      if (data && data.success && data.data) {
-        showResultsPanel(false, data.data, null);
-      } else if (data && data.error) {
-        showResultsPanel(false, null, data.error);
-      }
+      chrome.runtime.sendMessage({ action: 'analyzeText', text: selectedText });
     } catch (err) {
-      console.error('[Factify] Analysis failed:', err);
-      showResultsPanel(false, null, err.message || 'Analysis failed. Please try again.');
+      console.error('[Factify] sendMessage failed:', err);
+      // Fallback: do the fetch directly from the content script
+      directAnalysis(selectedText);
     }
   });
   
@@ -114,6 +103,22 @@ function showFactifyButton(x, y, text) {
   }
   if (rect.bottom > window.innerHeight) {
     factifyButton.style.top = `${y + scrollY - rect.height - 10}px`;
+  }
+}
+
+// Fallback: fetch analysis directly if background is unavailable
+async function directAnalysis(text) {
+  try {
+    const response = await fetch('https://factify-api.onrender.com/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, settings: {} })
+    });
+    if (!response.ok) throw new Error('Analysis failed (' + response.status + ')');
+    const data = await response.json();
+    showResultsPanel(false, data, null);
+  } catch (err) {
+    showResultsPanel(false, null, err.message);
   }
 }
 
@@ -523,8 +528,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'getSelection') {
     const selection = window.getSelection().toString().trim();
     sendResponse({ text: selection });
+    return false; // synchronous response, no need to keep channel open
   } else if (request.action === 'showResults') {
     showResultsPanel(request.loading, request.data, request.error);
   }
-  return true;
+  return false;
 });
