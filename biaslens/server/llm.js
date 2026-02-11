@@ -79,8 +79,23 @@ const ARGUMENT_SCHEMA = {
 };
 
 /**
+ * Snap an offset to word boundaries so highlights never cut mid-word.
+ */
+function snapToWordBounds(text, start, end) {
+  const n = text.length;
+  while (start > 0 && /\S/.test(text[start - 1]) && !/[.,:;!?()[\]{}""''"/\\–—\-]/.test(text[start - 1])) {
+    start--;
+  }
+  while (end < n && /\S/.test(text[end]) && !/[.,:;!?()[\]{}""''"/\\–—\-]/.test(text[end])) {
+    end++;
+  }
+  return { start, end };
+}
+
+/**
  * Hardening pass:
  * - Repairs/clamps spans using quote matching (same as your current behavior)
+ * - Snaps start/end to word boundaries so highlights never cut mid-word
  * - IMPORTANT CHANGE: does NOT remove overlaps.
  *
  * Why: overlap resolution now happens client-side based on enabled categories + severity,
@@ -113,7 +128,12 @@ function clampFindingsToText(text, findings) {
       // final check; if still invalid, drop it
       if (text.slice(start, end) !== f.quote) return null;
 
-      return { ...f, start, end };
+      // Snap to word boundaries
+      const snapped = snapToWordBounds(text, start, end);
+      start = snapped.start;
+      end = snapped.end;
+
+      return { ...f, start, end, quote: text.slice(start, end) };
     })
     .filter(Boolean);
 

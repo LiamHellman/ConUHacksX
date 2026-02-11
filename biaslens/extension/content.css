@@ -1,36 +1,44 @@
 /* Factify floating button — Paper editorial style */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+
 #factify-analyze-btn {
   position: absolute;
   z-index: 2147483647;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  background: #c44030;
-  border: none;
-  box-shadow: 0 2px 12px rgba(196, 64, 48, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  padding: 9px 16px;
+  background: #f5f0e8;
+  border: 1px solid #c8c0b4;
+  border-radius: 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.03);
   cursor: pointer;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   animation: factify-fade-in 0.2s ease-out;
   user-select: none;
+  color: #1a1a1a;
 }
 
 #factify-analyze-btn:hover {
-  background: #d4593a;
-  box-shadow: 0 4px 16px rgba(196, 64, 48, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  background: #ede7db;
+  border-color: #b8b0a4;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.05);
 }
 
 #factify-analyze-btn .factify-icon {
   font-size: 14px;
   display: flex;
   align-items: center;
+  color: #c44030;
+  font-weight: 700;
 }
 
 #factify-analyze-btn .factify-text {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: white;
+  color: #1a1a1a;
   white-space: nowrap;
+  letter-spacing: 0.3px;
 }
 
 @keyframes factify-fade-in {

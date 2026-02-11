@@ -53,7 +53,7 @@ function showFactifyButton(x, y, text) {
   factifyButton = document.createElement('div');
   factifyButton.id = 'factify-analyze-btn';
   factifyButton.innerHTML = `
-    <span class="factify-icon">&rarr;</span>
+    <span class="factify-icon">F</span>
     <span class="factify-text">Analyze with Factify</span>
   `;
   

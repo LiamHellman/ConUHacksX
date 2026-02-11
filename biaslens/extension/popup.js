@@ -130,6 +130,14 @@ analyzeBtn.addEventListener('click', async () => {
       analyzeTone: optTone.classList.contains('active')
     };
     
+    // Also show loading state on the page
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        chrome.tabs.sendMessage(tab.id, { action: 'showResults', loading: true });
+      }
+    } catch (_) {}
+
     const response = await fetch(`${API_URL}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -140,6 +148,14 @@ analyzeBtn.addEventListener('click', async () => {
     
     const data = await response.json();
     displayResults(data);
+
+    // Forward results to the content script so highlights appear on the page
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        chrome.tabs.sendMessage(tab.id, { action: 'showResults', loading: false, data });
+      }
+    } catch (_) {}
     
   } catch (error) {
     console.error('Analysis error:', error);

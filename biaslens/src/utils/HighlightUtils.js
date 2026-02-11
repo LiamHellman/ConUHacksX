@@ -14,6 +14,24 @@ export function severityRank(sev) {
 }
 
 /**
+ * Snap an offset to word boundaries so highlights never cut mid-word.
+ * `start` expands leftward to the nearest whitespace/punctuation boundary.
+ * `end` expands rightward to the nearest whitespace/punctuation boundary.
+ */
+function snapToWordBounds(text, start, end) {
+  const n = text.length;
+  // Expand start leftward – stop at start-of-string or a word-break char
+  while (start > 0 && /\S/.test(text[start - 1]) && !/[.,:;!?()[\]{}""''"/\\–—\-]/.test(text[start - 1])) {
+    start--;
+  }
+  // Expand end rightward
+  while (end < n && /\S/.test(text[end]) && !/[.,:;!?()[\]{}""''"/\\–—\-]/.test(text[end])) {
+    end++;
+  }
+  return { start, end };
+}
+
+/**
  * Given overlapping findings, produce a NON-overlapping list suitable for highlighting.
  * - Partition text into boundary intervals (all starts/ends)
  * - For each interval, pick the "best" covering finding by severity/confidence/length
@@ -22,9 +40,19 @@ export function severityRank(sev) {
 export function buildHighlightSpans(text, findings) {
   if (!text || !Array.isArray(findings) || findings.length === 0) return [];
   const n = text.length;
+
+  // Snap every finding's offsets to word boundaries first
+  const snapped = findings.map(f => {
+    if (!f) return f;
+    const s = Math.max(0, Math.min(n, f.start));
+    const e = Math.max(0, Math.min(n, f.end));
+    if (e <= s) return f;
+    const { start: ws, end: we } = snapToWordBounds(text, s, e);
+    return { ...f, start: ws, end: we };
+  }).filter(Boolean);
+
   const boundaries = new Set([0, n]);
-  for (const f of findings) {
-    if (!f) continue;
+  for (const f of snapped) {
     const s = Math.max(0, Math.min(n, f.start));
     const e = Math.max(0, Math.min(n, f.end));
     if (e > s) {
@@ -54,7 +82,7 @@ export function buildHighlightSpans(text, findings) {
     const a = pts[i];
     const b = pts[i + 1];
     if (b <= a) continue;
-    const active = findings.filter((f) => f.start <= a && f.end >= b);
+    const active = snapped.filter((f) => f.start <= a && f.end >= b);
     if (active.length === 0) continue;
     // Stable key so we can merge adjacent spans with same active set
     const key = active.map((f) => f.id).sort().join("|");
