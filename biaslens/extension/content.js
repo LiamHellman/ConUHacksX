@@ -208,7 +208,7 @@ function showResultsPanel(loading, data, error) {
         const category = finding.category || 'general';
         const findingId = finding.id || `finding-${index}`;
         contentHtml += `
-          <div class="factify-finding ${category}" data-finding-id="${findingId}">
+          <div class="factify-finding ${category}" data-finding-id="${findingId}" data-category="${category}">
             <div class="factify-finding-type">${categoryLabels[category] || 'Finding'}</div>
             <div class="factify-finding-text"><strong>${finding.label || finding.categoryId || category}:</strong> ${finding.explanation}</div>
             ${finding.quote ? `<div class="factify-finding-quote">"${finding.quote}"</div>` : ''}
@@ -285,37 +285,48 @@ function addFindingClickHandlers() {
   resultsPanel.querySelectorAll('.factify-finding[data-finding-id]').forEach(findingEl => {
     findingEl.addEventListener('click', () => {
       const findingId = findingEl.dataset.findingId;
-      scrollToHighlight(findingId);
+      const category = findingEl.dataset.category || '';
+      scrollToHighlight(findingId, category);
     });
   });
 }
 
 // Scroll to and highlight a highlight span on the page
-function scrollToHighlight(findingId) {
+function scrollToHighlight(findingId, category) {
   // Find any highlight span whose data-finding-ids list contains this ID
   const allHighlights = document.querySelectorAll('.factify-highlight[data-finding-ids]');
-  let highlightEl = null;
+  const matchingEls = [];
   for (const el of allHighlights) {
     const ids = (el.dataset.findingIds || '').split(',');
     if (ids.includes(findingId)) {
-      highlightEl = el;
-      break;
+      matchingEls.push(el);
     }
   }
-  if (!highlightEl) return;
-  
-  // Scroll into view
-  highlightEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  
-  // Flash effect
-  const originalBg = highlightEl.style.background;
-  highlightEl.style.background = 'rgba(196, 64, 48, 0.3)';
-  highlightEl.style.boxShadow = '0 0 8px rgba(196, 64, 48, 0.4)';
-  
-  setTimeout(() => {
-    highlightEl.style.background = originalBg;
-    highlightEl.style.boxShadow = '';
-  }, 1500);
+  if (matchingEls.length === 0) return;
+
+  // Pick the flash color based on category
+  const flashColors = {
+    bias:    { bg: 'rgba(196, 64, 48, 0.35)',  shadow: 'rgba(196, 64, 48, 0.5)' },
+    fallacy: { bg: 'rgba(184, 134, 11, 0.35)', shadow: 'rgba(184, 134, 11, 0.5)' },
+    tactic:  { bg: 'rgba(46, 125, 110, 0.35)', shadow: 'rgba(46, 125, 110, 0.5)' }
+  };
+  const flash = flashColors[category] || flashColors.tactic;
+
+  // Scroll to first matching element
+  matchingEls[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Flash all matching spans in the category color
+  matchingEls.forEach(el => {
+    const originalBg = el.style.background;
+    const originalShadow = el.style.boxShadow;
+    el.style.background = flash.bg;
+    el.style.boxShadow = `0 0 8px ${flash.shadow}`;
+
+    setTimeout(() => {
+      el.style.background = originalBg;
+      el.style.boxShadow = originalShadow || '';
+    }, 1500);
+  });
 }
 
 // Make the results panel draggable

@@ -288,7 +288,22 @@
 
 /* Highlighted finding in panel */
 #factify-results-panel .factify-finding.highlighted {
+  box-shadow: 0 0 0 2px #c8c0b4;
+}
+
+#factify-results-panel .factify-finding.bias.highlighted {
   box-shadow: 0 0 0 2px #c44030;
+  background: rgba(196, 64, 48, 0.06);
+}
+
+#factify-results-panel .factify-finding.fallacy.highlighted {
+  box-shadow: 0 0 0 2px #b8860b;
+  background: rgba(184, 134, 11, 0.06);
+}
+
+#factify-results-panel .factify-finding.tactic.highlighted {
+  box-shadow: 0 0 0 2px #2e7d6e;
+  background: rgba(46, 125, 110, 0.06);
 }
 
 /* Resize handle styling */
