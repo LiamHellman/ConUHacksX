@@ -7,6 +7,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Open the popup - Chrome doesn't allow programmatic popup opening,
     // so we'll show inline results instead
     showInlineResults(sender.tab.id, request.text);
+  } else if (request.action === 'transcribeYouTube') {
+    transcribeYouTubeUrl(request.url)
+      .then((transcript) => sendResponse({ ok: true, transcript }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
   }
   return true;
 });
@@ -62,6 +67,27 @@ async function showInlineResults(tabId, text) {
       error: error.message
     });
   }
+}
+
+async function transcribeYouTubeUrl(url) {
+  if (!url || typeof url !== 'string') {
+    throw new Error('Missing YouTube URL');
+  }
+
+  const response = await fetch(`${API_URL}/api/youtube`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  });
+
+  if (!response.ok) {
+    throw new Error('YouTube transcription failed');
+  }
+
+  const data = await response.json();
+  const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
+  if (!transcript) throw new Error('No transcript returned');
+  return transcript;
 }
 
 // TODO: Read analysis options from a shared config or expose toggles in the extension popup, matching the web app's checks (bias, fallacies, tactic)

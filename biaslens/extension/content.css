@@ -43,6 +43,139 @@
   font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
 }
 
+/* YouTube player button */
+#factify-youtube-btn {
+  position: fixed;
+  top: 84px;
+  right: 20px;
+  z-index: 2147483646;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(200, 192, 180, 0.9);
+  background: rgba(245, 240, 232, 0.95);
+  color: #1a1a1a;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+#factify-youtube-btn:hover {
+  background: rgba(237, 231, 219, 0.98);
+  border-color: rgba(184, 176, 164, 0.95);
+}
+
+#factify-youtube-btn:disabled,
+#factify-youtube-btn.factify-youtube-busy {
+  opacity: 0.82;
+  cursor: progress;
+}
+
+/* Transcript preview modal */
+#factify-youtube-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#factify-youtube-modal .factify-youtube-modal-card {
+  width: min(900px, 96vw);
+  max-height: min(760px, 92vh);
+  background: #f5f0e8;
+  border: 1px solid #c8c0b4;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+#factify-youtube-modal .factify-youtube-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #c8c0b4;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+}
+
+#factify-youtube-modal .factify-youtube-modal-close {
+  background: none;
+  border: none;
+  color: #5f5f5f;
+  cursor: pointer;
+  font-size: 24px;
+  line-height: 1;
+}
+
+#factify-youtube-modal .factify-youtube-modal-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+}
+
+#factify-youtube-modal .factify-youtube-modal-help {
+  margin: 0;
+  font-size: 13px;
+  color: #444;
+}
+
+#factify-youtube-modal .factify-youtube-modal-textarea {
+  width: 100%;
+  min-height: 220px;
+  height: 100%;
+  resize: vertical;
+  border: 1px solid #c8c0b4;
+  background: #fff;
+  color: #1a1a1a;
+  padding: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+#factify-youtube-modal .factify-youtube-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid #c8c0b4;
+}
+
+#factify-youtube-modal .factify-youtube-secondary,
+#factify-youtube-modal .factify-youtube-primary {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #c8c0b4;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#factify-youtube-modal .factify-youtube-secondary {
+  background: #fff;
+  color: #1a1a1a;
+}
+
+#factify-youtube-modal .factify-youtube-primary {
+  background: #c44030;
+  color: #fff;
+  border-color: #9f3428;
+}
+
 @keyframes factify-fade-in {
   from {
     opacity: 0;
