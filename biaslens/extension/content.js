@@ -304,29 +304,42 @@ function scrollToHighlight(findingId, category) {
   }
   if (matchingEls.length === 0) return;
 
-  // Pick the flash color based on category
-  const flashColors = {
-    bias:    { bg: 'rgba(196, 64, 48, 0.35)',  shadow: 'rgba(196, 64, 48, 0.5)' },
-    fallacy: { bg: 'rgba(184, 134, 11, 0.35)', shadow: 'rgba(184, 134, 11, 0.5)' },
-    tactic:  { bg: 'rgba(46, 125, 110, 0.35)', shadow: 'rgba(46, 125, 110, 0.5)' }
+  // Strong highlight colors per category — opaque enough to override any existing color
+  const highlightStyles = {
+    bias:    { bg: 'rgba(196, 64, 48, 0.25)',  border: '3px solid #c44030', shadow: '0 0 12px rgba(196, 64, 48, 0.5)' },
+    fallacy: { bg: 'rgba(184, 134, 11, 0.25)', border: '3px solid #b8860b', shadow: '0 0 12px rgba(184, 134, 11, 0.5)' },
+    tactic:  { bg: 'rgba(46, 125, 110, 0.25)', border: '3px solid #2e7d6e', shadow: '0 0 12px rgba(46, 125, 110, 0.5)' }
   };
-  const flash = flashColors[category] || flashColors.tactic;
+  const style = highlightStyles[category] || highlightStyles.tactic;
+
+  // First, dim ALL highlights to make the selected one stand out
+  allHighlights.forEach(el => {
+    el.dataset.origBg = el.style.background;
+    el.dataset.origBorder = el.style.borderBottom;
+    el.dataset.origShadow = el.style.boxShadow || '';
+    el.style.background = 'rgba(200, 192, 180, 0.08)';
+    el.style.borderBottom = '2px solid rgba(200, 192, 180, 0.3)';
+    el.style.boxShadow = '';
+  });
 
   // Scroll to first matching element
   matchingEls[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  // Flash all matching spans in the category color
+  // Then strongly highlight the matching spans in the correct category color
   matchingEls.forEach(el => {
-    const originalBg = el.style.background;
-    const originalShadow = el.style.boxShadow;
-    el.style.background = flash.bg;
-    el.style.boxShadow = `0 0 8px ${flash.shadow}`;
-
-    setTimeout(() => {
-      el.style.background = originalBg;
-      el.style.boxShadow = originalShadow || '';
-    }, 1500);
+    el.style.background = style.bg;
+    el.style.borderBottom = style.border;
+    el.style.boxShadow = style.shadow;
   });
+
+  // Restore all highlights after a delay
+  setTimeout(() => {
+    allHighlights.forEach(el => {
+      el.style.background = el.dataset.origBg || '';
+      el.style.borderBottom = el.dataset.origBorder || '';
+      el.style.boxShadow = el.dataset.origShadow || '';
+    });
+  }, 2500);
 }
 
 // Make the results panel draggable
