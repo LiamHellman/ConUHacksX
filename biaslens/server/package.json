@@ -3,15 +3,15 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "postinstall": "pip install yt-dlp || pip3 install yt-dlp || echo 'yt-dlp pip install skipped'"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "multer": "^2.0.2",
-    "openai": "^6.16.0",
-    "yt-transcript": "^0.0.2"
+    "openai": "^6.16.0"
   },
   "engines": {
     "node": ">=18"

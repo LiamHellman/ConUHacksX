@@ -8,8 +8,10 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
-import { YtTranscript } from "yt-transcript";
+import { execFile } from "child_process";
+import { promisify } from "util";
 
+const execFilePromise = promisify(execFile);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -30,13 +32,49 @@ function extractVideoId(url) {
     const u = new URL(url);
     if (u.hostname === 'youtu.be') return u.pathname.slice(1);
     if (u.searchParams.has('v')) return u.searchParams.get('v');
-    // /embed/ID or /v/ID
     const m = u.pathname.match(/\/(embed|v)\/([^/?]+)/);
     if (m) return m[2];
   } catch (_) {}
-  // Bare ID fallback (11 chars)
   if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
   return null;
+}
+
+/**
+ * Download YouTube audio using yt-dlp (installed via pip).
+ * Tries: yt-dlp binary, python3 -m yt_dlp, python -m yt_dlp.
+ */
+async function downloadYouTubeAudio(videoUrl, outputPath) {
+  const ytdlpArgs = [
+    "-x",
+    "--audio-format", "mp3",
+    "--force-overwrites",
+    "-o", outputPath,
+    videoUrl,
+  ];
+
+  const attempts = [
+    { cmd: "yt-dlp", args: ytdlpArgs },
+    { cmd: "python3", args: ["-m", "yt_dlp", ...ytdlpArgs] },
+    { cmd: "python", args: ["-m", "yt_dlp", ...ytdlpArgs] },
+  ];
+
+  // If YTDLP_PATH is set, try that first
+  if (process.env.YTDLP_PATH?.trim()) {
+    attempts.unshift({ cmd: process.env.YTDLP_PATH.trim(), args: ytdlpArgs });
+  }
+
+  const errors = [];
+  for (const { cmd, args } of attempts) {
+    try {
+      console.log(`  Trying: ${cmd} ${args[0]}...`);
+      await execFilePromise(cmd, args, { timeout: 120000 });
+      return; // success
+    } catch (err) {
+      errors.push(`${cmd}: ${err?.message?.split('\n')[0] || 'unknown'}`);
+    }
+  }
+
+  throw new Error(`yt-dlp download failed. Tried: ${errors.join(' | ')}`);
 }
 
 // Middleware
@@ -49,7 +87,7 @@ app.use(
 );
 app.use(express.json({ limit: "2mb" }));
 
-// --- ROUTE: YouTube Transcription (captions via yt-transcript) ---
+// --- ROUTE: YouTube Transcription (yt-dlp + Whisper) ---
 app.post("/api/youtube", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "No URL provided" });
@@ -57,27 +95,42 @@ app.post("/api/youtube", async (req, res) => {
   const videoId = extractVideoId(url);
   if (!videoId) return res.status(400).json({ error: "Could not extract video ID from URL" });
 
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const timestamp = Date.now();
+  const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
+
   try {
-    console.log(`🚀 Fetching captions for video: ${videoId}`);
+    console.log(`🚀 Downloading audio for: ${videoUrl}`);
 
-    const yt = new YtTranscript({ videoId });
-    const segments = await yt.getTranscript();
+    // 1. Download audio as MP3 via yt-dlp
+    await downloadYouTubeAudio(videoUrl, tempPath);
 
-    if (!segments || segments.length === 0) {
-      return res.status(404).json({ error: "No captions/transcript available for this video." });
+    // Verify file exists
+    if (!fs.existsSync(tempPath)) {
+      throw new Error("Audio download completed but file not found");
     }
 
-    // Combine all caption segments into a single string
-    const transcript = segments.map(s => s.text).join(' ');
+    console.log("✅ Download complete. Transcribing with OpenAI Whisper...");
 
-    console.log(`✅ Transcript fetched: ${transcript.length} chars`);
-    return res.json({ transcript });
+    // 2. Transcribe with Whisper
+    const transcription = await client.audio.transcriptions.create({
+      file: fs.createReadStream(tempPath),
+      model: "whisper-1",
+    });
+
+    console.log(`✅ Transcription complete: ${transcription.text.length} chars`);
+    return res.json({ transcript: transcription.text });
   } catch (error) {
     console.error("❌ YouTube Route Error:", error.message);
     res.status(500).json({
       error: "YouTube processing failed.",
       details: error.message,
     });
+  } finally {
+    // Always clean up temp file
+    if (fs.existsSync(tempPath)) {
+      try { fs.unlinkSync(tempPath); } catch (_) {}
+    }
   }
 });
 
