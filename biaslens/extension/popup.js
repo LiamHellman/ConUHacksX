@@ -165,6 +165,16 @@ function displayResults(data) {
     score = data.score;
   }
   scoreValue.textContent = typeof score === 'number' ? Math.round(score) : score;
+
+  // Animate the SVG score ring
+  const scoreRing = document.getElementById('scoreRing');
+  if (scoreRing && typeof score === 'number') {
+    const r = 36;
+    const circumference = 2 * Math.PI * r;
+    const fraction = Math.max(0, Math.min(100, score)) / 100;
+    scoreRing.style.strokeDasharray = circumference;
+    scoreRing.style.strokeDashoffset = circumference * (1 - fraction);
+  }
   
   // Build findings from the API response
   let findingsHtml = '';

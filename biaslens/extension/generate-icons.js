@@ -10,8 +10,8 @@ function generateIcon(size) {
   
   const radius = size * 0.18;
   
-  // Background with rounded corners
-  ctx.fillStyle = '#0a0a0f';
+  // Background with rounded corners — cream
+  ctx.fillStyle = '#f5f0e8';
   ctx.beginPath();
   ctx.moveTo(radius, 0);
   ctx.lineTo(size - radius, 0);
@@ -25,24 +25,17 @@ function generateIcon(size) {
   ctx.closePath();
   ctx.fill();
   
-  // Gradient for lightning bolt
-  const gradient = ctx.createLinearGradient(0, 0, size, size);
-  gradient.addColorStop(0, '#8b5cf6');
-  gradient.addColorStop(0.5, '#3b82f6');
-  gradient.addColorStop(1, '#ec4899');
+  // Border
+  ctx.strokeStyle = '#c8c0b4';
+  ctx.lineWidth = size * 0.03;
+  ctx.stroke();
   
-  // Lightning bolt path
-  ctx.fillStyle = gradient;
-  const s = size / 128;
-  ctx.beginPath();
-  ctx.moveTo(72 * s, 20 * s);
-  ctx.lineTo(52 * s, 60 * s);
-  ctx.lineTo(72 * s, 60 * s);
-  ctx.lineTo(56 * s, 108 * s);
-  ctx.lineTo(76 * s, 68 * s);
-  ctx.lineTo(56 * s, 68 * s);
-  ctx.closePath();
-  ctx.fill();
+  // "F" letter in accent red
+  ctx.fillStyle = '#c44030';
+  ctx.font = `bold ${size * 0.625}px Georgia, serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('F', size / 2, size / 2 + size * 0.04);
   
   return canvas.toBuffer('image/png');
 }

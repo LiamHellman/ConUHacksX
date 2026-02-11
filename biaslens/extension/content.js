@@ -4,11 +4,11 @@ let resultsPanel = null;
 let isProcessingClick = false;
 let highlights = []; // Track highlighted elements for cleanup
 
-// Highlight colors matching the app
+// Highlight colors matching the paper editorial palette
 const HIGHLIGHT_COLORS = {
-  fallacy: { bg: 'rgba(239, 68, 68, 0.25)', border: 'rgba(239, 68, 68, 0.6)' },
-  bias: { bg: 'rgba(245, 158, 11, 0.25)', border: 'rgba(245, 158, 11, 0.6)' },
-  tactic: { bg: 'rgba(59, 130, 246, 0.25)', border: 'rgba(59, 130, 246, 0.6)' }
+  fallacy: { bg: 'rgba(184, 134, 11, 0.15)', border: 'rgba(184, 134, 11, 0.6)' },
+  bias: { bg: 'rgba(196, 64, 48, 0.12)', border: 'rgba(196, 64, 48, 0.6)' },
+  tactic: { bg: 'rgba(46, 125, 110, 0.15)', border: 'rgba(46, 125, 110, 0.6)' }
 };
 
 // Listen for text selection
@@ -53,7 +53,7 @@ function showFactifyButton(x, y, text) {
   factifyButton = document.createElement('div');
   factifyButton.id = 'factify-analyze-btn';
   factifyButton.innerHTML = `
-    <span class="factify-icon">⚡</span>
+    <span class="factify-icon">&rarr;</span>
     <span class="factify-text">Analyze with Factify</span>
   `;
   
@@ -140,9 +140,21 @@ function showResultsPanel(loading, data, error) {
       score = data.score;
     }
     
+    const r = 33;
+    const circumference = 2 * Math.PI * r;
+    const fraction = typeof score === 'number' ? Math.max(0, Math.min(100, score)) / 100 : 0;
+    const dashOffset = circumference * (1 - fraction);
     contentHtml = `
       <div class="factify-score">
-        <div class="factify-score-circle">${typeof score === 'number' ? Math.round(score) : score}</div>
+        <div class="factify-score-circle">
+          <svg class="factify-score-ring" width="70" height="70">
+            <circle cx="35" cy="35" r="${r}" stroke="#ede7db" stroke-width="4" fill="none" />
+            <circle cx="35" cy="35" r="${r}" stroke="#c44030" stroke-width="4" fill="none"
+              stroke-linecap="butt" stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
+              style="transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset 0.7s ease-out;" />
+          </svg>
+          <span class="factify-score-value">${typeof score === 'number' ? Math.round(score) : score}</span>
+        </div>
         <div class="factify-score-label">Credibility Score</div>
       </div>
     `;
@@ -207,7 +219,6 @@ function showResultsPanel(loading, data, error) {
   resultsPanel.innerHTML = `
     <div class="factify-header">
       <div class="factify-logo">
-        <span>⚡</span>
         <span>Factify</span>
       </div>
       <button class="factify-close">&times;</button>
@@ -251,8 +262,8 @@ function scrollToHighlight(findingId) {
   
   // Flash effect
   const originalBg = highlightEl.style.background;
-  highlightEl.style.background = 'rgba(139, 92, 246, 0.5)';
-  highlightEl.style.boxShadow = '0 0 15px rgba(139, 92, 246, 0.6)';
+  highlightEl.style.background = 'rgba(196, 64, 48, 0.3)';
+  highlightEl.style.boxShadow = '0 0 8px rgba(196, 64, 48, 0.4)';
   
   setTimeout(() => {
     highlightEl.style.background = originalBg;
@@ -330,56 +341,110 @@ function removeHighlights() {
 }
 
 // Highlight text on the page based on findings
+// Uses a sweep-line approach: concatenate all text nodes to search across node
+// boundaries, then process each node once with all its intersecting highlights.
 function buildHighlightSpans(findings) {
   if (!findings || findings.length === 0) return;
-  
-  // Get all text nodes in the body
-  const walker = document.createTreeWalker(
-    document.body,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        // Skip our own elements and script/style tags
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, script, style, noscript')) {
-          return NodeFilter.FILTER_REJECT;
-        }
-        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
+  removeHighlights();
+
+  // 1. Collect every text node in the body (skip our UI, scripts, styles)
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => {
+      const parent = node.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (parent.closest('#factify-results-panel, #factify-analyze-btn, script, style, noscript'))
+        return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
     }
-  );
-  
-  const textNodes = [];
-  let node;
-  while (node = walker.nextNode()) {
-    textNodes.push(node);
+  });
+
+  const nodeEntries = []; // {node, globalStart, globalEnd}
+  let fullText = '';
+  let n;
+  while ((n = walker.nextNode())) {
+    const start = fullText.length;
+    fullText += n.textContent;
+    nodeEntries.push({ node: n, globalStart: start, globalEnd: fullText.length });
   }
-  
-  // For each finding, try to find and highlight the quote
-  findings.forEach((finding, index) => {
-    if (!finding.quote || finding.quote.length < 5) return;
-    
+
+  if (!fullText) return;
+
+  // 2. Locate every finding's quote inside the concatenated page text
+  const ranges = [];
+
+  findings.forEach((finding, idx) => {
+    const quote = finding.quote;
+    if (!quote || quote.trim().length < 2) return;
+
+    const findingId = finding.id || `finding-${idx}`;
     const category = finding.category || 'tactic';
-    const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
-    const searchText = finding.quote.trim();
-    const findingId = finding.id || `finding-${index}`;
-    
-    // Search through text nodes
-    for (let i = 0; i < textNodes.length; i++) {
-      const textNode = textNodes[i];
-      if (!textNode.parentNode) continue; // Already processed
-      
-      const text = textNode.textContent;
-      const index = text.toLowerCase().indexOf(searchText.toLowerCase());
-      
-      if (index !== -1) {
-        // Found the text, split and wrap
-        const before = text.substring(0, index);
-        const match = text.substring(index, index + searchText.length);
-        const after = text.substring(index + searchText.length);
-        
+
+    let pos = -1;
+    let matchLen = quote.length;
+
+    // Exact match
+    pos = fullText.indexOf(quote);
+
+    // Case-insensitive fallback
+    if (pos === -1) {
+      pos = fullText.toLowerCase().indexOf(quote.toLowerCase());
+    }
+
+    // Whitespace-normalised regex fallback (handles line-break / multi-space diffs)
+    if (pos === -1) {
+      try {
+        const escaped = quote.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = escaped.replace(/\s+/g, '\\s+');
+        const m = fullText.match(new RegExp(pattern, 'i'));
+        if (m) { pos = m.index; matchLen = m[0].length; }
+      } catch (_) { /* regex compilation failed – skip */ }
+    }
+
+    if (pos !== -1) {
+      ranges.push({ start: pos, end: pos + matchLen, findingId, category, finding });
+    }
+  });
+
+  if (ranges.length === 0) return;
+
+  // 3. For each text node, apply every intersecting highlight in a single pass.
+  //    We iterate nodes in document order; each node is replaced at most once,
+  //    so there are no stale-reference issues.
+  nodeEntries.forEach(entry => {
+    const { node, globalStart, globalEnd } = entry;
+    if (!node.parentNode) return;
+
+    // Collect ranges that touch this node
+    const intersecting = ranges.filter(r => r.start < globalEnd && r.end > globalStart);
+    if (intersecting.length === 0) return;
+
+    // Build a sorted set of cut-points (local offsets within this node)
+    const cuts = new Set([0, node.textContent.length]);
+    intersecting.forEach(r => {
+      cuts.add(Math.max(0, r.start - globalStart));
+      cuts.add(Math.min(node.textContent.length, r.end - globalStart));
+    });
+    const sorted = [...cuts].sort((a, b) => a - b);
+
+    // Produce a document fragment with plain-text and highlight segments
+    const fragment = document.createDocumentFragment();
+    const text = node.textContent;
+
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const segStart = sorted[i];
+      const segEnd   = sorted[i + 1];
+      const segText  = text.substring(segStart, segEnd);
+      if (!segText) continue;
+
+      // Does any highlight fully cover this segment?
+      const gSegStart = globalStart + segStart;
+      const gSegEnd   = globalStart + segEnd;
+      const covering  = intersecting.find(r => r.start <= gSegStart && r.end >= gSegEnd);
+
+      if (covering) {
+        const { category, findingId, finding } = covering;
+        const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
+
         const span = document.createElement('span');
         span.className = 'factify-highlight';
         span.dataset.category = category;
@@ -393,30 +458,22 @@ function buildHighlightSpans(findings) {
           cursor: pointer;
           transition: background 0.2s;
         `;
-        span.textContent = match;
-        
-        // Tooltip on hover
+        span.textContent = segText;
         span.title = `${finding.label || category}: ${finding.explanation}`;
-        
-        // Click handler to scroll to finding in panel
         span.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
           scrollToFinding(findingId);
         });
-        
-        // Create new structure
-        const fragment = document.createDocumentFragment();
-        if (before) fragment.appendChild(document.createTextNode(before));
+
         fragment.appendChild(span);
-        if (after) fragment.appendChild(document.createTextNode(after));
-        
-        textNode.parentNode.replaceChild(fragment, textNode);
         highlights.push(span);
-        
-        break; // Only highlight first occurrence
+      } else {
+        fragment.appendChild(document.createTextNode(segText));
       }
     }
+
+    node.parentNode.replaceChild(fragment, node);
   });
 }
 
@@ -442,145 +499,6 @@ function scrollToFinding(findingId) {
   setTimeout(() => {
     findingEl.classList.remove('highlighted');
   }, 2000);
-}
-
-// Helper: Get all text nodes within a root element
-function getTextNodes(root) {
-  const walker = document.createTreeWalker(
-    root,
-    NodeFilter.SHOW_TEXT,
-    {
-      acceptNode: (node) => {
-        const parent = node.parentElement;
-        if (!parent) return NodeFilter.FILTER_REJECT;
-        if (parent.closest('#factify-results-panel, #factify-analyze-btn, script, style, noscript')) {
-          return NodeFilter.FILTER_REJECT;
-        }
-        if (node.textContent.trim().length === 0) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    }
-  );
-  const nodes = [];
-  let n;
-  while ((n = walker.nextNode())) nodes.push(n);
-  return nodes;
-}
-
-// Helper: Map global offset to {node, localOffset}
-function mapOffsetToNode(textNodes, offset) {
-  let count = 0;
-  for (const node of textNodes) {
-    const len = node.textContent.length;
-    if (offset < count + len) {
-      return { node, localOffset: offset - count };
-    }
-    count += len;
-  }
-  // fallback: end of last node
-  return { node: textNodes[textNodes.length - 1], localOffset: textNodes[textNodes.length - 1].textContent.length };
-}
-
-// Highlight spans in the DOM using start/end indices
-function highlightSpansInDom(root, text, spans) {
-  removeHighlights();
-  const textNodes = getTextNodes(root);
-  let globalOffset = 0;
-  for (const span of spans) {
-    const { start, end, primary } = span;
-    if (end <= start) continue;
-    // Map start/end to nodes
-    const startMap = mapOffsetToNode(textNodes, start);
-    const endMap = mapOffsetToNode(textNodes, end);
-    if (!startMap.node || !endMap.node) continue;
-    // If in same node
-    if (startMap.node === endMap.node) {
-      const node = startMap.node;
-      const before = node.textContent.slice(0, startMap.localOffset);
-      const match = node.textContent.slice(startMap.localOffset, endMap.localOffset);
-      const after = node.textContent.slice(endMap.localOffset);
-      const spanEl = document.createElement('span');
-      spanEl.className = 'factify-highlight';
-      spanEl.dataset.category = primary?.category || 'tactic';
-      spanEl.dataset.findingId = primary?.id || '';
-      spanEl.dataset.label = primary?.label || primary?.categoryId || '';
-      const colors = HIGHLIGHT_COLORS[primary?.category] || HIGHLIGHT_COLORS.tactic;
-      spanEl.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
-      spanEl.textContent = match;
-      spanEl.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
-      spanEl.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
-      });
-      const frag = document.createDocumentFragment();
-      if (before) frag.appendChild(document.createTextNode(before));
-      frag.appendChild(spanEl);
-      if (after) frag.appendChild(document.createTextNode(after));
-      node.parentNode.replaceChild(frag, node);
-      highlights.push(spanEl);
-    } else {
-      // Multi-node: split start, wrap all in-between, split end
-      // Start node
-      const startNode = startMap.node;
-      const startRest = startNode.textContent.slice(startMap.localOffset);
-      const before = startNode.textContent.slice(0, startMap.localOffset);
-      const startSpan = document.createElement('span');
-      startSpan.className = 'factify-highlight';
-      startSpan.dataset.category = primary?.category || 'tactic';
-      startSpan.dataset.findingId = primary?.id || '';
-      startSpan.dataset.label = primary?.label || primary?.categoryId || '';
-      const colors = HIGHLIGHT_COLORS[primary?.category] || HIGHLIGHT_COLORS.tactic;
-      startSpan.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
-      startSpan.textContent = startRest;
-      startSpan.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
-      startSpan.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
-      });
-      const startFrag = document.createDocumentFragment();
-      if (before) startFrag.appendChild(document.createTextNode(before));
-      startFrag.appendChild(startSpan);
-      startNode.parentNode.replaceChild(startFrag, startNode);
-      highlights.push(startSpan);
-      // Middle nodes
-      let idx = textNodes.indexOf(startNode) + 1;
-      while (idx < textNodes.length && textNodes[idx] !== endMap.node) {
-        const midNode = textNodes[idx];
-        const midSpan = document.createElement('span');
-        midSpan.className = 'factify-highlight';
-        midSpan.dataset.category = primary?.category || 'tactic';
-        midSpan.dataset.findingId = primary?.id || '';
-        midSpan.dataset.label = primary?.label || primary?.categoryId || '';
-        midSpan.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
-        midSpan.textContent = midNode.textContent;
-        midSpan.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
-        midSpan.addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
-        });
-        midNode.parentNode.replaceChild(midSpan, midNode);
-        highlights.push(midSpan);
-        idx++;
-      }
-      // End node
-      const endNode = endMap.node;
-      const endBefore = endNode.textContent.slice(0, endMap.localOffset);
-      const endAfter = endNode.textContent.slice(endMap.localOffset);
-      const endSpan = document.createElement('span');
-      endSpan.className = 'factify-highlight';
-      endSpan.dataset.category = primary?.category || 'tactic';
-      endSpan.dataset.findingId = primary?.id || '';
-      endSpan.dataset.label = primary?.label || primary?.categoryId || '';
-      endSpan.style.cssText = `background: ${colors.bg}; border-bottom: 2px solid ${colors.border}; padding: 1px 2px; border-radius: 2px; cursor: pointer; transition: background 0.2s;`;
-      endSpan.textContent = endBefore;
-      endSpan.title = `${primary?.label || primary?.category}: ${primary?.explanation || ''}`;
-      endSpan.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation(); scrollToFinding(primary?.id || '');
-      });
-      const endFrag = document.createDocumentFragment();
-      endFrag.appendChild(endSpan);
-      if (endAfter) endFrag.appendChild(document.createTextNode(endAfter));
-      endNode.parentNode.replaceChild(endFrag, endNode);
-      highlights.push(endSpan);
-    }
-  }
 }
 
 // Listen for messages from popup and background

@@ -27,24 +27,23 @@
       const ctx = canvas.getContext('2d');
       const size = canvas.width;
       
-      // Background
-      ctx.fillStyle = '#0a0a0f';
+      // Background — cream
+      ctx.fillStyle = '#f5f0e8';
       ctx.beginPath();
       ctx.roundRect(0, 0, size, size, size * 0.15);
       ctx.fill();
       
-      // Gradient
-      const gradient = ctx.createLinearGradient(0, 0, size, size);
-      gradient.addColorStop(0, '#8b5cf6');
-      gradient.addColorStop(0.5, '#3b82f6');
-      gradient.addColorStop(1, '#ec4899');
+      // Border
+      ctx.strokeStyle = '#c8c0b4';
+      ctx.lineWidth = Math.max(1, size * 0.03);
+      ctx.stroke();
       
-      // Lightning bolt
-      ctx.fillStyle = gradient;
-      ctx.font = `bold ${size * 0.6}px Arial`;
+      // "F" in accent red
+      ctx.fillStyle = '#c44030';
+      ctx.font = `bold ${size * 0.625}px Georgia, serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('⚡', size/2, size/2 + size*0.05);
+      ctx.fillText('F', size/2, size/2 + size*0.04);
     }
     
     drawIcon(document.getElementById('icon16'));
