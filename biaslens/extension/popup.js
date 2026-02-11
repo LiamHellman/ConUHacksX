@@ -13,12 +13,23 @@ const rewriteSection = document.getElementById('rewriteSection');
 const rewriteText = document.getElementById('rewriteText');
 const copyRewriteBtn = document.getElementById('copyRewrite');
 
+// YouTube DOM Elements
+const youtubeSection = document.getElementById('youtubeSection');
+const youtubeTranscribeBtn = document.getElementById('youtubeTranscribeBtn');
+const ytBtnText = document.getElementById('ytBtnText');
+const ytBtnLoader = document.getElementById('ytBtnLoader');
+const youtubeStatus = document.getElementById('youtubeStatus');
+const youtubeDesc = document.getElementById('youtubeDesc');
+const transcriptSection = document.getElementById('transcriptSection');
+const transcriptText = document.getElementById('transcriptText');
+
 // Options
 const optBias = document.getElementById('optBias');
 const optFallacy = document.getElementById('optFallacy');
 const optTactic = document.getElementById('optTactic');
 
 let currentSelectedText = '';
+let currentYouTubeTabId = null;
 
 // Default options state
 const defaultOptions = {
@@ -26,6 +37,20 @@ const defaultOptions = {
   fallacy: true,
   tactic: true
 };
+
+// Check if a URL is a YouTube video page
+function isYouTubeVideoUrl(url) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    return (
+      (parsed.hostname === 'www.youtube.com' || parsed.hostname === 'youtube.com' || parsed.hostname === 'm.youtube.com') &&
+      (parsed.pathname === '/watch' || parsed.pathname.startsWith('/shorts/'))
+    );
+  } catch (_) {
+    return false;
+  }
+}
 
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
@@ -35,17 +60,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Set up toggle button click handlers
   setupOptionButtons();
   
-  // Strategy 1: Get selected text from storage (stored whenever user selects text on page)
+  // Check if we're on a YouTube video page
   try {
-    const result = await chrome.storage.local.get(['selectedText']);
-    if (result.selectedText) {
-      currentSelectedText = result.selectedText;
-      showSelectedText(currentSelectedText);
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && isYouTubeVideoUrl(tab.url)) {
+      currentYouTubeTabId = tab.id;
+      showYouTubeMode();
     }
   } catch (e) {
-    console.log('[Factify Popup] storage read failed:', e);
+    console.log('[Factify Popup] Could not check tab URL:', e);
   }
-  
+
+  // Get selected text from storage (set by content script)
+  const result = await chrome.storage.local.get(['selectedText']);
+  if (result.selectedText) {
+    currentSelectedText = result.selectedText;
+    showSelectedText(currentSelectedText);
+    // Clear storage
+    chrome.storage.local.remove(['selectedText']);
+  }
+
   // Strategy 2: Also try to query the active tab's selection directly
   if (!currentSelectedText) {
     try {
@@ -80,6 +114,109 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('[Factify Popup] message fallback failed:', e2);
       }
     }
+  }
+});
+
+// ─── YouTube Mode ───────────────────────────────────────────────────
+
+function showYouTubeMode() {
+  youtubeSection.style.display = 'block';
+  instructions.style.display = 'none';
+}
+
+function setYouTubeStatus(msg, isError) {
+  youtubeStatus.style.display = msg ? 'block' : 'none';
+  youtubeStatus.textContent = msg;
+  youtubeStatus.classList.toggle('error', !!isError);
+}
+
+function setYouTubeBtnState(text, loading, disabled) {
+  ytBtnText.textContent = text;
+  ytBtnLoader.style.display = loading ? 'block' : 'none';
+  youtubeTranscribeBtn.disabled = !!disabled;
+}
+
+// YouTube Transcribe & Analyze button
+youtubeTranscribeBtn.addEventListener('click', async () => {
+  if (!currentYouTubeTabId) return;
+
+  setYouTubeBtnState('Transcribing...', true, true);
+  setYouTubeStatus('Extracting transcript from video...', false);
+  transcriptSection.style.display = 'none';
+  resultsSection.style.display = 'none';
+
+  try {
+    // Step 1: Try getting transcript from content-youtube.js (captions first, then API)
+    let transcript = '';
+    let contentScriptError = '';
+    try {
+      const response = await chrome.tabs.sendMessage(currentYouTubeTabId, { action: 'getYouTubeTranscript' });
+      if (response?.ok && response.transcript) {
+        transcript = response.transcript;
+      } else {
+        throw new Error(response?.error || 'Content script could not get transcript');
+      }
+    } catch (contentErr) {
+      contentScriptError = contentErr?.message || 'Content transcript extraction failed';
+      console.log('[Factify Popup] Content script transcript failed, trying API:', contentErr);
+      // Fallback: ask background script to use the server API
+      setYouTubeStatus('Using server transcription (this may take a moment)...', false);
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const apiResponse = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          { action: 'transcribeYouTube', url: tab.url },
+          (resp) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+              return;
+            }
+            if (!resp || !resp.ok) {
+              reject(new Error(resp?.error || 'Transcription API failed'));
+              return;
+            }
+            resolve(resp);
+          }
+        );
+      });
+      transcript = apiResponse.transcript || '';
+    }
+
+    if (!transcript || transcript.trim().length < 30) {
+      throw new Error(contentScriptError || 'No transcript available for this video. It may not have captions.');
+    }
+
+    // Step 2: Show transcript preview
+    transcriptSection.style.display = 'block';
+    transcriptText.textContent = transcript.length > 600 ? transcript.substring(0, 600) + '...' : transcript;
+
+    // Step 3: Automatically analyze the transcript
+    setYouTubeBtnState('Analyzing...', true, true);
+    setYouTubeStatus('Analyzing transcript for bias, fallacies, and manipulation...', false);
+
+    const settings = {
+      detectBias: optBias.classList.contains('active'),
+      detectFallacies: optFallacy.classList.contains('active'),
+      detectTactics: optTactic.classList.contains('active')
+    };
+
+    const analyzeResponse = await fetch(`${API_URL}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: transcript, settings })
+    });
+
+    if (!analyzeResponse.ok) throw new Error('Analysis failed');
+
+    const data = await analyzeResponse.json();
+    displayResults(data);
+
+    setYouTubeBtnState('Transcribe & Analyze', false, false);
+    setYouTubeStatus('', false);
+
+  } catch (error) {
+    console.error('[Factify Popup] YouTube flow error:', error);
+    setYouTubeBtnState('Transcribe & Analyze', false, false);
+    setYouTubeStatus(error.message || 'Something went wrong. Please try again.', true);
   }
 });
 

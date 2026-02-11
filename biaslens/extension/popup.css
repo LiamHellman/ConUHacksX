@@ -67,6 +67,113 @@ body {
   color: var(--text-secondary);
 }
 
+/* YouTube Section */
+.youtube-section {
+  margin-bottom: 0;
+}
+
+.youtube-card {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.youtube-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.youtube-icon {
+  flex-shrink: 0;
+}
+
+.youtube-title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+.youtube-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.btn-youtube {
+  width: 100%;
+  padding: 11px 16px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  background: var(--accent);
+  color: white;
+}
+
+.btn-youtube:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-youtube:disabled {
+  background: var(--bg-secondary);
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+.youtube-status {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  padding: 6px 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--rule-light);
+}
+
+.youtube-status.error {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(196, 64, 48, 0.05);
+}
+
+/* Transcript Preview */
+.transcript-section {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  padding: 12px;
+}
+
+.transcript-section label {
+  display: block;
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.transcript-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  max-height: 100px;
+  overflow-y: auto;
+  line-height: 1.6;
+  background: var(--bg-primary);
+  border: 1px solid var(--rule-light);
+  padding: 8px;
+}
+
 /* Instructions */
 .instructions {
   background: var(--bg-card);

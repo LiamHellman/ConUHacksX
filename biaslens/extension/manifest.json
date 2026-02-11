@@ -3,7 +3,7 @@
   "name": "Factify - Bias & Fallacy Detector",
   "version": "1.0.0",
   "description": "Analyze any text for bias, logical fallacies, and get AI-powered rewrites",
-  "permissions": ["activeTab", "storage", "contextMenus", "scripting"],
+  "permissions": ["activeTab", "tabs", "storage", "contextMenus", "scripting"],
   "host_permissions": ["https://factify-api.onrender.com/*"],
   "action": {
     "default_popup": "popup.html",
@@ -23,6 +23,15 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
+      "css": ["content.css"]
+    },
+    {
+      "matches": [
+        "*://www.youtube.com/watch*",
+        "*://youtube.com/watch*",
+        "*://m.youtube.com/watch*"
+      ],
+      "js": ["content-youtube.js"],
       "css": ["content.css"]
     }
   ],

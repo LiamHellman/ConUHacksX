@@ -15,8 +15,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(err => {
         chrome.tabs.sendMessage(tabId, { action: 'showResults', loading: false, error: err.message }).catch(() => {});
       });
+  } else if (request.action === 'transcribeYouTube') {
+    transcribeYouTubeUrl(request.url)
+      .then((transcript) => sendResponse({ ok: true, transcript }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
   }
-  // Always return false — we don't use sendResponse
+  // We only keep the channel open for transcribeYouTube.
   return false;
 });
 
@@ -83,4 +88,31 @@ async function showInlineResults(tabId, text) {
       error: error.message
     }).catch(() => {});
   }
+}
+async function transcribeYouTubeUrl(url) {
+  if (!url || typeof url !== 'string') {
+    throw new Error('Missing YouTube URL');
+  }
+
+  const response = await fetch(`${API_URL}/api/youtube`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  });
+
+  if (!response.ok) {
+    let details = '';
+    try {
+      const payload = await response.json();
+      details = payload?.details || payload?.error || '';
+    } catch (_) {
+      details = '';
+    }
+    throw new Error(details || `YouTube transcription failed (${response.status})`);
+  }
+
+  const data = await response.json();
+  const transcript = typeof data?.transcript === 'string' ? data.transcript.trim() : '';
+  if (!transcript) throw new Error('No transcript returned');
+  return transcript;
 }

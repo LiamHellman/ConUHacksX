@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
@@ -24,6 +25,57 @@ const app = express();
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ dest: "uploads/" });
 
+async function runYtDlpWithFallback(url, outputPath) {
+  const bundledWinPath = path.resolve(__dirname, "yt-dlp.exe");
+  const configuredPath = process.env.YTDLP_PATH?.trim();
+  const platform = os.platform();
+
+  const ytdlpArgs = [
+    "-x",
+    "--audio-format",
+    "mp3",
+    "--force-overwrites",
+    "-o",
+    outputPath,
+    url,
+  ];
+
+  const attempts = [];
+
+  // Honor configured command/path, but avoid obvious Windows binary misconfig on non-Windows hosts.
+  if (configuredPath) {
+    const looksLikeWindowsExe = /\.exe(\s|$)/i.test(configuredPath);
+    if (!(platform !== "win32" && looksLikeWindowsExe)) {
+      attempts.push({ command: configuredPath, args: ytdlpArgs });
+    }
+  }
+
+  if (platform === "win32") {
+    attempts.push({ command: bundledWinPath, args: ytdlpArgs });
+  } else {
+    attempts.push({ command: "yt-dlp", args: ytdlpArgs });
+    attempts.push({ command: "python3", args: ["-m", "yt_dlp", ...ytdlpArgs] });
+    attempts.push({ command: "python", args: ["-m", "yt_dlp", ...ytdlpArgs] });
+  }
+
+  const errors = [];
+  for (const attempt of attempts) {
+    try {
+      await execFilePromise(attempt.command, attempt.args, {
+        windowsVerbatimArguments: platform === "win32",
+      });
+      return;
+    } catch (err) {
+      errors.push(`${attempt.command}: ${err?.message || "unknown error"}`);
+    }
+  }
+
+  throw new Error(
+    `yt-dlp invocation failed. Tried: ${errors.join(" | ")}. ` +
+      `Set YTDLP_PATH to a valid executable if needed.`,
+  );
+}
+
 // Middleware
 app.use(
   cors({
@@ -41,25 +93,12 @@ app.post("/api/youtube", async (req, res) => {
 
   const timestamp = Date.now();
   const tempPath = path.resolve(__dirname, "uploads", `yt_${timestamp}.mp3`);
-  const exePath = path.resolve(__dirname, "yt-dlp.exe");
 
   try {
-    console.log(`🚀 Executing local yt-dlp for: ${url}`);
+    console.log(`🚀 Executing yt-dlp for: ${url}`);
 
     // 1. Download audio as MP3
-    await execFilePromise(
-      exePath,
-      [
-        "-x",
-        "--audio-format",
-        "mp3",
-        "--force-overwrites",
-        "-o",
-        tempPath,
-        url,
-      ],
-      { windowsVerbatimArguments: true },
-    );
+    await runYtDlpWithFallback(url, tempPath);
 
     console.log("✅ Download complete. Transcribing with OpenAI Whisper...");
 
