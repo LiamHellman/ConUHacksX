@@ -420,6 +420,39 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── Selection highlight overrides (must beat inline styles) ── */
+.factify-highlight.factify-dimmed {
+  background: rgba(200, 192, 180, 0.06) !important;
+  border-bottom: 2px solid rgba(200, 192, 180, 0.2) !important;
+  border-image: none !important;
+  box-shadow: none !important;
+  opacity: 0.5;
+}
+
+.factify-highlight.factify-selected-bias {
+  background: rgba(196, 64, 48, 0.30) !important;
+  border-bottom: 3px solid #c44030 !important;
+  border-image: none !important;
+  box-shadow: 0 0 12px rgba(196, 64, 48, 0.5) !important;
+  opacity: 1;
+}
+
+.factify-highlight.factify-selected-fallacy {
+  background: rgba(184, 134, 11, 0.30) !important;
+  border-bottom: 3px solid #b8860b !important;
+  border-image: none !important;
+  box-shadow: 0 0 12px rgba(184, 134, 11, 0.5) !important;
+  opacity: 1;
+}
+
+.factify-highlight.factify-selected-tactic {
+  background: rgba(46, 125, 110, 0.30) !important;
+  border-bottom: 3px solid #2e7d6e !important;
+  border-image: none !important;
+  box-shadow: 0 0 12px rgba(46, 125, 110, 0.5) !important;
+  opacity: 1;
+}
+
 #factify-results-panel .factify-loading-text {
   color: #6b6b6b;
   font-size: 14px;
