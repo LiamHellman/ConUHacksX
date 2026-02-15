@@ -1,0 +1,2764 @@
+
+╭─── Claude Code v2.1.42 ──────────────────────────────────────────────────────╮
+│                                                    │ Tips for getting        │
+│                Welcome back Aariyan!               │ started                 │
+│                                                    │ Run /init to create a … │
+│                       ▐▛███▜▌                      │ ─────────────────────── │
+│                      ▝▜█████▛▘                     │ Recent activity         │
+│                        ▘▘ ▝▝                       │ No recent activity      │
+│                                                    │                         │
+│    Opus 4.6 · Claude Pro · aariyan@gmail.com's     │                         │
+│    Organization                                    │                         │
+│            E:\_dev\projects\ConUHacksX             │                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+❯ Do you understand what this project is? 
+
+● Let me take a look at the project to answer that.
+
+● Explore(Explore project structure)
+  ⎿  Done (32 tool uses · 47.5k tokens · 1m 15s)
+  (ctrl+o to expand)
+
+● Yes. This is Factify — an AI-powered text analysis tool built for the
+  ConUHacks X hackathon. Here's the gist:
+
+  What it does: Detects bias, logical fallacies, and manipulative rhetoric in
+  text, scoring content on four axes (logic quality, neutrality, transparency,
+  verifiability) and pinpointing specific findings with highlighted spans.
+
+  Input methods: Manual text paste, file upload, YouTube video transcription
+  (caption scraping), and audio/video transcription via OpenAI Whisper.
+
+  Delivered as:
+  - A React + Vite web app (frontend in /biaslens/src)
+  - A Chrome extension (Manifest V3, in /biaslens/extension) for analyzing 
+  selected text on any webpage
+  - A Node/Express backend (/biaslens/server) that calls OpenAI (GPT-4o mini
+  with structured outputs) for analysis
+
+  Tech stack: React 19, Vite, Tailwind CSS, GSAP/Motion for animations, Express
+  5, OpenAI API, ytdl-core for YouTube captions, Multer for file uploads.
+
+  Key design details:
+  - Findings are returned with character-level spans and word-boundary snapping
+  for accurate highlighting
+  - Color-coded categories (gold for fallacies, red for biases, teal for
+  tactics)
+  - Session history persisted in localStorage
+  - Deployed at factify.tech with the API on Render
+
+  The current branch (Aariyan-Testbench) has recent work on YouTube 
+  transcription, highlight priority logic, and server fixes. What would you like
+   to do with it?
+
+✻ Cooked for 1m 11s
+
+❯ I want to integrate some NLP models to make the fallacy (from now on used 
+   for the entire fallacy biases and rhetoricical tactics system) system    
+  more robust. I want this detection system to be mostly deterministic for  
+  detection. Should we convert all of the natural language into             
+  prepositional logic and then identify the soundness of the entire         
+  structure (prepositions and inferences?)                                  
+
+● This is a great question, and the honest answer is: partial yes, but pure 
+  propositional logic alone won't get you there. Let me break down why.
+
+  What propositional logic can catch
+
+  Formal fallacies — structural violations of valid inference:
+
+  Affirming the consequent:  P → Q, Q ∴ P     ✗
+  Denying the antecedent:    P → Q, ¬P ∴ ¬Q   ✗
+  Undistributed middle:      M → P, M → Q ∴ P → Q  ✗
+
+  These are genuinely decidable. If you can extract the structure, checking
+  validity is trivial and fully deterministic. That part of your idea is sound.
+
+  The problem: most of what you're detecting isn't formal
+
+  Look at your current categories:
+
+  Category: Formal fallacies (affirming consequent, etc.)
+  Formal logic helps?: Yes
+  Why / why not: Structural — propositional/predicate logic works
+  ────────────────────────────────────────
+  Category: Informal fallacies (ad hominem, straw man, false dilemma)
+  Formal logic helps?: No
+  Why / why not: These are about relevance and content, not structure. "You're
+    wrong because you're ugly" is logically valid if you add the implicit
+  premise
+     — the problem is the premise is bad, not that the structure is invalid
+  ────────────────────────────────────────
+  Category: Cognitive biases (anchoring, survivorship bias)
+  Formal logic helps?: No
+  Why / why not: These are psychological phenomena in how information is
+  selected
+     or framed, not logical structure
+  ────────────────────────────────────────
+  Category: Rhetorical tactics (loaded language, fear appeals, false urgency)
+  Formal logic helps?: No
+  Why / why not: These are pragmatic/linguistic — they operate at word choice
+  and
+    framing level
+
+  The core issue: NL → propositional logic is itself an unsolved problem.
+  Natural language is ambiguous, implicit, and context-dependent. The sentence
+  "If the economy is bad, people suffer, and people are suffering" looks like
+  affirming the consequent, but it could also be an independent observation.
+  That disambiguation step is where all the non-determinism lives.
+
+  What I'd actually recommend: a layered hybrid
+
+  Instead of one monolithic approach, split detection into tiers by what each
+  tier is good at:
+
+  Tier 1: Linguistic/lexical (deterministic)
+    → Loaded language, weasel words, false urgency markers
+    → Pattern matching, sentiment lexicons, hedge word lists
+    → Fully deterministic, fast
+
+  Tier 2: Argumentation mining (ML-based, but structured)
+    → Extract claims, premises, evidence, rebuttals
+    → Models: fine-tuned transformers on argument mining corpora
+    → Output is structured (argument graph), even if extraction is probabilistic
+
+  Tier 3: Formal validity checking (deterministic)
+    → Take extracted argument structures from Tier 2
+    → Map to predicate logic (not just propositional — you need quantifiers)
+    → Check validity with a SAT solver or theorem prover
+    → Catches formal fallacies with certainty
+
+  Tier 4: Informal fallacy classification (ML-based)
+    → Fine-tuned classifier on fallacy datasets (LOGIC, Propaganda Techniques,
+  ArgotarioNLP)
+    → Pattern-based: "X is wrong BECAUSE X is [personal attack]" → ad hominem
+    → More deterministic than raw LLM, less than formal logic
+
+  The key insight: determinism comes from narrowing each detector's scope, not 
+  from forcing everything through one formalism.
+
+  Practical bottom line
+
+  - Converting everything to propositional logic and checking soundness would
+  cover maybe 10-15% of what you're currently detecting (the formal fallacies
+  only)
+  - The NL→logic translation step would itself require an LLM or deep NLP,
+  reintroducing the non-determinism you're trying to eliminate
+  - A better path is specialized classifiers per category — each one is more 
+  deterministic than a general-purpose LLM because it's solving a narrower
+  problem
+
+  Would you like to explore this hybrid architecture further, or do you want to
+  focus on one specific tier to start with?
+
+✻ Churned for 42s
+
+❯ This layered approach is a good idea. Would it be intelligent to change   
+  the catergories from fallacies, biases and tactics to something different 
+   so that they overlap a lot less? What would be a kind of proper          
+  categorization for these?                                                 
+
+● Great question. Let me look at exactly what specific types you're currently
+  detecting so I can propose categories that eliminate the overlap.
+
+● Explore(Explore current detection types)
+  ⎿  Done (21 tool uses · 43.6k tokens · 40s)
+  (ctrl+o to expand)
+
+● Now I can see the overlap problem concretely. Here's what I found:
+
+  The overlap problem in your current system
+
+  Phenomenon: appeal_to_emotion
+  Currently categorized as: fallacy
+  Could equally be: tactic
+  ────────────────────────────────────────
+  Phenomenon: fear_appeal
+  Currently categorized as: tactic
+  Could equally be: fallacy (appeal to emotion)
+  ────────────────────────────────────────
+  Phenomenon: cherry_picking
+  Currently categorized as: tactic
+  Could equally be: bias (confirmation/survivorship)
+  ────────────────────────────────────────
+  Phenomenon: survivorship_bias
+  Currently categorized as: bias
+  Could equally be: tactic (cherry_picking)
+  ────────────────────────────────────────
+  Phenomenon: confirmation_bias
+  Currently categorized as: bias
+  Could equally be: tactic (selective evidence)
+  ────────────────────────────────────────
+  Phenomenon: sunk_cost_fallacy
+  Currently categorized as: bias
+  Could equally be: literally has "fallacy" in the name
+  ────────────────────────────────────────
+  Phenomenon: framing_effect
+  Currently categorized as: bias
+  Could equally be: tactic (framing)
+  ────────────────────────────────────────
+  Phenomenon: bandwagon
+  Currently categorized as: tactic
+  Could equally be: fallacy (appeal to popularity)
+  ────────────────────────────────────────
+  Phenomenon: anchoring
+  Currently categorized as: bias
+  Could equally be: tactic (if deliberate)
+
+  The root cause: your current categories mix what's wrong (the error type), why
+   it's wrong (the mechanism), and who's at fault (intent vs. cognitive
+  tendency). A writer "cherry-picking" is doing the same thing as exhibiting
+  "confirmation bias" — selectively presenting evidence — but one implies intent
+   and the other implies psychology.
+
+  Proposed taxonomy: categorize by mechanism of error
+
+  Instead of asking "is this a fallacy, bias, or tactic?", ask "what
+  specifically went wrong in the reasoning or communication?"
+
+  1. Structure — The logical form itself is invalid
+
+  The inference doesn't follow, regardless of what the premises say.
+
+  ┌────────────────────────┬───────────────────┐
+  │          Type          │     Currently     │
+  ├────────────────────────┼───────────────────┤
+  │ circular_reasoning     │ fallacy           │
+  ├────────────────────────┼───────────────────┤
+  │ begging_the_question   │ fallacy           │
+  ├────────────────────────┼───────────────────┤
+  │ composition_division   │ fallacy           │
+  ├────────────────────────┼───────────────────┤
+  │ false_cause / post_hoc │ fallacy           │
+  ├────────────────────────┼───────────────────┤
+  │ sunk_cost              │ bias → moved here │
+  └────────────────────────┴───────────────────┘
+
+  Detection: Formal logic / theorem provers — most deterministic tier.
+
+  2. Relevance — The premises don't connect to the conclusion
+
+  The argument structure might be valid, but the evidence offered is irrelevant
+  to the claim.
+
+  Type: ad_hominem
+  Currently: fallacy
+  ────────────────────────────────────────
+  Type: red_herring
+  Currently: fallacy
+  ────────────────────────────────────────
+  Type: appeal_to_authority
+  Currently: fallacy
+  ────────────────────────────────────────
+  Type: appeal_to_emotion / fear_appeal / guilt_trip
+  Currently: split across fallacy + tactic → unified here
+  ────────────────────────────────────────
+  Type: bandwagon
+  Currently: tactic
+  ────────────────────────────────────────
+  Type: whataboutism
+  Currently: tactic
+  ────────────────────────────────────────
+  Type: scapegoating
+  Currently: tactic
+  ────────────────────────────────────────
+  Type: in_group_bias / halo_effect
+  Currently: bias → moved here
+
+  Detection: Argumentation mining — classify premise-conclusion relationships.
+
+  3. Evidence — The support is relevant but insufficient or cherry-picked
+
+  The premises relate to the conclusion but don't adequately support it.
+
+  Type: hasty_generalization
+  Currently: fallacy
+  ────────────────────────────────────────
+  Type: slippery_slope
+  Currently: fallacy
+  ────────────────────────────────────────
+  Type: cherry_picking / survivorship_bias / confirmation_bias
+  Currently: split across tactic + bias → unified here
+  ────────────────────────────────────────
+  Type: availability_heuristic
+  Currently: bias
+  ────────────────────────────────────────
+  Type: anchoring / negativity_bias / optimism_bias
+  Currently: bias
+  ────────────────────────────────────────
+  Type: fundamental_attribution_error
+  Currently: bias
+  ────────────────────────────────────────
+  Type: just_world_hypothesis
+  Currently: bias
+
+  Detection: Claim-evidence classifiers — assess sufficiency and
+  representativeness.
+
+  4. Framing — The situation, options, or opponent are misrepresented
+
+  The information is distorted through how it's presented, not what's said.
+
+  ┌──────────────────┬───────────────────┐
+  │       Type       │     Currently     │
+  ├──────────────────┼───────────────────┤
+  │ straw_man        │ fallacy           │
+  ├──────────────────┼───────────────────┤
+  │ false_dilemma    │ fallacy           │
+  ├──────────────────┼───────────────────┤
+  │ equivocation     │ fallacy           │
+  ├──────────────────┼───────────────────┤
+  │ no_true_scotsman │ fallacy           │
+  ├──────────────────┼───────────────────┤
+  │ moving_goalposts │ tactic            │
+  ├──────────────────┼───────────────────┤
+  │ framing_effect   │ bias → moved here │
+  └──────────────────┴───────────────────┘
+
+  Detection: Semantic comparison — compare claims against source material.
+
+  5. Language — Word choice manipulates rather than informs
+
+  The problem is at the surface linguistic level — the words themselves.
+
+  ┌────────────────────────────┬───────────┐
+  │            Type            │ Currently │
+  ├────────────────────────────┼───────────┤
+  │ loaded_language            │ tactic    │
+  ├────────────────────────────┼───────────┤
+  │ vague_weasel_words         │ tactic    │
+  ├────────────────────────────┼───────────┤
+  │ false_urgency              │ tactic    │
+  ├────────────────────────────┼───────────┤
+  │ thought_terminating_cliche │ tactic    │
+  ├────────────────────────────┼───────────┤
+  │ sealioning                 │ tactic    │
+  └────────────────────────────┴───────────┘
+
+  Detection: Lexical analysis, sentiment, hedging detection — most
+  deterministic, no LLM needed.
+
+  ---
+  Each category now maps 1:1 to a detection mechanism, and every finding belongs
+   to exactly one category based on what's mechanically wrong — not whether it's
+   "a bias" or "a tactic."
+  ⎿  Tool use rejected with user message: The user wants to clarify these 
+     questions.
+         This means they may have additional information, context or questions 
+     for you.
+         Take their response into account and then reformulate the questions if 
+     appropriate.
+         Start by asking them what they would like to clarify.
+
+         Questions asked:
+     - "Does this 5-category taxonomy (Structure, Relevance, Evidence, Framing, 
+     Language) feel right, or would you prefer to collapse some? For example, 
+     Relevance + Evidence could merge into 'Support' (4 categories), or we could
+      keep all 5."
+       (No answer provided)
+
+● What would you like to clarify? I'm happy to dig deeper into any part of the
+  taxonomy or adjust the reasoning.
+
+✻ Cooked for 2m 22s
+
+❯ This 5 stage categorization is interesting, it seems to go from most      
+  egregious formal error to the least, this is a good idea. Is there a      
+  specific advantage to the 4 stage categorization over the 5? Is there any 
+   ressources you can point me to (This can be a paper or an introductory   
+  book or anything relevant) that can help me understand this topic at a    
+  deeper level?                                                             
+
+● Good observations. Let me address both questions.
+
+  4 vs 5: honest answer
+
+  There's no strong technical advantage to 4. The arguments for collapsing are
+  mostly cosmetic:
+
+  - UI simplicity — but you already have 3 toggles + verifiability, so 5 isn't a
+   big jump
+  - Relevance + Evidence merge ("Support") — the detection mechanisms overlap
+  somewhat (both use argumentation mining), but the errors are conceptually
+  distinct. "Your premise has nothing to do with your conclusion" (relevance) is
+   a fundamentally different problem than "your premise is related but your
+  sample size is 1" (evidence). Merging them reintroduces the ambiguity you're
+  trying to eliminate.
+  - Framing + Language merge ("Presentation") — this is the worst merge because
+  these map to completely different detection methods. Language is lexical
+  pattern matching (deterministic). Framing requires semantic comparison
+  (ML-based). Combining them defeats the whole architecture.
+
+  The gradient you noticed — from formal structural errors down to surface-level
+   word choice — is actually the key insight. It maps to a confidence gradient
+  too: the more structural the error, the more certain the detection. Keep all
+  5.
+
+  Resources
+
+  Let me find you the best references across the spectrum.
+
+● Task(Find argumentation theory resources)
+  ⎿  Done (22 tool uses · 38.4k tokens · 2m 30s)
+  (ctrl+o to expand)
+
+● On 4 vs 5 categories
+
+  No, there's no real advantage to 4. The only argument would be "fewer toggles
+  in the UI," but you already have 3 + verifiability. The merged versions
+  actively hurt you:
+
+  - Relevance + Evidence → "Support" reintroduces ambiguity. "Your evidence is
+  irrelevant" and "your evidence is insufficient" are different diagnoses
+  requiring different detectors.
+  - Framing + Language → "Presentation" is worse — Language detection is lexical
+   pattern matching (deterministic), Framing requires semantic comparison (ML).
+  Merging them defeats the architecture.
+
+  The severity gradient you noticed (structural → relevance → evidence → framing
+   → language) is a feature, not an accident. It also maps to a confidence
+  gradient: structural errors are the most certain to detect, language
+  manipulation the least ambiguous to flag. Keep all 5.
+
+  Resources
+
+  Here are the most relevant ones, organized by where to start:
+
+  Start here (practical, for building your system)
+
+  1. Jin et al., "Logical Fallacy Detection" (EMNLP 2022) — The primary NLP
+  benchmark with 13 fallacy types + dataset.
+  https://github.com/causalNLP/logical-fallacy
+  2. Da San Martino et al., SemEval-2020 Task 11 — Propaganda technique 
+  detection shared task (14 techniques, span-level identification, 250
+  participating teams). https://github.com/aschern/semeval2020_task11
+  3. Lawrence & Reed, "Argument Mining: A Survey" (Computational Linguistics, 
+  2020) — The foundational modern survey of argument mining techniques.
+  https://aclanthology.org/J19-4006/
+
+  Current state of the art
+
+  4. Lei & Huang, "Boosting Logical Fallacy Reasoning in LLMs via Logical 
+  Structure Tree" (EMNLP 2024) — Most recent major paper; introduces a logical
+  structure tree representation for LLM-based fallacy reasoning.
+  https://github.com/yuanyuanlei-nlp/logical_fallacy_emnlp_2024
+  5. Sourati et al., "Robust and Explainable Identification of Logical 
+  Fallacies" (Knowledge-Based Systems, 2023) — Three-stage pipeline (detection →
+   coarse → fine-grained classification) with explainability.
+  https://github.com/usc-isi-i2/logical-fallacy-identification
+  6. Chen et al., "Exploring the Potential of LLMs in Computational 
+  Argumentation" (ACL 2024) — Benchmarks ChatGPT/Flan/LLaMA2 across 14
+  argumentation datasets.
+
+  Theoretical grounding (for taxonomy design)
+
+  7. Walton, Reed & Macagno, Argumentation Schemes (Cambridge, 2008) — 96 
+  formalized argumentation schemes with critical questions. The definitive
+  reference for building a scheme-based taxonomy.
+  8. Van Eemeren & Grootendorst, A Systematic Theory of Argumentation 
+  (Cambridge, 2004) — Pragma-dialectical approach: fallacies as rule violations.
+   Maps directly onto computational rule-checking.
+  9. Walton, Informal Logic: A Pragmatic Approach (Cambridge, 2008) — Most 
+  accessible entry point for a CS student; 186 worked examples.
+
+  Free / quick-start
+
+  10. DeLancey, A Concise Introduction to Logic — Free, open-access textbook 
+  covering both formal and informal logic.
+  https://milnepublishing.geneseo.edu/concise-introduction-to-logic/
+
+  My suggestion: start with #1 and #2 (get the datasets, understand what
+  detection looks like in practice), then read #3 (understand the argument
+  mining landscape), then #7 (ground your taxonomy). The Lei & Huang paper (#4)
+  will be directly relevant when you build the structural tier.
+
+● User answered Claude's questions:
+  ⎿  · Ready to move forward with planning the implementation? If so, what 
+     would you like to tackle first? → Plan the full hybrid architecture
+
+● Let me design the full hybrid architecture. I have all the codebase context I
+  need from the earlier explorations. Let me draft the plan.
+
+● Plan(Design hybrid NLP architecture)
+  ⎿  Done (23 tool uses · 0 tokens · 43s)
+  (ctrl+o to expand)
+  ⎿  You've hit your limit · resets 3am (America/Toronto)
+     /upgrade or /extra-usage to finish what you’re working on.
+
+✻ Cooked for 5m 14s
+
+❯ /rate-limit-options 
+  ⎿  Login successful
+
+❯ continue what you were doing 
+
+● Let me design the architecture myself and write the plan directly. I have all
+  the context needed.
+
+● Updated plan
+  ⎿  /plan to preview
+
+● The full plan is written. Here's a summary of the key architectural decisions:
+
+  Python NLP microservice (FastAPI) alongside your existing Express backend —
+  tiers 1-4 run there with DeBERTa-v3-base as the workhorse model. Tier 5
+  (Language) runs in Node.js with zero ML — pure lexicon/pattern matching.
+
+  All tiers run in parallel except Tier 1 (Structure), which depends on Tier 2's
+   argument graph. Total latency stays LLM-bound (~2-4s) since the NLP models
+  are faster than the OpenAI call.
+
+  The LLM shifts from sole detector to ensemble voter — it still runs, but its
+  findings get confidence-reduced if no NLP model agrees. NLP-confirmed findings
+   get boosted. The LLM also keeps its unique role for verifiability scoring
+  (requires world knowledge).
+
+  8 implementation phases, starting with the category refactor (no new models,
+  just taxonomy cleanup) and ending with ensemble tuning.
+
+● User declined to answer questions
+
+❯ /plan 
+  ⎿  Current Plan
+     C:\Users\Aariyan.claude\plans\tingly-leaping-marshmallow.md
+
+     Hybrid NLP Architecture for Factify — Full Plan
+
+     Context
+
+     Factify currently relies entirely on a single OpenAI GPT-4o-mini call for
+     all
+     fallacy/bias/rhetoric detection. This is non-deterministic, expensive per
+     call,
+     and mixes overlapping categories (fallacy/bias/tactic). We are redesigning
+     the
+     system with:
+
+     1. A new 5-category taxonomy based on mechanism of error (Structure,
+     Relevance, Evidence, Framing, Language) — replacing the overlapping
+     fallacy/bias/tactic split
+     2. A hybrid detection pipeline where specialized NLP models handle each
+     category tier, with the LLM as an ensemble complement rather than the sole
+     detector
+
+     The goal: more deterministic, more robust, and taxonomically clean
+     detection.
+
+     ---
+     Architecture Overview
+
+                              ┌─────────────────────────┐
+                              │     Express Backend      │
+                              │   /api/analyze (POST)    │
+                              └────────┬────────────────┘
+                                       │ text
+                                       ▼
+                         ┌─────────────────────────┐
+                         │   Pipeline Orchestrator  │
+                         │     (Node.js layer)      │
+                         └──┬──┬──┬──┬──┬──┬───────┘
+                            │  │  │  │  │  │
+                 ┌──────────┘  │  │  │  │  └──────────┐
+                 ▼             ▼  ▼  ▼  ▼             ▼
+          ┌──────────┐   ┌─────────────────┐   ┌──────────┐
+          │ Tier 5   │   │  Python NLP     │   │  LLM     │
+          │ Language │   │  Service (FastAPI│   │  (OpenAI)│
+          │ (Node.js)│   │  Tiers 1-4)     │   │  Ensemble│
+          │ no ML    │   │                 │   │  + Explain│
+          └────┬─────┘   └──┬──┬──┬──┬────┘   └────┬─────┘
+               │             │  │  │  │              │
+               │          ┌──┘  │  │  └──┐           │
+               │          ▼     ▼  ▼     ▼           │
+               │        T1    T2  T3    T4            │
+               │       Struct Rel Evid Frame          │
+               │                                     │
+               └──────────┬──────────────────────┬───┘
+                          ▼                      ▼
+                   ┌─────────────────────────────────┐
+                   │        Finding Merger            │
+                   │  dedup · confidence boost · rank │
+                   └──────────────┬──────────────────┘
+                                  ▼
+                          ┌───────────────┐
+                          │ JSON Response │
+                          │ → React / Ext │
+                          └───────────────┘
+
+     Execution Strategy
+
+     Parallel Group A (no dependencies, run concurrently):
+       ├── Tier 5: Language    (Node.js, in-process, ~5ms)
+       ├── Tier 4: Framing     (Python, classifier, ~200ms)
+       ├── Tier 3: Evidence    (Python, classifier, ~200ms)
+       ├── Tier 2: Relevance   (Python, arg mining, ~300ms)
+       └── LLM: OpenAI        (external API, ~2-4s)
+
+     Sequential (depends on Tier 2 output):
+       └── Tier 1: Structure   (Python, needs argument graph from Tier 2,
+     ~100ms)
+
+     Total latency: max(Tier2 + Tier1, LLM) ≈ 2-4s (LLM-bound, same as current)
+
+     ---
+     Tier-by-Tier Design
+
+     Tier 5: Language (Node.js, in-process, fully deterministic)
+
+     No ML required. Pattern matching + lexicon lookup.
+
+     Implementation:
+     - biaslens/server/nlp/language.js — single module
+     - Curated word/phrase lists stored as JSON:
+       - lexicons/loaded_language.json — emotionally charged terms (sourced from
+     AFINN + custom)
+       - lexicons/weasel_words.json — hedging phrases ("some people say", "it is
+     believed", "many experts")
+       - lexicons/urgency_phrases.json — time pressure markers ("act now",
+     "limited
+      time", "before it's too late")
+       - lexicons/thought_terminators.json — cliches ("it is what it is", "agree
+      to
+      disagree", "that's just how it works")
+     - Sealioning: Pattern-based detection of excessive interrogative density +
+     bad-faith question markers
+
+     Detection approach per type:
+
+     Type: loaded_language
+     Method: Sentiment intensity scoring (AFINN lexicon) — flag words
+     ────────────────────────────────────────
+     Type: with
+     Method: score
+     ────────────────────────────────────────
+     Type: vague_weasel_words
+     Method: Regex + phrase list matching against curated
+     ────────────────────────────────────────
+     Type: hedging/weasel patterns
+     Method:
+     ────────────────────────────────────────
+     Type: false_urgency
+     Method: Phrase list + temporal pressure pattern matching
+     ────────────────────────────────────────
+     Type: thought_terminating_cliche
+     Method: Exact/fuzzy phrase matching against curated
+     ────────────────────────────────────────
+     Type: list
+     Method:
+     ────────────────────────────────────────
+     Type: sealioning
+     Method: Question density heuristic + interrogative pattern analysis
+
+     Output: Array of { type, categoryId, start, end, quote, confidence, 
+     severity }
+
+     Confidence model: Lexicon matches get high confidence (0.85-0.95).
+     Context-dependent patterns get medium (0.6-0.8).
+
+     ---
+     Tier 2: Relevance — Argumentation Mining (Python, transformer-based)
+
+     This is the foundational NLP tier. It extracts argument structure that Tier
+     1 also depends on.
+
+     Model: Fine-tune deberta-v3-base (Microsoft, 86M params) on:
+     - ArgMicro corpus (argument component + relation classification)
+     - LOGIC dataset (Jin et al. 2022) for fallacy-specific training
+     - SemEval-2020 Task 11 propaganda data for relevance-type techniques
+
+     Pipeline:
+     1. Argument Component Detection — Classify spans as: Claim, Premise,
+     Evidence, Rebuttal, None
+     2. Relation Classification — For each (premise, claim) pair: Support,
+     Attack, Irrelevant
+     3. Relevance Fallacy Classification — For irrelevant premises, 
+     sub-classify:
+       - ad_hominem (attacks person)
+       - appeal_to_emotion / fear_appeal / guilt_trip (emotional premise)
+       - appeal_to_authority (authority as evidence)
+       - red_herring (topic divergence)
+       - bandwagon (popularity as evidence)
+       - whataboutism (deflection)
+       - scapegoating (blame-shifting)
+       - in_group_bias / halo_effect (identity-based reasoning)
+
+     Key output (also used by Tier 1):
+     {
+       "argument_graph": {
+         "claims": [{"text": "...", "start": 0, "end": 50}],
+         "premises": [{"text": "...", "start": 51, "end": 120, "supports_claim":
+      0}],
+         "relations": [{"from": 0, "to": 1, "type": "irrelevant", "sub_type":
+     "ad_hominem"}]
+       },
+       "findings": [...]
+     }
+
+     ---
+     Tier 1: Structure — Formal Logic Checking (Python, depends on Tier 2)
+
+     Approach: Use the argument graph from Tier 2, attempt to formalize into
+     logical propositions, check validity.
+
+     Implementation:
+     1. Logical form extraction — Use a smaller LLM (or fine-tuned model) to
+     convert extracted argument components into propositional/predicate logic
+     representations
+       - Input: claim + premises from Tier 2's argument graph
+       - Output: logical forms like P → Q, Q ∴ P (with natural language mapping)
+     2. Validity checking — Use z3-solver (Z3 theorem prover, Python bindings)
+     to check:
+       - Is the inference valid? (Do premises entail conclusion?)
+       - What form of invalidity? (affirming consequent, denying antecedent,
+     etc.)
+     3. Pattern matching — For common structural fallacies that don't need full
+     theorem proving:
+       - Circular reasoning: detect when conclusion ≈ premise (semantic
+     similarity
+     check)
+       - Begging the question: premise presupposes conclusion
+       - Composition/division: part↔whole inference patterns
+
+     Types detected:
+     - circular_reasoning / begging_the_question — semantic similarity between
+     premise and conclusion
+     - composition_division — part/whole pattern detection
+     - false_cause / post_hoc — causal structure without sufficient causal
+     evidence
+     - sunk_cost — past-investment reasoning pattern
+
+     Note: This tier will have the lowest coverage initially. Formalizing
+     natural
+      language into logic is hard. Start with pattern-matching for common
+     structural
+     fallacies and expand formal checking incrementally.
+
+     ---
+     Tier 3: Evidence — Sufficiency Analysis (Python, classifier)
+
+     Model: Fine-tune deberta-v3-base on evidence quality datasets:
+     - IBM Evidence Quality dataset
+     - Custom training data derived from LOGIC dataset (evidence-category 
+     fallacies)
+     - Augmented with examples from propaganda detection corpora
+
+     Detection approach:
+
+     Type: hasty_generalization
+     Method: Detect small sample indicators ("one study", "I know
+     ────────────────────────────────────────
+     Type: someone who", "this one time") + quantifier analysis
+     Method:
+     ────────────────────────────────────────
+     Type: cherry_picking / survivorship_bias / confirmation_bias
+     Method: Detect
+     ────────────────────────────────────────
+     Type: selective evidence presentation — one-sided sourcing, absence of
+       counterevidence
+     Method:
+     ────────────────────────────────────────
+     Type: markers
+     Method:
+     ────────────────────────────────────────
+     Type: slippery_slope
+     Method: Detect unsupported causal chains (A→B→C→D) without
+     ────────────────────────────────────────
+     Type: justification at each step
+     Method:
+     ────────────────────────────────────────
+     Type: availability_heuristic
+     Method: Detect recency/memorability-based reasoning
+     ────────────────────────────────────────
+     Type: anchoring
+     Method: Detect over-reliance on first-mentioned data point
+     ────────────────────────────────────────
+     Type: negativity_bias / optimism_bias
+     Method: Detect disproportionate weighting of
+     ────────────────────────────────────────
+     Type: negative/positive outcomes
+     Method:
+     ────────────────────────────────────────
+     Type: fundamental_attribution_error
+     Method: Detect dispositional attribution without
+     ────────────────────────────────────────
+     Type: situational consideration
+     Method:
+     ────────────────────────────────────────
+     Type: just_world_hypothesis
+     Method: Detect moral-causal reasoning ("they deserved it")
+
+     Hybrid approach: Combine transformer classifier with heuristic rules:
+     - Quantifier analysis (spaCy) — detect "all", "every", "never" vs
+     sample-size
+     language
+     - Causal chain length detection — count unsupported inference steps
+     - One-sidedness scoring — ratio of supporting vs opposing evidence
+     presented
+
+     ---
+     Tier 4: Framing — Representation Analysis (Python, classifier)
+
+     Model: Fine-tune deberta-v3-base on:
+     - SemEval propaganda data (framing-related techniques)
+     - LOGIC dataset (framing-category fallacies)
+     - Custom examples for each framing sub-type
+
+     Detection approach:
+
+     Type: straw_man
+     Method: Detect misrepresentation — paraphrased position diverges from
+     ────────────────────────────────────────
+     Type: original (requires reference or contextual cues like "they say X"
+       followed by
+     Method:
+     ────────────────────────────────────────
+     Type: distortion)
+     Method:
+     ────────────────────────────────────────
+     Type: false_dilemma
+     Method: Pattern detection: binary framing ("either X or Y", "only
+     ────────────────────────────────────────
+     Type: two options") + exclusivity markers
+     Method:
+     ────────────────────────────────────────
+     Type: equivocation
+     Method: Word sense disambiguation — detect term used with shifting
+     ────────────────────────────────────────
+     Type: meaning across argument
+     Method:
+     ────────────────────────────────────────
+     Type: no_true_scotsman
+     Method: Detect ad-hoc redefinition patterns ("a real X would...")
+     ────────────────────────────────────────
+     Type:
+     Method:
+     ────────────────────────────────────────
+     Type: moving_goalposts
+     Method: Detect criteria shifts (harder — may need multi-turn
+     ────────────────────────────────────────
+     Type: context)
+     Method:
+     ────────────────────────────────────────
+     Type: framing_effect
+     Method: Detect asymmetric framing of equivalent information (e.g.,
+     ────────────────────────────────────────
+     Type: "90% survival" vs "10% mortality")
+     Method:
+
+     Hybrid approach: Combine classifier with:
+     - Binary option detection (regex + dependency parsing)
+     - Semantic similarity for straw man detection (compare attributed vs actual
+     positions)
+
+     ---
+     LLM Layer: Ensemble + Explanation (OpenAI GPT-4o-mini)
+
+     Changed role: The LLM shifts from primary detector to:
+
+     1. Ensemble voter — Runs the same analysis as before, but its findings are
+     weighted alongside NLP model findings
+     2. Explanation generator — For findings detected by NLP models, the LLM
+     generates human-readable explanations
+     3. Edge case catcher — Catches things the specialized models miss
+     4. Verifiability scorer — Keeps the verifiability analysis (no NLP tier for
+     this — it requires world knowledge)
+
+     Updated prompt: Instructs the LLM to use the new 5-category taxonomy
+     (structure, relevance, evidence, framing, language) instead of
+     fallacy/bias/tactic.
+
+     ---
+     Finding Merger Strategy
+
+     All tier outputs → Merge step:
+       1. Normalize to common schema: { category, categoryId, start, end, quote,
+     confidence, severity, source_tier }
+       2. Cluster by overlapping spans (IoU > 0.7)
+       3. Within each cluster:
+          a. Same categoryId from multiple sources → boost confidence (min(1.0,
+     max_conf + 0.1))
+          b. Different categoryIds → keep all (one span can be both
+     loaded_language
+     AND false_dilemma)
+          c. Exact duplicate → keep highest confidence
+       4. LLM-only findings (no NLP model agreement) → reduce confidence by 0.15
+       5. NLP-only findings (no LLM agreement) → keep as-is (NLP models are more
+     deterministic)
+       6. Sort by start position
+
+     ---
+     Scoring Model
+
+     5 category scores + verifiability (6 total):
+
+     ┌──────────────────┬───────────────┬─────────────┬─────────────────────────
+     ──┐
+     │      Score       │     Label     │   Source    │        Description
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Structure        │ Validity      │ Tier 1      │ How logically sound is
+       │
+     │                  │               │ findings    │ the argument
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ form?            │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Relevance        │ Relevance     │ Tier 2      │ Do premises connect to
+       │
+     │                  │               │ findings    │ conclusions?
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │                  │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Evidence         │ Evidence      │ Tier 3      │ Is supporting evidence
+       │
+     │                  │               │ findings    │ sufficient and
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ representative?  │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Framing          │ Integrity     │ Tier 4      │ Are positions and
+     options │
+     │                  │               │ findings    │  fairly
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ represented?     │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Language         │ Neutrality    │ Tier 5      │ How neutral is the word
+       │
+     │                  │               │ findings    │ choice?
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Verifiability    │ Verifiability │ LLM         │ Can claims be checked
+       │
+     │                  │               │ analysis    │ against
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ external         │               │             │
+       │
+     │ sources?         │               │             │
+       │
+     └──────────────────┴───────────────┴─────────────┴─────────────────────────
+     ──┘
+
+     Scoring formula per category:
+     score = 100 - Σ(finding_severity_weight × finding_confidence)
+     where severity_weight: low=5, medium=15, high=30
+     clamped to [0, 100]
+
+     ---
+     Python NLP Service
+
+     Tech Stack
+
+     - FastAPI — async HTTP server
+     - Transformers (Hugging Face) — model loading and inference
+     - spaCy (en_core_web_sm) — tokenization, POS, dependency parsing, NER
+     - z3-solver — theorem proving for Tier 1
+     - ONNX Runtime (optional) — optimized inference for production
+     - uvicorn — ASGI server
+
+     File Structure
+
+     biaslens/nlp-service/
+     ├── main.py                     # FastAPI app, /analyze endpoint
+     ├── requirements.txt
+     ├── pipeline.py                 # Orchestrates tiers 1-4
+     ├── tiers/
+     │   ├── structure.py            # Tier 1: formal logic checking
+     │   ├── relevance.py            # Tier 2: argumentation mining
+     │   ├── evidence.py             # Tier 3: evidence sufficiency
+     │   └── framing.py              # Tier 4: framing detection
+     ├── models/                     # Fine-tuned model weights (gitignored)
+     │   ├── arg_component/          # Argument component detection
+     │   ├── relation_clf/           # Premise-conclusion relation classifier
+     │   ├── fallacy_clf/            # Multi-label fallacy classifier
+     │   └── evidence_clf/           # Evidence quality classifier
+     ├── utils/
+     │   ├── preprocessing.py        # Text normalization, sentence splitting
+     │   ├── span_utils.py           # Character offset alignment
+     │   └── schema.py               # Pydantic models for request/response
+     └── training/                   # Fine-tuning scripts (separate concern)
+         ├── train_arg_mining.py
+         ├── train_fallacy_clf.py
+         └── data/                   # Training data (gitignored)
+
+     Single Endpoint
+
+     POST /analyze
+     Body: { "text": "...", "tiers": [1,2,3,4] }  // optional tier selection
+     Response: {
+       "findings": [...],
+       "argument_graph": {...},     // from Tier 2
+       "tier_metadata": {
+         "1": { "latency_ms": 95, "model_version": "..." },
+         ...
+       }
+     }
+
+     ---
+     Node.js Backend Changes
+
+     Modified Files
+
+     biaslens/server/index.js
+     - Add pipeline orchestrator that calls:
+       a. Language tier (in-process)
+       b. Python NLP service (http://localhost:8000/analyze)
+       c. OpenAI LLM (existing)
+     - Run all three in parallel via Promise.all
+     - Merge findings from all sources
+     - Compute new 6-score model
+
+     biaslens/server/llm.js
+     - Update ARGUMENT_SCHEMA: category enum → ["structure", "relevance",
+     "evidence", "framing", "language"]
+     - Update categoryId enum to match new type lists per category
+     - Update scoring to 5 category scores + verifiability
+     - Update system prompt to use new taxonomy and definitions
+
+     New files:
+     - biaslens/server/nlp/language.js — Tier 5 deterministic detector
+     - biaslens/server/nlp/lexicons/*.json — Word/phrase lists
+     - biaslens/server/pipeline.js — Orchestrator: parallel dispatch + merge
+     - biaslens/server/merger.js — Finding deduplication and confidence boosting
+
+     ---
+     Frontend Changes
+
+     Modified Files
+
+     biaslens/src/theme/colors.js — New 5-category color palette:
+     structure:  { L: 0.55, C: 0.16, h: 280 }   // Purple — formal/abstract
+     relevance:  { L: 0.55, C: 0.18, h: 25  }    // Red-orange — disconnection
+     evidence:   { L: 0.60, C: 0.14, h: 80  }     // Gold — weighing/scales
+     framing:    { L: 0.52, C: 0.10, h: 165 }     // Teal — perspective
+     language:   { L: 0.55, C: 0.14, h: 45  }     // Amber — words/text
+
+     biaslens/src/components/Analysis/ControlBar.jsx
+     - 5 toggles: Structure (GitBranch icon), Relevance (Unlink icon), Evidence
+     (Scale icon), Framing (Frame icon), Language (Type icon)
+
+     biaslens/src/components/Analysis/AnalysisPage.jsx
+     - Update CHECK_TO_TYPES mapping for 5 categories
+     - Update filtering logic
+     - Update session data schema (with migration for old data)
+
+     biaslens/src/components/Analysis/InsightsPanel.jsx
+     - 6 score cards (5 categories + verifiability)
+     - Update TYPE_HEX color map
+     - Update severity badge colors
+
+     biaslens/src/components/Analysis/DocumentViewer.jsx
+     - Update TYPE_COLORS RGB map for 5 categories
+
+     biaslens/src/components/Analysis/ScoreCard.jsx
+     - No structural changes, just receives new color values
+
+     Extension Changes
+
+     biaslens/extension/content.js — Update highlight colors for 5 categories
+     biaslens/extension/popup.js — Update category display and toggles
+     biaslens/extension/content.css — Update category color classes
+
+     ---
+     Implementation Phases
+
+     Phase 1: Category Refactor (no new models)
+
+     - Update LLM schema to 5 categories
+     - Update frontend (colors, toggles, score cards)
+     - Update extension
+     - Migrate session data format
+     - Result: Same LLM-only detection, but with clean taxonomy
+
+     Phase 2: Tier 5 — Language (deterministic)
+
+     - Build lexicons (loaded_language, weasel_words, urgency,
+     thought_terminators)
+     - Implement language.js detector
+     - Add pipeline orchestrator (Language + LLM in parallel)
+     - Merge Language findings with LLM findings
+     - Result: Language category is now partially deterministic
+
+     Phase 3: Python NLP Service Setup
+
+     - Set up FastAPI project structure
+     - Install spaCy, transformers
+     - Create /analyze endpoint skeleton
+     - Wire Node.js backend to call Python service
+     - Result: Infrastructure ready for ML tiers
+
+     Phase 4: Tier 2 — Relevance (argumentation mining)
+
+     - Fine-tune DeBERTa on ArgMicro + LOGIC dataset
+     - Implement argument component detection
+     - Implement relation classification
+     - Output argument graph + relevance findings
+     - Result: Argument structure extraction working
+
+     Phase 5: Tier 1 — Structure (formal logic)
+
+     - Implement structural pattern matching (circular reasoning,
+     composition/division)
+     - Add z3-solver for basic validity checking
+     - Use Tier 2 argument graph as input
+     - Result: Formal fallacy detection online
+
+     Phase 6: Tier 3 — Evidence
+
+     - Fine-tune classifier for evidence sufficiency
+     - Add heuristic rules (quantifier analysis, causal chain detection)
+     - Result: Evidence quality assessment working
+
+     Phase 7: Tier 4 — Framing
+
+     - Fine-tune classifier for framing techniques
+     - Add pattern detectors (false dilemma, equivocation)
+     - Result: All 5 tiers operational
+
+     Phase 8: Ensemble Tuning
+
+     - Tune confidence boosting/reduction weights
+     - Evaluate precision/recall across tiers
+     - Adjust LLM prompt to complement rather than duplicate NLP findings
+     - Result: Full hybrid system calibrated
+
+     ---
+     Verification Plan
+
+     1. Unit tests per tier — Each tier gets test cases with known findings,
+     assert correct detection
+     2. Integration test — Send sample texts through full pipeline, verify
+     merged
+      output schema
+     3. Regression test — Run existing test texts (biases.txt, fallacy.txt from
+     project root) through new system, compare coverage vs old system
+     4. Determinism test — Run same text 10x through Language tier, verify
+     identical output every time
+     5. Latency test — Measure end-to-end response time, ensure it doesn't
+     significantly exceed current LLM-only latency
+     6. Frontend test — Verify all 5 category toggles filter correctly, all 6
+     scores display, highlights render in correct colors
+     7. Extension test — Verify Chrome extension works with new category format
+
+     "/plan open" to edit this plan in Notepad
+
+❯ Explain to me these new fine tuned models and what are the alternatives   
+  and the pricing. What can I get started on myself without your help       
+  (maybe creation of the models?)                                           
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ claude --resume 
+
+● Good question. Let me break this down concretely.
+
+  What "fine-tuned DeBERTa" actually means
+
+  DeBERTa-v3-base is a free, open-source transformer model (86M parameters, MIT
+  license) from Microsoft. It's already pre-trained on general language
+  understanding. "Fine-tuning" means you take this pre-trained model and train
+  it further on your specific task — e.g., "given this text, is it an ad
+  hominem?"
+
+  What you need to fine-tune:
+  - The model weights (free download from Hugging Face)
+  - Labeled training data (datasets like LOGIC, SemEval — free to download)
+  - A GPU for training (a few hours on a single GPU)
+  - The transformers + datasets Python libraries (free)
+
+  Training compute costs:
+
+  Option: Google Colab (free tier)
+  Cost: $0
+  GPU: T4 (16GB)
+  Notes: ~15hrs/week limit, enough to fine-tune DeBERTa
+  ────────────────────────────────────────
+  Option: Google Colab Pro
+  Cost: ~$10/month
+  GPU: A100
+  Notes: Faster, more reliable
+  ────────────────────────────────────────
+  Option: Lambda Labs / Vast.ai
+  Cost: ~$0.50-1.50/hr
+  GPU: A100/A6000
+  Notes: Rent by the hour, a full fine-tune takes 1-4 hours
+  ────────────────────────────────────────
+  Option: Your own GPU (RTX 3060+)
+  Cost: $0 (already own it)
+  GPU: 12GB+ VRAM
+  Notes: DeBERTa-base fits on 12GB
+
+  So fine-tuning is essentially free or near-free. The model itself costs
+  nothing. You're only paying for compute time, and Colab's free tier is often
+  sufficient.
+
+  Alternatives to fine-tuning your own
+
+  Option A: Use existing pre-trained models from Hugging Face Hub
+
+  There are models already fine-tuned for fallacy and propaganda detection that
+  you could use as-is with zero training:
+
+● Web Search("huggingface models logical fallacy detection propaganda technique
+            classification 2024")
+  ⎿  Did 1 search in 7s
+
+● Good — there are already pre-trained models available. Let me get the full
+  picture.
+
+● Web Search("huggingface argument mining model premise claim detection
+            pretrained 2024")
+  ⎿  Did 1 search in 7s
+
+● Web Search("OpenAI fine-tuning GPT-4o-mini pricing cost per token 2025")
+  ⎿  Did 1 search in 4s
+
+● Here's the full picture:
+
+  The three approaches, compared honestly
+
+  Approach A: Fine-tune open-source models yourself (DeBERTa/RoBERTa)
+
+  Cost: Free to ~$5 total
+
+  What: Model weights
+  Cost: Free (Hugging Face download)
+  ────────────────────────────────────────
+  What: Training data (LOGIC, SemEval, ArgMicro)
+  Cost: Free (academic datasets)
+  ────────────────────────────────────────
+  What: Training compute
+  Cost: Free (Colab free tier) or ~$2-5 (rented GPU for 2-4 hrs)
+  ────────────────────────────────────────
+  What: Inference
+  Cost: Free (runs on your own hardware / Render)
+  ────────────────────────────────────────
+  What: Per-request cost
+  Cost: $0
+
+  Pros: Fully deterministic, no API dependency, fast inference (~200ms), you own
+   everything
+  Cons: You need to learn the fine-tuning workflow, curate/format training data,
+   handle model versioning
+
+  Approach B: Use existing pre-trained models off the shelf (zero fine-tuning)
+
+  Already available on Hugging Face right now:
+
+  Model: https://huggingface.co/q3fer/distilbert-base-fallacy-classification
+  Task: 14-type fallacy classification
+  Link: Ready to use
+  ────────────────────────────────────────
+  Model:
+  https://huggingface.co/MidhunKanadan/roberta-large-fallacy-classification
+  Task: Fallacy classification
+  Link: Ready to use
+  ────────────────────────────────────────
+  Model: https://huggingface.co/raruidol/ArgumentMining-EN-ARI-AIF-RoBERTa_L
+  Task: Argument component + relation detection
+  Link: Ready to use
+  ────────────────────────────────────────
+  Model: https://huggingface.co/chkla/roberta-argument
+  Task: Argument detection
+  Link: Ready to use
+
+  Cost: $0
+
+  Pros: Literally download and use today, no training
+  Cons: Their fallacy categories won't match your new 5-category taxonomy
+  perfectly. You'd need a mapping layer. Accuracy may be lower than a custom
+  fine-tune. But this is a great starting point — use these first, fine-tune
+  later only if accuracy is insufficient.
+
+  Approach C: Fine-tune OpenAI GPT-4o-mini
+
+  Cost: Low but ongoing
+
+  What: Training
+  Cost: $3.00 / million tokens (~$0.50-2.00 for a typical training set)
+  ────────────────────────────────────────
+  What: Inference (input)
+  Cost: $0.30 / million tokens
+  ────────────────────────────────────────
+  What: Inference (output)
+  Cost: $1.20 / million tokens
+  ────────────────────────────────────────
+  What: Per-request (typical)
+  Cost: ~$0.001-0.005 per analysis
+
+  Pros: Easiest to set up — same API you already use, just with your taxonomy
+  baked in. Best at generating explanations.
+  Cons: Still non-deterministic (probabilistic outputs), still requires API
+  calls (latency + cost), you don't own the model.
+
+  Source: https://platform.openai.com/docs/pricing
+
+  My honest recommendation
+
+  Start with Approach B (existing models) + keep the LLM as-is. Here's why:
+
+  1. Download the existing fallacy classifier and argument mining models from
+  Hugging Face
+  2. Write a mapping layer from their output categories → your 5-category
+  taxonomy
+  3. See how well they perform on your test texts
+  4. Only fine-tune (Approach A) if accuracy is insufficient — and at that point
+   you'll have real data showing where they fail, which makes fine-tuning much
+  more targeted
+
+  What you can do yourself without my help
+
+  All of this, in order of independence:
+
+  1. Tier 5 (Language) — Build the lexicons and pattern matchers. This is just
+  JavaScript and word lists. No AI, no models, no training. You could start
+  today.
+  2. Download and experiment with existing HuggingFace models — Install 
+  transformers, load the fallacy classifiers, run your test texts through them,
+  see what they detect. This is a Saturday afternoon project.
+  3. Download the training datasets — Get the 
+  https://github.com/causalNLP/logical-fallacy,
+  https://github.com/aschern/semeval2020_task11, and the
+  https://huggingface.co/papers/2410.03457 (7,706 labeled comments, BERT
+  fine-tuned on it hit F1=0.87). Re-label them according to your new 5-category
+  taxonomy.
+  4. Fine-tune your own models — The Hugging Face 
+  https://huggingface.co/docs/transformers/tasks/sequence_classification walks
+  you through fine-tuning DeBERTa on a custom dataset in ~50 lines of Python.
+  Google Colab gives you a free GPU.
+  5. Set up the FastAPI service — Standard Python web framework, plenty of
+  tutorials.
+
+  The model training itself is genuinely not that hard once you have labeled
+  data. The hard part is curating and labeling good training data — that's where
+   most of the human effort goes.
+  ⎿  Tool use rejected with user message: The user wants to clarify these 
+     questions.
+         This means they may have additional information, context or questions 
+     for you.
+         Take their response into account and then reformulate the questions if 
+     appropriate.
+         Start by asking them what they would like to clarify.
+
+         Questions asked:
+     - "Which approach do you want the plan to target? This affects what we 
+     build together vs what you do on your own."
+       (No answer provided)
+     - "Should I update the plan to reflect the chosen approach and then 
+     finalize it for implementation?"
+       (No answer provided)
+
+● What would you like to clarify? I'm happy to dig deeper into any part of this.
+
+✻ Worked for 1m 16s
+
+❯ I think were gonna do A. This will go from a hackathon project to an      
+  actual service at some point where we provide fact checking for all       
+  people, with a free and premium tier. Could we also continue to tune the  
+  models using user data (if they rate a bad inference or a really good     
+  inference)?                                                               
+
+● Yes, absolutely. What you're describing is a continuous learning / 
+  human-in-the-loop feedback pipeline — it's one of the most effective ways to
+  improve ML models over time, and it's very doable.
+
+  Here's how it works:
+
+  Feedback Loop Architecture
+
+  User sees finding → rates it (👍/👎) → optionally corrects category
+                            │
+                            ▼
+                POST /api/feedback
+                { findingId, text, category, categoryId,
+                  rating: "correct" | "incorrect",
+                  correction: { category?, categoryId? } }
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │   Feedback Database   │
+                │   (PostgreSQL/Mongo)  │
+                └───────────┬───────────┘
+                            │ accumulated over time
+                            ▼
+                ┌───────────────────────┐
+                │  Retraining Pipeline  │  (periodic — weekly/monthly or
+                │  1. Pull new feedback │   threshold-based: every N ratings)
+                │  2. Format as samples │
+                │  3. Fine-tune model   │
+                │  4. Evaluate on test  │
+                │  5. Promote if better │
+                └───────────────────────┘
+
+  Key detail: You don't retrain on every single rating. You accumulate feedback,
+   then periodically retrain. A bad retrain gets discarded — you keep the
+  previous model version. This is standard practice and avoids model drift.
+
+  What the user interaction looks like:
+  - Each finding in the InsightsPanel gets a small thumbs up / thumbs down
+  - Thumbs down optionally expands: "What should this have been?" (dropdown of
+  categories + "not a real issue")
+  - This data is gold — it's labeled training examples from your actual use case
+
+  This also naturally creates a data flywheel: more users → more feedback →
+  better models → more users trust the tool → more feedback.
+
+● User answered Claude's questions:
+  ⎿  · For the feedback data storage, what's your preference? This is the 
+     first time the project would need a real database. → PostgreSQL 
+     (Recommended)
+     · How much of the premium tier architecture should we plan now vs 
+     later? → Just the feedback loop for now
+
+● Good choices. PostgreSQL and feedback-only scope keeps this focused. Let me
+  update the plan to reflect everything we've discussed — Approach A, PostgreSQL
+   feedback loop, continuous retraining pipeline.
+
+● Read 1 file (ctrl+o to expand)
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ /usage 
+  ⎿  Status dialog dismissed
+
+❯ /plan 
+  ⎿  Current Plan
+     C:\Users\Aariyan.claude\plans\tingly-leaping-marshmallow.md
+
+     Hybrid NLP Architecture for Factify — Full Plan
+
+     Context
+
+     Factify currently relies entirely on a single OpenAI GPT-4o-mini call for
+     all
+     fallacy/bias/rhetoric detection. This is non-deterministic, expensive per
+     call,
+     and mixes overlapping categories (fallacy/bias/tactic). We are redesigning
+     the
+     system with:
+
+     1. A new 5-category taxonomy based on mechanism of error (Structure,
+     Relevance, Evidence, Framing, Language) — replacing the overlapping
+     fallacy/bias/tactic split
+     2. A hybrid detection pipeline where specialized NLP models handle each
+     category tier, with the LLM as an ensemble complement rather than the sole
+     detector
+
+     The goal: more deterministic, more robust, and taxonomically clean
+     detection.
+
+     ---
+     Architecture Overview
+
+                              ┌─────────────────────────┐
+                              │     Express Backend      │
+                              │   /api/analyze (POST)    │
+                              └────────┬────────────────┘
+                                       │ text
+                                       ▼
+                         ┌─────────────────────────┐
+                         │   Pipeline Orchestrator  │
+                         │     (Node.js layer)      │
+                         └──┬──┬──┬──┬──┬──┬───────┘
+                            │  │  │  │  │  │
+                 ┌──────────┘  │  │  │  │  └──────────┐
+                 ▼             ▼  ▼  ▼  ▼             ▼
+          ┌──────────┐   ┌─────────────────┐   ┌──────────┐
+          │ Tier 5   │   │  Python NLP     │   │  LLM     │
+          │ Language │   │  Service (FastAPI│   │  (OpenAI)│
+          │ (Node.js)│   │  Tiers 1-4)     │   │  Ensemble│
+          │ no ML    │   │                 │   │  + Explain│
+          └────┬─────┘   └──┬──┬──┬──┬────┘   └────┬─────┘
+               │             │  │  │  │              │
+               │          ┌──┘  │  │  └──┐           │
+               │          ▼     ▼  ▼     ▼           │
+               │        T1    T2  T3    T4            │
+               │       Struct Rel Evid Frame          │
+               │                                     │
+               └──────────┬──────────────────────┬───┘
+                          ▼                      ▼
+                   ┌─────────────────────────────────┐
+                   │        Finding Merger            │
+                   │  dedup · confidence boost · rank │
+                   └──────────────┬──────────────────┘
+                                  ▼
+                          ┌───────────────┐
+                          │ JSON Response │
+                          │ → React / Ext │
+                          └───────────────┘
+
+     Execution Strategy
+
+     Parallel Group A (no dependencies, run concurrently):
+       ├── Tier 5: Language    (Node.js, in-process, ~5ms)
+       ├── Tier 4: Framing     (Python, classifier, ~200ms)
+       ├── Tier 3: Evidence    (Python, classifier, ~200ms)
+       ├── Tier 2: Relevance   (Python, arg mining, ~300ms)
+       └── LLM: OpenAI        (external API, ~2-4s)
+
+     Sequential (depends on Tier 2 output):
+       └── Tier 1: Structure   (Python, needs argument graph from Tier 2,
+     ~100ms)
+
+     Total latency: max(Tier2 + Tier1, LLM) ≈ 2-4s (LLM-bound, same as current)
+
+     ---
+     Tier-by-Tier Design
+
+     Tier 5: Language (Node.js, in-process, fully deterministic)
+
+     No ML required. Pattern matching + lexicon lookup.
+
+     Implementation:
+     - biaslens/server/nlp/language.js — single module
+     - Curated word/phrase lists stored as JSON:
+       - lexicons/loaded_language.json — emotionally charged terms (sourced from
+     AFINN + custom)
+       - lexicons/weasel_words.json — hedging phrases ("some people say", "it is
+     believed", "many experts")
+       - lexicons/urgency_phrases.json — time pressure markers ("act now",
+     "limited
+      time", "before it's too late")
+       - lexicons/thought_terminators.json — cliches ("it is what it is", "agree
+      to
+      disagree", "that's just how it works")
+     - Sealioning: Pattern-based detection of excessive interrogative density +
+     bad-faith question markers
+
+     Detection approach per type:
+
+     Type: loaded_language
+     Method: Sentiment intensity scoring (AFINN lexicon) — flag words
+     ────────────────────────────────────────
+     Type: with
+     Method: score
+     ────────────────────────────────────────
+     Type: vague_weasel_words
+     Method: Regex + phrase list matching against curated
+     ────────────────────────────────────────
+     Type: hedging/weasel patterns
+     Method:
+     ────────────────────────────────────────
+     Type: false_urgency
+     Method: Phrase list + temporal pressure pattern matching
+     ────────────────────────────────────────
+     Type: thought_terminating_cliche
+     Method: Exact/fuzzy phrase matching against curated
+     ────────────────────────────────────────
+     Type: list
+     Method:
+     ────────────────────────────────────────
+     Type: sealioning
+     Method: Question density heuristic + interrogative pattern analysis
+
+     Output: Array of { type, categoryId, start, end, quote, confidence, 
+     severity }
+
+     Confidence model: Lexicon matches get high confidence (0.85-0.95).
+     Context-dependent patterns get medium (0.6-0.8).
+
+     ---
+     Tier 2: Relevance — Argumentation Mining (Python, transformer-based)
+
+     This is the foundational NLP tier. It extracts argument structure that Tier
+     1 also depends on.
+
+     Model: Fine-tune deberta-v3-base (Microsoft, 86M params) on:
+     - ArgMicro corpus (argument component + relation classification)
+     - LOGIC dataset (Jin et al. 2022) for fallacy-specific training
+     - SemEval-2020 Task 11 propaganda data for relevance-type techniques
+
+     Pipeline:
+     1. Argument Component Detection — Classify spans as: Claim, Premise,
+     Evidence, Rebuttal, None
+     2. Relation Classification — For each (premise, claim) pair: Support,
+     Attack, Irrelevant
+     3. Relevance Fallacy Classification — For irrelevant premises, 
+     sub-classify:
+       - ad_hominem (attacks person)
+       - appeal_to_emotion / fear_appeal / guilt_trip (emotional premise)
+       - appeal_to_authority (authority as evidence)
+       - red_herring (topic divergence)
+       - bandwagon (popularity as evidence)
+       - whataboutism (deflection)
+       - scapegoating (blame-shifting)
+       - in_group_bias / halo_effect (identity-based reasoning)
+
+     Key output (also used by Tier 1):
+     {
+       "argument_graph": {
+         "claims": [{"text": "...", "start": 0, "end": 50}],
+         "premises": [{"text": "...", "start": 51, "end": 120, "supports_claim":
+      0}],
+         "relations": [{"from": 0, "to": 1, "type": "irrelevant", "sub_type":
+     "ad_hominem"}]
+       },
+       "findings": [...]
+     }
+
+     ---
+     Tier 1: Structure — Formal Logic Checking (Python, depends on Tier 2)
+
+     Approach: Use the argument graph from Tier 2, attempt to formalize into
+     logical propositions, check validity.
+
+     Implementation:
+     1. Logical form extraction — Use a smaller LLM (or fine-tuned model) to
+     convert extracted argument components into propositional/predicate logic
+     representations
+       - Input: claim + premises from Tier 2's argument graph
+       - Output: logical forms like P → Q, Q ∴ P (with natural language mapping)
+     2. Validity checking — Use z3-solver (Z3 theorem prover, Python bindings)
+     to check:
+       - Is the inference valid? (Do premises entail conclusion?)
+       - What form of invalidity? (affirming consequent, denying antecedent,
+     etc.)
+     3. Pattern matching — For common structural fallacies that don't need full
+     theorem proving:
+       - Circular reasoning: detect when conclusion ≈ premise (semantic
+     similarity
+     check)
+       - Begging the question: premise presupposes conclusion
+       - Composition/division: part↔whole inference patterns
+
+     Types detected:
+     - circular_reasoning / begging_the_question — semantic similarity between
+     premise and conclusion
+     - composition_division — part/whole pattern detection
+     - false_cause / post_hoc — causal structure without sufficient causal
+     evidence
+     - sunk_cost — past-investment reasoning pattern
+
+     Note: This tier will have the lowest coverage initially. Formalizing
+     natural
+      language into logic is hard. Start with pattern-matching for common
+     structural
+     fallacies and expand formal checking incrementally.
+
+     ---
+     Tier 3: Evidence — Sufficiency Analysis (Python, classifier)
+
+     Model: Fine-tune deberta-v3-base on evidence quality datasets:
+     - IBM Evidence Quality dataset
+     - Custom training data derived from LOGIC dataset (evidence-category 
+     fallacies)
+     - Augmented with examples from propaganda detection corpora
+
+     Detection approach:
+
+     Type: hasty_generalization
+     Method: Detect small sample indicators ("one study", "I know
+     ────────────────────────────────────────
+     Type: someone who", "this one time") + quantifier analysis
+     Method:
+     ────────────────────────────────────────
+     Type: cherry_picking / survivorship_bias / confirmation_bias
+     Method: Detect
+     ────────────────────────────────────────
+     Type: selective evidence presentation — one-sided sourcing, absence of
+       counterevidence
+     Method:
+     ────────────────────────────────────────
+     Type: markers
+     Method:
+     ────────────────────────────────────────
+     Type: slippery_slope
+     Method: Detect unsupported causal chains (A→B→C→D) without
+     ────────────────────────────────────────
+     Type: justification at each step
+     Method:
+     ────────────────────────────────────────
+     Type: availability_heuristic
+     Method: Detect recency/memorability-based reasoning
+     ────────────────────────────────────────
+     Type: anchoring
+     Method: Detect over-reliance on first-mentioned data point
+     ────────────────────────────────────────
+     Type: negativity_bias / optimism_bias
+     Method: Detect disproportionate weighting of
+     ────────────────────────────────────────
+     Type: negative/positive outcomes
+     Method:
+     ────────────────────────────────────────
+     Type: fundamental_attribution_error
+     Method: Detect dispositional attribution without
+     ────────────────────────────────────────
+     Type: situational consideration
+     Method:
+     ────────────────────────────────────────
+     Type: just_world_hypothesis
+     Method: Detect moral-causal reasoning ("they deserved it")
+
+     Hybrid approach: Combine transformer classifier with heuristic rules:
+     - Quantifier analysis (spaCy) — detect "all", "every", "never" vs
+     sample-size
+     language
+     - Causal chain length detection — count unsupported inference steps
+     - One-sidedness scoring — ratio of supporting vs opposing evidence
+     presented
+
+     ---
+     Tier 4: Framing — Representation Analysis (Python, classifier)
+
+     Model: Fine-tune deberta-v3-base on:
+     - SemEval propaganda data (framing-related techniques)
+     - LOGIC dataset (framing-category fallacies)
+     - Custom examples for each framing sub-type
+
+     Detection approach:
+
+     Type: straw_man
+     Method: Detect misrepresentation — paraphrased position diverges from
+     ────────────────────────────────────────
+     Type: original (requires reference or contextual cues like "they say X"
+       followed by
+     Method:
+     ────────────────────────────────────────
+     Type: distortion)
+     Method:
+     ────────────────────────────────────────
+     Type: false_dilemma
+     Method: Pattern detection: binary framing ("either X or Y", "only
+     ────────────────────────────────────────
+     Type: two options") + exclusivity markers
+     Method:
+     ────────────────────────────────────────
+     Type: equivocation
+     Method: Word sense disambiguation — detect term used with shifting
+     ────────────────────────────────────────
+     Type: meaning across argument
+     Method:
+     ────────────────────────────────────────
+     Type: no_true_scotsman
+     Method: Detect ad-hoc redefinition patterns ("a real X would...")
+     ────────────────────────────────────────
+     Type:
+     Method:
+     ────────────────────────────────────────
+     Type: moving_goalposts
+     Method: Detect criteria shifts (harder — may need multi-turn
+     ────────────────────────────────────────
+     Type: context)
+     Method:
+     ────────────────────────────────────────
+     Type: framing_effect
+     Method: Detect asymmetric framing of equivalent information (e.g.,
+     ────────────────────────────────────────
+     Type: "90% survival" vs "10% mortality")
+     Method:
+
+     Hybrid approach: Combine classifier with:
+     - Binary option detection (regex + dependency parsing)
+     - Semantic similarity for straw man detection (compare attributed vs actual
+     positions)
+
+     ---
+     LLM Layer: Ensemble + Explanation (OpenAI GPT-4o-mini)
+
+     Changed role: The LLM shifts from primary detector to:
+
+     1. Ensemble voter — Runs the same analysis as before, but its findings are
+     weighted alongside NLP model findings
+     2. Explanation generator — For findings detected by NLP models, the LLM
+     generates human-readable explanations
+     3. Edge case catcher — Catches things the specialized models miss
+     4. Verifiability scorer — Keeps the verifiability analysis (no NLP tier for
+     this — it requires world knowledge)
+
+     Updated prompt: Instructs the LLM to use the new 5-category taxonomy
+     (structure, relevance, evidence, framing, language) instead of
+     fallacy/bias/tactic.
+
+     ---
+     Finding Merger Strategy
+
+     All tier outputs → Merge step:
+       1. Normalize to common schema: { category, categoryId, start, end, quote,
+     confidence, severity, source_tier }
+       2. Cluster by overlapping spans (IoU > 0.7)
+       3. Within each cluster:
+          a. Same categoryId from multiple sources → boost confidence (min(1.0,
+     max_conf + 0.1))
+          b. Different categoryIds → keep all (one span can be both
+     loaded_language
+     AND false_dilemma)
+          c. Exact duplicate → keep highest confidence
+       4. LLM-only findings (no NLP model agreement) → reduce confidence by 0.15
+       5. NLP-only findings (no LLM agreement) → keep as-is (NLP models are more
+     deterministic)
+       6. Sort by start position
+
+     ---
+     Scoring Model
+
+     5 category scores + verifiability (6 total):
+
+     ┌──────────────────┬───────────────┬─────────────┬─────────────────────────
+     ──┐
+     │      Score       │     Label     │   Source    │        Description
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Structure        │ Validity      │ Tier 1      │ How logically sound is
+       │
+     │                  │               │ findings    │ the argument
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ form?            │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Relevance        │ Relevance     │ Tier 2      │ Do premises connect to
+       │
+     │                  │               │ findings    │ conclusions?
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │                  │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Evidence         │ Evidence      │ Tier 3      │ Is supporting evidence
+       │
+     │                  │               │ findings    │ sufficient and
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ representative?  │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Framing          │ Integrity     │ Tier 4      │ Are positions and
+     options │
+     │                  │               │ findings    │  fairly
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ represented?     │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Language         │ Neutrality    │ Tier 5      │ How neutral is the word
+       │
+     │                  │               │ findings    │ choice?
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Verifiability    │ Verifiability │ LLM         │ Can claims be checked
+       │
+     │                  │               │ analysis    │ against
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ external         │               │             │
+       │
+     │ sources?         │               │             │
+       │
+     └──────────────────┴───────────────┴─────────────┴─────────────────────────
+     ──┘
+
+     Scoring formula per category:
+     score = 100 - Σ(finding_severity_weight × finding_confidence)
+     where severity_weight: low=5, medium=15, high=30
+     clamped to [0, 100]
+
+     ---
+     Python NLP Service
+
+     Tech Stack
+
+     - FastAPI — async HTTP server
+     - Transformers (Hugging Face) — model loading and inference
+     - spaCy (en_core_web_sm) — tokenization, POS, dependency parsing, NER
+     - z3-solver — theorem proving for Tier 1
+     - ONNX Runtime (optional) — optimized inference for production
+     - uvicorn — ASGI server
+
+     File Structure
+
+     biaslens/nlp-service/
+     ├── main.py                     # FastAPI app, /analyze endpoint
+     ├── requirements.txt
+     ├── pipeline.py                 # Orchestrates tiers 1-4
+     ├── tiers/
+     │   ├── structure.py            # Tier 1: formal logic checking
+     │   ├── relevance.py            # Tier 2: argumentation mining
+     │   ├── evidence.py             # Tier 3: evidence sufficiency
+     │   └── framing.py              # Tier 4: framing detection
+     ├── models/                     # Fine-tuned model weights (gitignored)
+     │   ├── arg_component/          # Argument component detection
+     │   ├── relation_clf/           # Premise-conclusion relation classifier
+     │   ├── fallacy_clf/            # Multi-label fallacy classifier
+     │   └── evidence_clf/           # Evidence quality classifier
+     ├── utils/
+     │   ├── preprocessing.py        # Text normalization, sentence splitting
+     │   ├── span_utils.py           # Character offset alignment
+     │   └── schema.py               # Pydantic models for request/response
+     └── training/                   # Fine-tuning scripts (separate concern)
+         ├── train_arg_mining.py
+         ├── train_fallacy_clf.py
+         └── data/                   # Training data (gitignored)
+
+     Single Endpoint
+
+     POST /analyze
+     Body: { "text": "...", "tiers": [1,2,3,4] }  // optional tier selection
+     Response: {
+       "findings": [...],
+       "argument_graph": {...},     // from Tier 2
+       "tier_metadata": {
+         "1": { "latency_ms": 95, "model_version": "..." },
+         ...
+       }
+     }
+
+     ---
+     Node.js Backend Changes
+
+     Modified Files
+
+     biaslens/server/index.js
+     - Add pipeline orchestrator that calls:
+       a. Language tier (in-process)
+       b. Python NLP service (http://localhost:8000/analyze)
+       c. OpenAI LLM (existing)
+     - Run all three in parallel via Promise.all
+     - Merge findings from all sources
+     - Compute new 6-score model
+
+     biaslens/server/llm.js
+     - Update ARGUMENT_SCHEMA: category enum → ["structure", "relevance",
+     "evidence", "framing", "language"]
+     - Update categoryId enum to match new type lists per category
+     - Update scoring to 5 category scores + verifiability
+     - Update system prompt to use new taxonomy and definitions
+
+     New files:
+     - biaslens/server/nlp/language.js — Tier 5 deterministic detector
+     - biaslens/server/nlp/lexicons/*.json — Word/phrase lists
+     - biaslens/server/pipeline.js — Orchestrator: parallel dispatch + merge
+     - biaslens/server/merger.js — Finding deduplication and confidence boosting
+
+     ---
+     Frontend Changes
+
+     Modified Files
+
+     biaslens/src/theme/colors.js — New 5-category color palette:
+     structure:  { L: 0.55, C: 0.16, h: 280 }   // Purple — formal/abstract
+     relevance:  { L: 0.55, C: 0.18, h: 25  }    // Red-orange — disconnection
+     evidence:   { L: 0.60, C: 0.14, h: 80  }     // Gold — weighing/scales
+     framing:    { L: 0.52, C: 0.10, h: 165 }     // Teal — perspective
+     language:   { L: 0.55, C: 0.14, h: 45  }     // Amber — words/text
+
+     biaslens/src/components/Analysis/ControlBar.jsx
+     - 5 toggles: Structure (GitBranch icon), Relevance (Unlink icon), Evidence
+     (Scale icon), Framing (Frame icon), Language (Type icon)
+
+     biaslens/src/components/Analysis/AnalysisPage.jsx
+     - Update CHECK_TO_TYPES mapping for 5 categories
+     - Update filtering logic
+     - Update session data schema (with migration for old data)
+
+     biaslens/src/components/Analysis/InsightsPanel.jsx
+     - 6 score cards (5 categories + verifiability)
+     - Update TYPE_HEX color map
+     - Update severity badge colors
+
+     biaslens/src/components/Analysis/DocumentViewer.jsx
+     - Update TYPE_COLORS RGB map for 5 categories
+
+     biaslens/src/components/Analysis/ScoreCard.jsx
+     - No structural changes, just receives new color values
+
+     Extension Changes
+
+     biaslens/extension/content.js — Update highlight colors for 5 categories
+     biaslens/extension/popup.js — Update category display and toggles
+     biaslens/extension/content.css — Update category color classes
+
+     ---
+     Implementation Phases
+
+     Phase 1: Category Refactor (no new models)
+
+     - Update LLM schema to 5 categories
+     - Update frontend (colors, toggles, score cards)
+     - Update extension
+     - Migrate session data format
+     - Result: Same LLM-only detection, but with clean taxonomy
+
+     Phase 2: Tier 5 — Language (deterministic)
+
+     - Build lexicons (loaded_language, weasel_words, urgency,
+     thought_terminators)
+     - Implement language.js detector
+     - Add pipeline orchestrator (Language + LLM in parallel)
+     - Merge Language findings with LLM findings
+     - Result: Language category is now partially deterministic
+
+     Phase 3: Python NLP Service Setup
+
+     - Set up FastAPI project structure
+     - Install spaCy, transformers
+     - Create /analyze endpoint skeleton
+     - Wire Node.js backend to call Python service
+     - Result: Infrastructure ready for ML tiers
+
+     Phase 4: Tier 2 — Relevance (argumentation mining)
+
+     - Fine-tune DeBERTa on ArgMicro + LOGIC dataset
+     - Implement argument component detection
+     - Implement relation classification
+     - Output argument graph + relevance findings
+     - Result: Argument structure extraction working
+
+     Phase 5: Tier 1 — Structure (formal logic)
+
+     - Implement structural pattern matching (circular reasoning,
+     composition/division)
+     - Add z3-solver for basic validity checking
+     - Use Tier 2 argument graph as input
+     - Result: Formal fallacy detection online
+
+     Phase 6: Tier 3 — Evidence
+
+     - Fine-tune classifier for evidence sufficiency
+     - Add heuristic rules (quantifier analysis, causal chain detection)
+     - Result: Evidence quality assessment working
+
+     Phase 7: Tier 4 — Framing
+
+     - Fine-tune classifier for framing techniques
+     - Add pattern detectors (false dilemma, equivocation)
+     - Result: All 5 tiers operational
+
+     Phase 8: Ensemble Tuning
+
+     - Tune confidence boosting/reduction weights
+     - Evaluate precision/recall across tiers
+     - Adjust LLM prompt to complement rather than duplicate NLP findings
+     - Result: Full hybrid system calibrated
+
+     ---
+     Verification Plan
+
+     1. Unit tests per tier — Each tier gets test cases with known findings,
+     assert correct detection
+     2. Integration test — Send sample texts through full pipeline, verify
+     merged
+      output schema
+     3. Regression test — Run existing test texts (biases.txt, fallacy.txt from
+     project root) through new system, compare coverage vs old system
+     4. Determinism test — Run same text 10x through Language tier, verify
+     identical output every time
+     5. Latency test — Measure end-to-end response time, ensure it doesn't
+     significantly exceed current LLM-only latency
+     6. Frontend test — Verify all 5 category toggles filter correctly, all 6
+     scores display, highlights render in correct colors
+     7. Extension test — Verify Chrome extension works with new category format
+
+     "/plan open" to edit this plan in Notepad
+
+❯ /context 
+  ⎿  Context Usage
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   claude-opus-4-6 · 73k/200k tokens (36%)
+     ⛀ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ 
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   Estimated usage by category
+     ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁ ⛁   ⛁ System prompt: 3.5k tokens (1.7%)
+     ⛁ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ System tools: 16.6k tokens (8.3%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Skills: 61 tokens (0.0%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Messages: 59.6k tokens (29.8%)
+     ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛶ Free space: 87k (43.6%)
+     ⛶ ⛶ ⛶ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛝ Autocompact buffer: 33k tokens (16.5%)
+     ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ 
+
+     Skills · /skills
+
+❯ /output-style 
+  ⎿  Set output style to Learning
+
+❯ /rename 
+  ⎿  Session renamed to: token-budget-display
+
+❯ /stats 
+  ⎿  Stats dialog dismissed
+
+❯ /status 
+  ⎿  Set defaultPermissionMode to default
+     Set model to Default (Opus 4.6 · Most capable for complex work)
+
+❯ /agents 
+  ⎿  Agents dialog dismissed
+
+❯ /agents 
+  ⎿  Agents dialog dismissed
+
+❯ /extra-usage 
+  ⎿  Login interrupted
+
+❯ /skills 
+  ⎿  Skills dialog dismissed
+
+❯ /vim 
+  ⎿  Editor mode set to vim. Use Escape key to toggle between INSERT and NORMAL
+     modes.
+
+❯ /theme 
+  ⎿  Theme picker dismissed
+
+❯ /plan 
+  ⎿  Current Plan
+     C:\Users\Aariyan.claude\plans\tingly-leaping-marshmallow.md
+
+     Hybrid NLP Architecture for Factify — Full Plan
+
+     Context
+
+     Factify currently relies entirely on a single OpenAI GPT-4o-mini call for
+     all
+     fallacy/bias/rhetoric detection. This is non-deterministic, expensive per
+     call,
+     and mixes overlapping categories (fallacy/bias/tactic). We are redesigning
+     the
+     system with:
+
+     1. A new 5-category taxonomy based on mechanism of error (Structure,
+     Relevance, Evidence, Framing, Language) — replacing the overlapping
+     fallacy/bias/tactic split
+     2. A hybrid detection pipeline where specialized NLP models handle each
+     category tier, with the LLM as an ensemble complement rather than the sole
+     detector
+
+     The goal: more deterministic, more robust, and taxonomically clean
+     detection.
+
+     ---
+     Architecture Overview
+
+                              ┌─────────────────────────┐
+                              │     Express Backend      │
+                              │   /api/analyze (POST)    │
+                              └────────┬────────────────┘
+                                       │ text
+                                       ▼
+                         ┌─────────────────────────┐
+                         │   Pipeline Orchestrator  │
+                         │     (Node.js layer)      │
+                         └──┬──┬──┬──┬──┬──┬───────┘
+                            │  │  │  │  │  │
+                 ┌──────────┘  │  │  │  │  └──────────┐
+                 ▼             ▼  ▼  ▼  ▼             ▼
+          ┌──────────┐   ┌─────────────────┐   ┌──────────┐
+          │ Tier 5   │   │  Python NLP     │   │  LLM     │
+          │ Language │   │  Service (FastAPI│   │  (OpenAI)│
+          │ (Node.js)│   │  Tiers 1-4)     │   │  Ensemble│
+          │ no ML    │   │                 │   │  + Explain│
+          └────┬─────┘   └──┬──┬──┬──┬────┘   └────┬─────┘
+               │             │  │  │  │              │
+               │          ┌──┘  │  │  └──┐           │
+               │          ▼     ▼  ▼     ▼           │
+               │        T1    T2  T3    T4            │
+               │       Struct Rel Evid Frame          │
+               │                                     │
+               └──────────┬──────────────────────┬───┘
+                          ▼                      ▼
+                   ┌─────────────────────────────────┐
+                   │        Finding Merger            │
+                   │  dedup · confidence boost · rank │
+                   └──────────────┬──────────────────┘
+                                  ▼
+                          ┌───────────────┐
+                          │ JSON Response │
+                          │ → React / Ext │
+                          └───────────────┘
+
+     Execution Strategy
+
+     Parallel Group A (no dependencies, run concurrently):
+       ├── Tier 5: Language    (Node.js, in-process, ~5ms)
+       ├── Tier 4: Framing     (Python, classifier, ~200ms)
+       ├── Tier 3: Evidence    (Python, classifier, ~200ms)
+       ├── Tier 2: Relevance   (Python, arg mining, ~300ms)
+       └── LLM: OpenAI        (external API, ~2-4s)
+
+     Sequential (depends on Tier 2 output):
+       └── Tier 1: Structure   (Python, needs argument graph from Tier 2,
+     ~100ms)
+
+     Total latency: max(Tier2 + Tier1, LLM) ≈ 2-4s (LLM-bound, same as current)
+
+     ---
+     Tier-by-Tier Design
+
+     Tier 5: Language (Node.js, in-process, fully deterministic)
+
+     No ML required. Pattern matching + lexicon lookup.
+
+     Implementation:
+     - biaslens/server/nlp/language.js — single module
+     - Curated word/phrase lists stored as JSON:
+       - lexicons/loaded_language.json — emotionally charged terms (sourced from
+     AFINN + custom)
+       - lexicons/weasel_words.json — hedging phrases ("some people say", "it is
+     believed", "many experts")
+       - lexicons/urgency_phrases.json — time pressure markers ("act now",
+     "limited
+      time", "before it's too late")
+       - lexicons/thought_terminators.json — cliches ("it is what it is", "agree
+      to
+      disagree", "that's just how it works")
+     - Sealioning: Pattern-based detection of excessive interrogative density +
+     bad-faith question markers
+
+     Detection approach per type:
+
+     Type: loaded_language
+     Method: Sentiment intensity scoring (AFINN lexicon) — flag words
+     ────────────────────────────────────────
+     Type: with
+     Method: score
+     ────────────────────────────────────────
+     Type: vague_weasel_words
+     Method: Regex + phrase list matching against curated
+     ────────────────────────────────────────
+     Type: hedging/weasel patterns
+     Method:
+     ────────────────────────────────────────
+     Type: false_urgency
+     Method: Phrase list + temporal pressure pattern matching
+     ────────────────────────────────────────
+     Type: thought_terminating_cliche
+     Method: Exact/fuzzy phrase matching against curated
+     ────────────────────────────────────────
+     Type: list
+     Method:
+     ────────────────────────────────────────
+     Type: sealioning
+     Method: Question density heuristic + interrogative pattern analysis
+
+     Output: Array of { type, categoryId, start, end, quote, confidence, 
+     severity }
+
+     Confidence model: Lexicon matches get high confidence (0.85-0.95).
+     Context-dependent patterns get medium (0.6-0.8).
+
+     ---
+     Tier 2: Relevance — Argumentation Mining (Python, transformer-based)
+
+     This is the foundational NLP tier. It extracts argument structure that Tier
+     1 also depends on.
+
+     Model: Fine-tune deberta-v3-base (Microsoft, 86M params) on:
+     - ArgMicro corpus (argument component + relation classification)
+     - LOGIC dataset (Jin et al. 2022) for fallacy-specific training
+     - SemEval-2020 Task 11 propaganda data for relevance-type techniques
+
+     Pipeline:
+     1. Argument Component Detection — Classify spans as: Claim, Premise,
+     Evidence, Rebuttal, None
+     2. Relation Classification — For each (premise, claim) pair: Support,
+     Attack, Irrelevant
+     3. Relevance Fallacy Classification — For irrelevant premises, 
+     sub-classify:
+       - ad_hominem (attacks person)
+       - appeal_to_emotion / fear_appeal / guilt_trip (emotional premise)
+       - appeal_to_authority (authority as evidence)
+       - red_herring (topic divergence)
+       - bandwagon (popularity as evidence)
+       - whataboutism (deflection)
+       - scapegoating (blame-shifting)
+       - in_group_bias / halo_effect (identity-based reasoning)
+
+     Key output (also used by Tier 1):
+     {
+       "argument_graph": {
+         "claims": [{"text": "...", "start": 0, "end": 50}],
+         "premises": [{"text": "...", "start": 51, "end": 120, "supports_claim":
+      0}],
+         "relations": [{"from": 0, "to": 1, "type": "irrelevant", "sub_type":
+     "ad_hominem"}]
+       },
+       "findings": [...]
+     }
+
+     ---
+     Tier 1: Structure — Formal Logic Checking (Python, depends on Tier 2)
+
+     Approach: Use the argument graph from Tier 2, attempt to formalize into
+     logical propositions, check validity.
+
+     Implementation:
+     1. Logical form extraction — Use a smaller LLM (or fine-tuned model) to
+     convert extracted argument components into propositional/predicate logic
+     representations
+       - Input: claim + premises from Tier 2's argument graph
+       - Output: logical forms like P → Q, Q ∴ P (with natural language mapping)
+     2. Validity checking — Use z3-solver (Z3 theorem prover, Python bindings)
+     to check:
+       - Is the inference valid? (Do premises entail conclusion?)
+       - What form of invalidity? (affirming consequent, denying antecedent,
+     etc.)
+     3. Pattern matching — For common structural fallacies that don't need full
+     theorem proving:
+       - Circular reasoning: detect when conclusion ≈ premise (semantic
+     similarity
+     check)
+       - Begging the question: premise presupposes conclusion
+       - Composition/division: part↔whole inference patterns
+
+     Types detected:
+     - circular_reasoning / begging_the_question — semantic similarity between
+     premise and conclusion
+     - composition_division — part/whole pattern detection
+     - false_cause / post_hoc — causal structure without sufficient causal
+     evidence
+     - sunk_cost — past-investment reasoning pattern
+
+     Note: This tier will have the lowest coverage initially. Formalizing
+     natural
+      language into logic is hard. Start with pattern-matching for common
+     structural
+     fallacies and expand formal checking incrementally.
+
+     ---
+     Tier 3: Evidence — Sufficiency Analysis (Python, classifier)
+
+     Model: Fine-tune deberta-v3-base on evidence quality datasets:
+     - IBM Evidence Quality dataset
+     - Custom training data derived from LOGIC dataset (evidence-category 
+     fallacies)
+     - Augmented with examples from propaganda detection corpora
+
+     Detection approach:
+
+     Type: hasty_generalization
+     Method: Detect small sample indicators ("one study", "I know
+     ────────────────────────────────────────
+     Type: someone who", "this one time") + quantifier analysis
+     Method:
+     ────────────────────────────────────────
+     Type: cherry_picking / survivorship_bias / confirmation_bias
+     Method: Detect
+     ────────────────────────────────────────
+     Type: selective evidence presentation — one-sided sourcing, absence of
+       counterevidence
+     Method:
+     ────────────────────────────────────────
+     Type: markers
+     Method:
+     ────────────────────────────────────────
+     Type: slippery_slope
+     Method: Detect unsupported causal chains (A→B→C→D) without
+     ────────────────────────────────────────
+     Type: justification at each step
+     Method:
+     ────────────────────────────────────────
+     Type: availability_heuristic
+     Method: Detect recency/memorability-based reasoning
+     ────────────────────────────────────────
+     Type: anchoring
+     Method: Detect over-reliance on first-mentioned data point
+     ────────────────────────────────────────
+     Type: negativity_bias / optimism_bias
+     Method: Detect disproportionate weighting of
+     ────────────────────────────────────────
+     Type: negative/positive outcomes
+     Method:
+     ────────────────────────────────────────
+     Type: fundamental_attribution_error
+     Method: Detect dispositional attribution without
+     ────────────────────────────────────────
+     Type: situational consideration
+     Method:
+     ────────────────────────────────────────
+     Type: just_world_hypothesis
+     Method: Detect moral-causal reasoning ("they deserved it")
+
+     Hybrid approach: Combine transformer classifier with heuristic rules:
+     - Quantifier analysis (spaCy) — detect "all", "every", "never" vs
+     sample-size
+     language
+     - Causal chain length detection — count unsupported inference steps
+     - One-sidedness scoring — ratio of supporting vs opposing evidence
+     presented
+
+     ---
+     Tier 4: Framing — Representation Analysis (Python, classifier)
+
+     Model: Fine-tune deberta-v3-base on:
+     - SemEval propaganda data (framing-related techniques)
+     - LOGIC dataset (framing-category fallacies)
+     - Custom examples for each framing sub-type
+
+     Detection approach:
+
+     Type: straw_man
+     Method: Detect misrepresentation — paraphrased position diverges from
+     ────────────────────────────────────────
+     Type: original (requires reference or contextual cues like "they say X"
+       followed by
+     Method:
+     ────────────────────────────────────────
+     Type: distortion)
+     Method:
+     ────────────────────────────────────────
+     Type: false_dilemma
+     Method: Pattern detection: binary framing ("either X or Y", "only
+     ────────────────────────────────────────
+     Type: two options") + exclusivity markers
+     Method:
+     ────────────────────────────────────────
+     Type: equivocation
+     Method: Word sense disambiguation — detect term used with shifting
+     ────────────────────────────────────────
+     Type: meaning across argument
+     Method:
+     ────────────────────────────────────────
+     Type: no_true_scotsman
+     Method: Detect ad-hoc redefinition patterns ("a real X would...")
+     ────────────────────────────────────────
+     Type:
+     Method:
+     ────────────────────────────────────────
+     Type: moving_goalposts
+     Method: Detect criteria shifts (harder — may need multi-turn
+     ────────────────────────────────────────
+     Type: context)
+     Method:
+     ────────────────────────────────────────
+     Type: framing_effect
+     Method: Detect asymmetric framing of equivalent information (e.g.,
+     ────────────────────────────────────────
+     Type: "90% survival" vs "10% mortality")
+     Method:
+
+     Hybrid approach: Combine classifier with:
+     - Binary option detection (regex + dependency parsing)
+     - Semantic similarity for straw man detection (compare attributed vs actual
+     positions)
+
+     ---
+     LLM Layer: Ensemble + Explanation (OpenAI GPT-4o-mini)
+
+     Changed role: The LLM shifts from primary detector to:
+
+     1. Ensemble voter — Runs the same analysis as before, but its findings are
+     weighted alongside NLP model findings
+     2. Explanation generator — For findings detected by NLP models, the LLM
+     generates human-readable explanations
+     3. Edge case catcher — Catches things the specialized models miss
+     4. Verifiability scorer — Keeps the verifiability analysis (no NLP tier for
+     this — it requires world knowledge)
+
+     Updated prompt: Instructs the LLM to use the new 5-category taxonomy
+     (structure, relevance, evidence, framing, language) instead of
+     fallacy/bias/tactic.
+
+     ---
+     Finding Merger Strategy
+
+     All tier outputs → Merge step:
+       1. Normalize to common schema: { category, categoryId, start, end, quote,
+     confidence, severity, source_tier }
+       2. Cluster by overlapping spans (IoU > 0.7)
+       3. Within each cluster:
+          a. Same categoryId from multiple sources → boost confidence (min(1.0,
+     max_conf + 0.1))
+          b. Different categoryIds → keep all (one span can be both
+     loaded_language
+     AND false_dilemma)
+          c. Exact duplicate → keep highest confidence
+       4. LLM-only findings (no NLP model agreement) → reduce confidence by 0.15
+       5. NLP-only findings (no LLM agreement) → keep as-is (NLP models are more
+     deterministic)
+       6. Sort by start position
+
+     ---
+     Scoring Model
+
+     5 category scores + verifiability (6 total):
+
+     ┌──────────────────┬───────────────┬─────────────┬─────────────────────────
+     ──┐
+     │      Score       │     Label     │   Source    │        Description
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Structure        │ Validity      │ Tier 1      │ How logically sound is
+       │
+     │                  │               │ findings    │ the argument
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ form?            │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Relevance        │ Relevance     │ Tier 2      │ Do premises connect to
+       │
+     │                  │               │ findings    │ conclusions?
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │                  │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Evidence         │ Evidence      │ Tier 3      │ Is supporting evidence
+       │
+     │                  │               │ findings    │ sufficient and
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ representative?  │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Framing          │ Integrity     │ Tier 4      │ Are positions and
+     options │
+     │                  │               │ findings    │  fairly
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ represented?     │               │             │
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Language         │ Neutrality    │ Tier 5      │ How neutral is the word
+       │
+     │                  │               │ findings    │ choice?
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ Verifiability    │ Verifiability │ LLM         │ Can claims be checked
+       │
+     │                  │               │ analysis    │ against
+       │
+     ├──────────────────┼───────────────┼─────────────┼─────────────────────────
+     ──┤
+     │ external         │               │             │
+       │
+     │ sources?         │               │             │
+       │
+     └──────────────────┴───────────────┴─────────────┴─────────────────────────
+     ──┘
+
+     Scoring formula per category:
+     score = 100 - Σ(finding_severity_weight × finding_confidence)
+     where severity_weight: low=5, medium=15, high=30
+     clamped to [0, 100]
+
+     ---
+     Python NLP Service
+
+     Tech Stack
+
+     - FastAPI — async HTTP server
+     - Transformers (Hugging Face) — model loading and inference
+     - spaCy (en_core_web_sm) — tokenization, POS, dependency parsing, NER
+     - z3-solver — theorem proving for Tier 1
+     - ONNX Runtime (optional) — optimized inference for production
+     - uvicorn — ASGI server
+
+     File Structure
+
+     biaslens/nlp-service/
+     ├── main.py                     # FastAPI app, /analyze endpoint
+     ├── requirements.txt
+     ├── pipeline.py                 # Orchestrates tiers 1-4
+     ├── tiers/
+     │   ├── structure.py            # Tier 1: formal logic checking
+     │   ├── relevance.py            # Tier 2: argumentation mining
+     │   ├── evidence.py             # Tier 3: evidence sufficiency
+     │   └── framing.py              # Tier 4: framing detection
+     ├── models/                     # Fine-tuned model weights (gitignored)
+     │   ├── arg_component/          # Argument component detection
+     │   ├── relation_clf/           # Premise-conclusion relation classifier
+     │   ├── fallacy_clf/            # Multi-label fallacy classifier
+     │   └── evidence_clf/           # Evidence quality classifier
+     ├── utils/
+     │   ├── preprocessing.py        # Text normalization, sentence splitting
+     │   ├── span_utils.py           # Character offset alignment
+     │   └── schema.py               # Pydantic models for request/response
+     └── training/                   # Fine-tuning scripts (separate concern)
+         ├── train_arg_mining.py
+         ├── train_fallacy_clf.py
+         └── data/                   # Training data (gitignored)
+
+     Single Endpoint
+
+     POST /analyze
+     Body: { "text": "...", "tiers": [1,2,3,4] }  // optional tier selection
+     Response: {
+       "findings": [...],
+       "argument_graph": {...},     // from Tier 2
+       "tier_metadata": {
+         "1": { "latency_ms": 95, "model_version": "..." },
+         ...
+       }
+     }
+
+     ---
+     Node.js Backend Changes
+
+     Modified Files
+
+     biaslens/server/index.js
+     - Add pipeline orchestrator that calls:
+       a. Language tier (in-process)
+       b. Python NLP service (http://localhost:8000/analyze)
+       c. OpenAI LLM (existing)
+     - Run all three in parallel via Promise.all
+     - Merge findings from all sources
+     - Compute new 6-score model
+
+     biaslens/server/llm.js
+     - Update ARGUMENT_SCHEMA: category enum → ["structure", "relevance",
+     "evidence", "framing", "language"]
+     - Update categoryId enum to match new type lists per category
+     - Update scoring to 5 category scores + verifiability
+     - Update system prompt to use new taxonomy and definitions
+
+     New files:
+     - biaslens/server/nlp/language.js — Tier 5 deterministic detector
+     - biaslens/server/nlp/lexicons/*.json — Word/phrase lists
+     - biaslens/server/pipeline.js — Orchestrator: parallel dispatch + merge
+     - biaslens/server/merger.js — Finding deduplication and confidence boosting
+
+     ---
+     Frontend Changes
+
+     Modified Files
+
+     biaslens/src/theme/colors.js — New 5-category color palette:
+     structure:  { L: 0.55, C: 0.16, h: 280 }   // Purple — formal/abstract
+     relevance:  { L: 0.55, C: 0.18, h: 25  }    // Red-orange — disconnection
+     evidence:   { L: 0.60, C: 0.14, h: 80  }     // Gold — weighing/scales
+     framing:    { L: 0.52, C: 0.10, h: 165 }     // Teal — perspective
+     language:   { L: 0.55, C: 0.14, h: 45  }     // Amber — words/text
+
+     biaslens/src/components/Analysis/ControlBar.jsx
+     - 5 toggles: Structure (GitBranch icon), Relevance (Unlink icon), Evidence
+     (Scale icon), Framing (Frame icon), Language (Type icon)
+
+     biaslens/src/components/Analysis/AnalysisPage.jsx
+     - Update CHECK_TO_TYPES mapping for 5 categories
+     - Update filtering logic
+     - Update session data schema (with migration for old data)
+
+     biaslens/src/components/Analysis/InsightsPanel.jsx
+     - 6 score cards (5 categories + verifiability)
+     - Update TYPE_HEX color map
+     - Update severity badge colors
+
+     biaslens/src/components/Analysis/DocumentViewer.jsx
+     - Update TYPE_COLORS RGB map for 5 categories
+
+     biaslens/src/components/Analysis/ScoreCard.jsx
+     - No structural changes, just receives new color values
+
+     Extension Changes
+
+     biaslens/extension/content.js — Update highlight colors for 5 categories
+     biaslens/extension/popup.js — Update category display and toggles
+     biaslens/extension/content.css — Update category color classes
+
+     ---
+     Implementation Phases
+
+     Phase 1: Category Refactor (no new models)
+
+     - Update LLM schema to 5 categories
+     - Update frontend (colors, toggles, score cards)
+     - Update extension
+     - Migrate session data format
+     - Result: Same LLM-only detection, but with clean taxonomy
+
+     Phase 2: Tier 5 — Language (deterministic)
+
+     - Build lexicons (loaded_language, weasel_words, urgency,
+     thought_terminators)
+     - Implement language.js detector
+     - Add pipeline orchestrator (Language + LLM in parallel)
+     - Merge Language findings with LLM findings
+     - Result: Language category is now partially deterministic
+
+     Phase 3: Python NLP Service Setup
+
+     - Set up FastAPI project structure
+     - Install spaCy, transformers
+     - Create /analyze endpoint skeleton
+     - Wire Node.js backend to call Python service
+     - Result: Infrastructure ready for ML tiers
+
+     Phase 4: Tier 2 — Relevance (argumentation mining)
+
+     - Fine-tune DeBERTa on ArgMicro + LOGIC dataset
+     - Implement argument component detection
+     - Implement relation classification
+     - Output argument graph + relevance findings
+     - Result: Argument structure extraction working
+
+     Phase 5: Tier 1 — Structure (formal logic)
+
+     - Implement structural pattern matching (circular reasoning,
+     composition/division)
+     - Add z3-solver for basic validity checking
+     - Use Tier 2 argument graph as input
+     - Result: Formal fallacy detection online
+
+     Phase 6: Tier 3 — Evidence
+
+     - Fine-tune classifier for evidence sufficiency
+     - Add heuristic rules (quantifier analysis, causal chain detection)
+     - Result: Evidence quality assessment working
+
+     Phase 7: Tier 4 — Framing
+
+     - Fine-tune classifier for framing techniques
+     - Add pattern detectors (false dilemma, equivocation)
+     - Result: All 5 tiers operational
+
+     Phase 8: Ensemble Tuning
+
+     - Tune confidence boosting/reduction weights
+     - Evaluate precision/recall across tiers
+     - Adjust LLM prompt to complement rather than duplicate NLP findings
+     - Result: Full hybrid system calibrated
+
+     ---
+     Verification Plan
+
+     1. Unit tests per tier — Each tier gets test cases with known findings,
+     assert correct detection
+     2. Integration test — Send sample texts through full pipeline, verify
+     merged
+      output schema
+     3. Regression test — Run existing test texts (biases.txt, fallacy.txt from
+     project root) through new system, compare coverage vs old system
+     4. Determinism test — Run same text 10x through Language tier, verify
+     identical output every time
+     5. Latency test — Measure end-to-end response time, ensure it doesn't
+     significantly exceed current LLM-only latency
+     6. Frontend test — Verify all 5 category toggles filter correctly, all 6
+     scores display, highlights render in correct colors
+     7. Extension test — Verify Chrome extension works with new category format
+
+     "/plan open" to edit this plan in Notepad

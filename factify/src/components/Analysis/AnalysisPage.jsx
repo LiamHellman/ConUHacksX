@@ -116,7 +116,7 @@ export default function AnalysisPage() {
 
   // ---- persistence: load ----
   useEffect(() => {
-    const saved = localStorage.getItem("biaslens_history");
+    const saved = localStorage.getItem("factify_history");
     if (!saved) return;
 
     try {
@@ -136,8 +136,8 @@ export default function AnalysisPage() {
 
   // ---- persistence: save ----
   useEffect(() => {
-    if (history.length === 0) localStorage.removeItem("biaslens_history");
-    else localStorage.setItem("biaslens_history", JSON.stringify(history));
+    if (history.length === 0) localStorage.removeItem("factify_history");
+    else localStorage.setItem("factify_history", JSON.stringify(history));
   }, [history]);
 
   const activeSession = useMemo(() => {
@@ -275,7 +275,7 @@ export default function AnalysisPage() {
     setActiveSessionId(null);
     setActiveDocId(null);
     setSelectedFinding(null);
-    localStorage.removeItem("biaslens_history");
+    localStorage.removeItem("factify_history");
   };
 
   const handleAnalyze = async () => {

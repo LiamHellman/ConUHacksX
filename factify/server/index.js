@@ -18,7 +18,7 @@ dotenv.config({ path: `${__dirname}/../.env` });
 import { analyzeWithLLM } from "./llm.js";
 
 const app = express();
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const whisperClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const upload = multer({ dest: "uploads/" });
 
 /**
@@ -145,7 +145,7 @@ app.post("/api/youtube", async (req, res) => {
   }
 });
 
-// --- ROUTE: Local File Upload (Whisper) ---
+// --- ROUTE: Local File Upload (Whisper transcription — premium feature) ---
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   let tempPathWithExt = null;
   try {
@@ -155,7 +155,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     tempPathWithExt = `${req.file.path}${ext}`;
     fs.renameSync(req.file.path, tempPathWithExt);
 
-    const transcription = await client.audio.transcriptions.create({
+    const transcription = await whisperClient.audio.transcriptions.create({
       file: fs.createReadStream(tempPathWithExt),
       model: "whisper-1",
     });

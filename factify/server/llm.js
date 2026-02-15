@@ -1,13 +1,13 @@
 // server/llm.js
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
-let client = null;
+let ai = null;
 
 function getClient() {
-  if (!client) {
-    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  if (!ai) {
+    ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
-  return client;
+  return ai;
 }
 
 const ARGUMENT_SCHEMA = {
@@ -196,27 +196,21 @@ export async function analyzeWithLLM(text, settings = {}) {
     "2) Choose minimal spans that demonstrate each issue.",
   ].join(" ");
 
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-  // Responses API with Structured Outputs JSON Schema
-  const resp = await getClient().responses.create({
+  // Gemini API with structured JSON output
+  const resp = await getClient().models.generateContent({
     model,
-    temperature,
-    input: [
-      { role: "system", content: system },
-      { role: "user", content: text },
-    ],
-    text: {
-      format: {
-        type: "json_schema",
-        name: "argument_analysis",
-        strict: true,
-        schema: ARGUMENT_SCHEMA.schema,
-      },
+    contents: text,
+    config: {
+      systemInstruction: system,
+      temperature,
+      responseMimeType: "application/json",
+      responseSchema: ARGUMENT_SCHEMA.schema,
     },
   });
 
-  const raw = resp.output_text;
+  const raw = resp.text;
   const parsed = JSON.parse(raw);
 
   // hardening: clamp/repair spans (NO overlap removal)
