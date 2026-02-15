@@ -400,7 +400,7 @@ export default function AnalysisPage() {
             className={
               isMobile
                 ? "analysis-panel analysis-panel--input"
-                : "analysis-panel analysis-panel--input w-80 md:w-80 w-full border-r md:border-r border-b md:border-b-0 border-rule bg-cream-dark flex flex-col flex-shrink-0 h-full md:h-full h-auto"
+                : "analysis-panel analysis-panel--input w-80 shrink-1 min-w-48 border-r border-rule bg-cream-dark flex flex-col h-full overflow-hidden"
             }
           >
             <div className="flex-shrink-0 border-b border-rule">

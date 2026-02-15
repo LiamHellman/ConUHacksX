@@ -64,34 +64,38 @@ export default function InsightsPanel({
   );
 
   const renderSummary = () => (
-    <div className="p-5 space-y-4">
+    <div className={`p-5 ${isMobile ? "grid grid-cols-2 gap-3" : "space-y-4"}`}>
       <ScoreCard
         label="Neutrality"
         score={results?.scores?.bias ?? 0}
         type="bias"
         description="Measures emotional nudges and loaded language"
+        compact={isMobile}
       />
       <ScoreCard
         label="Soundness"
         score={results?.scores?.fallacies ?? 0}
         type="fallacy"
         description="Identifies gaps in logical reasoning"
+        compact={isMobile}
       />
       <ScoreCard
         label="Transparency"
         score={results?.scores?.tactic ?? 0}
         type="tactic"
         description="Detects hidden persuasive techniques"
+        compact={isMobile}
       />
       <ScoreCard
         label="Verifiability"
         score={results?.scores?.factcheck ?? 0}
         type="factcheck"
         description="Ability to back claims with evidence"
+        compact={isMobile}
       />
 
       {results?.summary && (
-        <div className="mt-6 p-4 bg-white border border-rule">
+        <div className={`mt-6 p-4 bg-white border border-rule ${isMobile ? "col-span-2" : ""}`}>
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 flex-shrink-0 mt-0.5 text-text-muted" />
             <div>
@@ -231,7 +235,7 @@ export default function InsightsPanel({
       {/* Content */}
       {isMobile ? (
         <div className="flex-1 bg-cream-dark">
-          <div className="insights-content overflow-y-auto custom-scrollbar p-5">
+          <div className="insights-content overflow-y-auto custom-scrollbar">
             {activeTab === "summary" ? renderSummary() : renderFindings()}
           </div>
         </div>
