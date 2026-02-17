@@ -15,7 +15,7 @@
       <div class="logo">
         <span class="logo-text">Factify</span>
       </div>
-      <span class="tagline">Bias &amp; Fallacy Detection</span>
+      <span class="tagline">Critical Reasoning Auditor</span>
     </header>
 
     <!-- YouTube Transcription Section (shown on YouTube pages) -->
@@ -28,7 +28,7 @@
           </svg>
           <span class="youtube-title">YouTube Video Detected</span>
         </div>
-        <p class="youtube-desc" id="youtubeDesc">Transcribe this video and analyze it for bias, fallacies, and manipulation tactics.</p>
+        <p class="youtube-desc" id="youtubeDesc">Transcribe this video and analyze it for reasoning issues and manipulation.</p>
         <button class="btn btn-youtube" id="youtubeTranscribeBtn">
           <span class="btn-text" id="ytBtnText">Transcribe &amp; Analyze</span>
           <span class="btn-loader" id="ytBtnLoader" style="display: none;"></span>
@@ -55,20 +55,30 @@
     <div class="options-section">
       <label>Analysis Options:</label>
       <div class="options-grid">
-        <button type="button" class="option-btn active" id="optBias" data-option="bias">
-          <span class="option-dot option-dot--bias"></span>
+        <button type="button" class="option-btn active" id="optStructure" data-option="structure">
+          <span class="option-dot option-dot--structure"></span>
           <span class="option-check">&#10003;</span>
-          <span>Bias Detection</span>
+          <span>Structure</span>
         </button>
-        <button type="button" class="option-btn active" id="optFallacy" data-option="fallacy">
-          <span class="option-dot option-dot--fallacy"></span>
+        <button type="button" class="option-btn active" id="optRelevance" data-option="relevance">
+          <span class="option-dot option-dot--relevance"></span>
           <span class="option-check">&#10003;</span>
-          <span>Logical Fallacies</span>
+          <span>Relevance</span>
         </button>
-        <button type="button" class="option-btn active" id="optTactic" data-option="tactic">
-          <span class="option-dot option-dot--tactic"></span>
+        <button type="button" class="option-btn active" id="optEvidence" data-option="evidence">
+          <span class="option-dot option-dot--evidence"></span>
           <span class="option-check">&#10003;</span>
-          <span>Tactics</span>
+          <span>Evidence</span>
+        </button>
+        <button type="button" class="option-btn active" id="optFraming" data-option="framing">
+          <span class="option-dot option-dot--framing"></span>
+          <span class="option-check">&#10003;</span>
+          <span>Framing</span>
+        </button>
+        <button type="button" class="option-btn active" id="optLanguage" data-option="language">
+          <span class="option-dot option-dot--language"></span>
+          <span class="option-check">&#10003;</span>
+          <span>Language</span>
         </button>
       </div>
     </div>

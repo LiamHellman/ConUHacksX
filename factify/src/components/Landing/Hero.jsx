@@ -84,7 +84,7 @@ export default function Hero({ onGetStarted }) {
             <div className="p-8 bg-cream-dark border border-rule transition-colors hover:border-text-muted relative">
               <div className="flex items-start justify-between mb-6">
                 <div className="w-10 h-10 flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-fallacy" />
+                  <Shield className="w-6 h-6 text-structure" />
                 </div>
                 <span className="text-sm text-text-faint" style={{ fontFamily: "var(--font-sans)" }}>02</span>
               </div>
@@ -102,7 +102,7 @@ export default function Hero({ onGetStarted }) {
             <div className="p-8 bg-cream-dark border border-rule transition-colors hover:border-text-muted relative">
               <div className="flex items-start justify-between mb-6">
                 <div className="w-10 h-10 flex items-center justify-center">
-                  <Search className="w-6 h-6 text-tactic" />
+                  <Search className="w-6 h-6 text-evidence" />
                 </div>
                 <span className="text-sm text-text-faint" style={{ fontFamily: "var(--font-sans)" }}>03</span>
               </div>

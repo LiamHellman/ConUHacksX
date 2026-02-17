@@ -11,12 +11,14 @@ import { buildHighlightSpans, severityRank } from "../../utils/HighlightUtils";
 
 /**
  * Map UI toggle keys -> finding.type values coming from llm.js
- * (ControlBar uses `fallacies`, but llm.js outputs `type: "fallacy"`.)
+ * Toggle keys now match category names directly.
  */
 const CHECK_TO_TYPES = {
-  bias: new Set(["bias"]),
-  fallacies: new Set(["fallacy"]),
-  tactic: new Set(["tactic"]),
+  structure: new Set(["structure"]),
+  relevance: new Set(["relevance"]),
+  evidence:  new Set(["evidence"]),
+  framing:   new Set(["framing"]),
+  language:  new Set(["language"]),
 };
 
 function uid() {
@@ -85,9 +87,11 @@ export default function AnalysisPage() {
   const [pastedText, setPastedText] = useState("");
 
   const [checks, setChecks] = useState({
-    bias: true,
-    fallacies: true,
-    tactic: true,
+    structure: true,
+    relevance: true,
+    evidence: true,
+    framing: true,
+    language: true,
   });
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -517,7 +521,7 @@ export default function AnalysisPage() {
                     >
                       <span className="max-w-[220px] truncate">{doc.title}</span>
                       {hasResults && (
-                        <span className="text-[9px] px-1.5 py-0.5 bg-tactic/10 text-tactic">analyzed</span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-rule-light text-text-muted">analyzed</span>
                       )}
                     </button>
                   );

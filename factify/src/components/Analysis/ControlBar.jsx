@@ -1,10 +1,12 @@
-import { ArrowRight, Brain, Scale, AlertOctagon } from "lucide-react";
+import { ArrowRight, GitBranch, Compass, BarChart2, Frame, Type } from "lucide-react";
 
-// Paper palette category colors
+// 5-category palette
 const CATEGORY_COLORS = {
-  bias: "#c44030",
-  fallacy: "#b8860b",
-  tactic: "#2e7d6e",
+  structure: "#b8860b",
+  relevance: "#4a6fa5",
+  evidence:  "#2e7d6e",
+  framing:   "#7850a0",
+  language:  "#c44030",
 };
 
 export default function ControlBar({
@@ -17,25 +19,39 @@ export default function ControlBar({
 }) {
   const toggleItems = [
     {
-      key: "bias",
-      icon: <Brain size={16} />,
-      label: "Bias Detection",
-      color: CATEGORY_COLORS.bias,
-      isActive: checks.bias,
+      key: "structure",
+      icon: <GitBranch size={16} />,
+      label: "Structure",
+      color: CATEGORY_COLORS.structure,
+      isActive: checks.structure,
     },
     {
-      key: "fallacies",
-      icon: <Scale size={16} />,
-      label: "Logical Fallacies",
-      color: CATEGORY_COLORS.fallacy,
-      isActive: checks.fallacies,
+      key: "relevance",
+      icon: <Compass size={16} />,
+      label: "Relevance",
+      color: CATEGORY_COLORS.relevance,
+      isActive: checks.relevance,
     },
     {
-      key: "tactic",
-      icon: <AlertOctagon size={16} />,
-      label: "Tactics",
-      color: CATEGORY_COLORS.tactic,
-      isActive: checks.tactic,
+      key: "evidence",
+      icon: <BarChart2 size={16} />,
+      label: "Evidence",
+      color: CATEGORY_COLORS.evidence,
+      isActive: checks.evidence,
+    },
+    {
+      key: "framing",
+      icon: <Frame size={16} />,
+      label: "Framing",
+      color: CATEGORY_COLORS.framing,
+      isActive: checks.framing,
+    },
+    {
+      key: "language",
+      icon: <Type size={16} />,
+      label: "Language",
+      color: CATEGORY_COLORS.language,
+      isActive: checks.language,
     },
   ];
 
@@ -54,7 +70,7 @@ export default function ControlBar({
 		<div
 		  className={
 			isMobile
-			  ? "grid grid-cols-3 gap-1.5 w-full"
+			  ? "grid grid-cols-5 gap-1 w-full"
 			  : "flex items-center gap-1.5 flex-wrap"
 		  }
 		>

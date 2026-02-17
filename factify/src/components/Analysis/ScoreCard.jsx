@@ -1,35 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 
-// Paper palette category colors
+// 5-category palette
 const TYPE_HEX = {
-  bias: "#c44030",
-  fallacy: "#b8860b",
-  tactic: "#2e7d6e",
+  structure: "#b8860b",
+  relevance: "#4a6fa5",
+  evidence:  "#2e7d6e",
+  framing:   "#7850a0",
+  language:  "#c44030",
   factcheck: "#7850a0",
-};
-
-// Backward-compatible mapping
-const COLOR_TO_TYPE = {
-  pink: "bias",
-  amber: "fallacy",
-  blue: "tactic",
-  purple: "factcheck",
 };
 
 export default function ScoreCard({
   label,
   score,
   type,
-  color,
   description,
   max = 100,
   compact = false,
 }) {
-  const resolvedType = useMemo(() => {
-    if (type) return type;
-    if (color && COLOR_TO_TYPE[color]) return COLOR_TO_TYPE[color];
-    return "factcheck";
-  }, [type, color]);
+  const resolvedType = type || "factcheck";
 
   const typeColor = TYPE_HEX[resolvedType] || TYPE_HEX.factcheck;
 

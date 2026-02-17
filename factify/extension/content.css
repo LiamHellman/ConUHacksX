@@ -198,19 +198,29 @@
   opacity: 0.8;
 }
 
-.factify-highlight[data-category="fallacy"] {
+.factify-highlight[data-category="structure"] {
   background: rgba(184, 134, 11, 0.15) !important;
   border-bottom: 2px solid rgba(184, 134, 11, 0.6) !important;
 }
 
-.factify-highlight[data-category="bias"] {
-  background: rgba(196, 64, 48, 0.12) !important;
-  border-bottom: 2px solid rgba(196, 64, 48, 0.6) !important;
+.factify-highlight[data-category="relevance"] {
+  background: rgba(74, 111, 165, 0.12) !important;
+  border-bottom: 2px solid rgba(74, 111, 165, 0.6) !important;
 }
 
-.factify-highlight[data-category="tactic"] {
+.factify-highlight[data-category="evidence"] {
   background: rgba(46, 125, 110, 0.15) !important;
   border-bottom: 2px solid rgba(46, 125, 110, 0.6) !important;
+}
+
+.factify-highlight[data-category="framing"] {
+  background: rgba(120, 80, 160, 0.12) !important;
+  border-bottom: 2px solid rgba(120, 80, 160, 0.6) !important;
+}
+
+.factify-highlight[data-category="language"] {
+  background: rgba(196, 64, 48, 0.12) !important;
+  border-bottom: 2px solid rgba(196, 64, 48, 0.6) !important;
 }
 
 /* Inline results panel — Paper editorial style */
@@ -291,19 +301,29 @@
   box-shadow: 0 0 0 2px #c8c0b4;
 }
 
-#factify-results-panel .factify-finding.bias.highlighted {
-  box-shadow: 0 0 0 2px #c44030;
-  background: rgba(196, 64, 48, 0.06);
-}
-
-#factify-results-panel .factify-finding.fallacy.highlighted {
+#factify-results-panel .factify-finding.structure.highlighted {
   box-shadow: 0 0 0 2px #b8860b;
   background: rgba(184, 134, 11, 0.06);
 }
 
-#factify-results-panel .factify-finding.tactic.highlighted {
+#factify-results-panel .factify-finding.relevance.highlighted {
+  box-shadow: 0 0 0 2px #4a6fa5;
+  background: rgba(74, 111, 165, 0.06);
+}
+
+#factify-results-panel .factify-finding.evidence.highlighted {
   box-shadow: 0 0 0 2px #2e7d6e;
   background: rgba(46, 125, 110, 0.06);
+}
+
+#factify-results-panel .factify-finding.framing.highlighted {
+  box-shadow: 0 0 0 2px #7850a0;
+  background: rgba(120, 80, 160, 0.06);
+}
+
+#factify-results-panel .factify-finding.language.highlighted {
+  box-shadow: 0 0 0 2px #c44030;
+  background: rgba(196, 64, 48, 0.06);
 }
 
 /* Resize handle styling */
@@ -363,16 +383,24 @@
   border-color: #c8c0b4;
 }
 
-#factify-results-panel .factify-finding.bias {
-  border-left-color: #c44030;
-}
-
-#factify-results-panel .factify-finding.fallacy {
+#factify-results-panel .factify-finding.structure {
   border-left-color: #b8860b;
 }
 
-#factify-results-panel .factify-finding.tactic {
+#factify-results-panel .factify-finding.relevance {
+  border-left-color: #4a6fa5;
+}
+
+#factify-results-panel .factify-finding.evidence {
   border-left-color: #2e7d6e;
+}
+
+#factify-results-panel .factify-finding.framing {
+  border-left-color: #7850a0;
+}
+
+#factify-results-panel .factify-finding.language {
+  border-left-color: #c44030;
 }
 
 #factify-results-panel .factify-finding-type {
@@ -429,15 +457,7 @@
   opacity: 0.5;
 }
 
-.factify-highlight.factify-selected-bias {
-  background: rgba(196, 64, 48, 0.30) !important;
-  border-bottom: 3px solid #c44030 !important;
-  border-image: none !important;
-  box-shadow: 0 0 12px rgba(196, 64, 48, 0.5) !important;
-  opacity: 1;
-}
-
-.factify-highlight.factify-selected-fallacy {
+.factify-highlight.factify-selected-structure {
   background: rgba(184, 134, 11, 0.30) !important;
   border-bottom: 3px solid #b8860b !important;
   border-image: none !important;
@@ -445,11 +465,35 @@
   opacity: 1;
 }
 
-.factify-highlight.factify-selected-tactic {
+.factify-highlight.factify-selected-relevance {
+  background: rgba(74, 111, 165, 0.30) !important;
+  border-bottom: 3px solid #4a6fa5 !important;
+  border-image: none !important;
+  box-shadow: 0 0 12px rgba(74, 111, 165, 0.5) !important;
+  opacity: 1;
+}
+
+.factify-highlight.factify-selected-evidence {
   background: rgba(46, 125, 110, 0.30) !important;
   border-bottom: 3px solid #2e7d6e !important;
   border-image: none !important;
   box-shadow: 0 0 12px rgba(46, 125, 110, 0.5) !important;
+  opacity: 1;
+}
+
+.factify-highlight.factify-selected-framing {
+  background: rgba(120, 80, 160, 0.30) !important;
+  border-bottom: 3px solid #7850a0 !important;
+  border-image: none !important;
+  box-shadow: 0 0 12px rgba(120, 80, 160, 0.5) !important;
+  opacity: 1;
+}
+
+.factify-highlight.factify-selected-language {
+  background: rgba(196, 64, 48, 0.30) !important;
+  border-bottom: 3px solid #c44030 !important;
+  border-image: none !important;
+  box-shadow: 0 0 12px rgba(196, 64, 48, 0.5) !important;
   opacity: 1;
 }
 

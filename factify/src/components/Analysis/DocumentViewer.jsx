@@ -1,17 +1,15 @@
 import { useRef, useEffect, useState } from "react";
 
 /**
- * Paper-theme editorial palette:
- * - bias: muted red #c44030
- * - fallacy: dark gold #b8860b
- * - tactic: teal #2e7d6e
- * - factcheck: muted purple (reserved)
+ * 5-category editorial palette (RGB for highlight blending):
  */
 const TYPE_COLORS = {
-  bias:      { r: 196, g: 64,  b: 48  },
-  fallacy:   { r: 184, g: 134, b: 11  },
-  tactic:    { r: 46,  g: 125, b: 110 },
-  factcheck: { r: 120, g: 80,  b: 160 },
+  structure: { r: 184, g: 134, b: 11  },   // #b8860b
+  relevance: { r: 74,  g: 111, b: 165 },   // #4a6fa5
+  evidence:  { r: 46,  g: 125, b: 110 },   // #2e7d6e
+  framing:   { r: 120, g: 80,  b: 160 },   // #7850a0
+  language:  { r: 196, g: 64,  b: 48  },   // #c44030
+  factcheck: { r: 120, g: 80,  b: 160 },   // alias
 };
 
 function severityAlpha(sev) {
@@ -85,19 +83,17 @@ function pickPrimary(findings) {
   return best;
 }
 
+const BORDER_COLORS = {
+  structure: "#b8860b",
+  relevance: "#4a6fa5",
+  evidence:  "#2e7d6e",
+  framing:   "#7850a0",
+  language:  "#c44030",
+  factcheck: "#7850a0",
+};
+
 function borderColorForType(type) {
-  switch (type) {
-    case "bias":
-      return "#c44030";
-    case "fallacy":
-      return "#b8860b";
-    case "tactic":
-      return "#2e7d6e";
-    case "factcheck":
-      return "#7850a0";
-    default:
-      return "#c44030";
-  }
+  return BORDER_COLORS[type] || "#b8860b";
 }
 
 export default function DocumentViewer({
@@ -174,19 +170,19 @@ export default function DocumentViewer({
       <div className="px-6 py-4 border-b border-rule flex items-center justify-between">
         <h2 className="text-lg font-semibold text-text-primary" style={{ fontFamily: "var(--font-serif)" }}>Document</h2>
         {spans && spans.length > 0 && (
-          <div className="document-legend flex items-center gap-4 text-sm flex-wrap">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2" style={{ backgroundColor: "#c44030" }} />
-              <span className="text-text-muted">Bias</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2" style={{ backgroundColor: "#b8860b" }} />
-              <span className="text-text-muted">Fallacy</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2" style={{ backgroundColor: "#2e7d6e" }} />
-              <span className="text-text-muted">Tactic</span>
-            </span>
+          <div className="document-legend flex items-center gap-3 text-xs flex-wrap">
+            {[
+              { label: "Structure", color: "#b8860b" },
+              { label: "Relevance", color: "#4a6fa5" },
+              { label: "Evidence",  color: "#2e7d6e" },
+              { label: "Framing",   color: "#7850a0" },
+              { label: "Language",  color: "#c44030" },
+            ].map(({ label, color }) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span className="w-2 h-2" style={{ backgroundColor: color }} />
+                <span className="text-text-muted">{label}</span>
+              </span>
+            ))}
           </div>
         )}
       </div>

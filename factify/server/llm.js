@@ -21,11 +21,20 @@ const ARGUMENT_SCHEMA = {
       overall: {
         type: "object",
         additionalProperties: false,
-        required: ["fallacyScore", "biasScore", "tacticScore", "verifiabilityScore"],
+        required: [
+          "structureScore",
+          "relevanceScore",
+          "evidenceScore",
+          "framingScore",
+          "languageScore",
+          "verifiabilityScore",
+        ],
         properties: {
-          fallacyScore: { type: "integer", minimum: 0, maximum: 100 },
-          biasScore: { type: "integer", minimum: 0, maximum: 100 },
-          tacticScore: { type: "integer", minimum: 0, maximum: 100 },
+          structureScore:     { type: "integer", minimum: 0, maximum: 100 },
+          relevanceScore:     { type: "integer", minimum: 0, maximum: 100 },
+          evidenceScore:      { type: "integer", minimum: 0, maximum: 100 },
+          framingScore:       { type: "integer", minimum: 0, maximum: 100 },
+          languageScore:      { type: "integer", minimum: 0, maximum: 100 },
           verifiabilityScore: { type: "integer", minimum: 0, maximum: 100 },
         },
       },
@@ -51,9 +60,9 @@ const ARGUMENT_SCHEMA = {
             id: { type: "string" },
 
             // category determines tabs + highlight color in UI
-            category: { type: "string", enum: ["fallacy", "bias", "tactic"] },
+            category: { type: "string", enum: ["structure", "relevance", "evidence", "framing", "language"] },
 
-            // e.g. "straw_man", "confirmation_bias", "loaded_language"
+            // e.g. "circular_reasoning", "red_herring", "cherry_picking"
             categoryId: { type: "string" },
 
             // human-friendly label
@@ -147,9 +156,13 @@ export async function analyzeWithLLM(text, settings = {}) {
   const temperature = Math.max(0, Math.min(Number(settings.temperature ?? 0.2), 1));
 
   const system = [
-    "You are an expert critical-reasoning auditor. Your job is to find issues in text across three categories:",
-    "(A) logical fallacies (errors in reasoning), (B) cognitive biases (one-sided framing/interpretation),",
-    "(C) manipulative rhetoric / persuasion tactics (pressure, emotional loading, framing tricks).",
+    "You are an expert critical-reasoning auditor. Your job is to find issues in text across five categories, ordered by mechanism of error:",
+    "",
+    "(1) STRUCTURE — Formal logic errors: invalid syllogisms, contradictions, circular reasoning.",
+    "(2) RELEVANCE — Premise-conclusion connection issues: red herrings, irrelevant appeals, topic shifts.",
+    "(3) EVIDENCE — Sufficiency/quality of evidence problems: hasty generalizations, cherry-picking, false causation.",
+    "(4) FRAMING — Representation/presentation issues: how information is packaged, false balance, anchoring.",
+    "(5) LANGUAGE — Word choice manipulation: loaded terms, emotional manipulation, euphemism/dysphemism.",
     "",
     "OUTPUT RULES:",
     "- Return ONLY a JSON object that matches the provided JSON schema exactly (no extra keys, no markdown).",
@@ -159,9 +172,11 @@ export async function analyzeWithLLM(text, settings = {}) {
     `- Return at most ${maxFindings} findings total across ALL categories.`,
     "",
     "SCORING (0–100, integers): Higher is ALWAYS better; lower is ALWAYS worse.",
-    "- fallacyScore (Logic Quality): 0 dominated by fallacies/contradictions; 100 logically rigorous.",
-    "- biasScore (Neutrality): 0 highly loaded/one-sided; 100 balanced, careful, fair.",
-    "- tacticScore (Transparency): 0 manipulative/pressuring; 100 plain, non-manipulative.",
+    "- structureScore (Soundness): 0 dominated by logical errors/contradictions; 100 logically rigorous.",
+    "- relevanceScore (Relevance): 0 rampant non-sequiturs/red herrings; 100 every premise connects to the conclusion.",
+    "- evidenceScore (Evidence): 0 unsupported claims, cherry-picking; 100 well-evidenced, representative data.",
+    "- framingScore (Framing): 0 heavily distorted framing/false balance; 100 fair, proportionate representation.",
+    "- languageScore (Language): 0 highly loaded/manipulative wording; 100 neutral, precise language.",
     "- verifiabilityScore (Verifiability): 0 vague/unfalsifiable/unsupported; 100 specific/checkable/sourced.",
     "Use the full range 0–100. Do NOT compress to 1–10. Do NOT default to multiples of 10.",
     "Rubric: 0–20 poor, 21–40 weak, 41–60 mixed, 61–80 strong, 81–100 excellent.",
@@ -180,21 +195,25 @@ export async function analyzeWithLLM(text, settings = {}) {
     "- High severity should be rare unless the text is overwhelmingly manipulative (typically <= 2 highs).",
     "",
     "CATEGORY + IDS:",
-    "- category must be one of: fallacy | bias | tactic.",
+    "- category must be one of: structure | relevance | evidence | framing | language.",
     "- categoryId must be a stable snake_case identifier, e.g.:",
-    "  fallacy: straw_man, ad_hominem, false_dilemma, hasty_generalization, circular_reasoning, post_hoc, red_herring,",
-    "          slippery_slope, appeal_to_authority, appeal_to_emotion, equivocation, no_true_scotsman, false_cause,",
-    "          composition_division, begging_the_question",
-    "  bias: confirmation_bias, availability_heuristic, anchoring, survivorship_bias, fundamental_attribution_error,",
-    "        in_group_bias, negativity_bias, halo_effect, framing_effect, sunk_cost_fallacy, optimism_bias, just_world_hypothesis",
-    "  tactic: loaded_language, fear_appeal, guilt_trip, false_urgency, bandwagon, scapegoating, cherry_picking,",
-    "          whataboutism, sealioning, moving_goalposts, vague_weasel_words, thought_terminating_cliche",
+    // TODO(human): Define categoryId examples for each of the 5 categories
+    "  structure: circular_reasoning, affirming_consequent, begging_the_question, equivocation,",
+    "             contradiction, non_sequitur, denying_antecedent, false_dilemma",
+    "  relevance: ad_hominem, red_herring, appeal_to_authority, appeal_to_emotion, tu_quoque,",
+    "             straw_man, whataboutism, genetic_fallacy, appeal_to_nature, appeal_to_tradition",
+    "  evidence: hasty_generalization, cherry_picking, false_cause, post_hoc, slippery_slope,",
+    "            anecdotal, survivorship_bias, appeal_to_ignorance, burden_of_proof, correlation_causation",
+    "  framing: false_equivalence, framing_effect, anchoring, false_balance, moving_goalposts,",
+    "           availability_heuristic, bandwagon, no_true_scotsman, oversimplification",
+    "  language: loaded_language, fear_appeal, guilt_trip, false_urgency, weasel_words,",
+    "            thought_terminating_cliche, euphemism, dysphemism, sarcasm_as_argument",
     "- If none fit, create a reasonable snake_case id (but do not over-fragment).",
     "",
     "PROCESS (follow internally, do not output):",
     "1) Ensure a mix across categories when present, but do not force balance.",
     "2) Choose minimal spans that demonstrate each issue.",
-  ].join(" ");
+  ].join("\n");
 
   const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
@@ -217,26 +236,18 @@ export async function analyzeWithLLM(text, settings = {}) {
   parsed.findings = clampFindingsToText(text, parsed.findings || []);
 
   parsed.scores = {
-    // keep existing keys so ScoreCards/ControlBar logic doesn’t break
-    fallacies: parsed.overall?.fallacyScore ?? 0,
-    bias: parsed.overall?.biasScore ?? 0,
-    tactic: parsed.overall?.tacticScore ?? 0,
+    structure: parsed.overall?.structureScore ?? 0,
+    relevance: parsed.overall?.relevanceScore ?? 0,
+    evidence:  parsed.overall?.evidenceScore ?? 0,
+    framing:   parsed.overall?.framingScore ?? 0,
+    language:  parsed.overall?.languageScore ?? 0,
     factcheck: parsed.overall?.verifiabilityScore ?? 0,
   };
 
   parsed.findings = (parsed.findings || []).map((f) => ({
     ...f,
-
-    // UI expects `type` for highlighting; map it from category
     type: f.category,
-
-    // UI sometimes expects originalText
     originalText: f.quote,
-
-    // Back-compat helpers (optional but useful for InsightsPanel rendering)
-    fallacyId: f.category === "fallacy" ? f.categoryId : undefined,
-    biasId: f.category === "bias" ? f.categoryId : undefined,
-    tacticId: f.category === "tactic" ? f.categoryId : undefined,
   }));
 
   return parsed;

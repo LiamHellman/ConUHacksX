@@ -2,11 +2,13 @@ import { useState } from "react";
 import { BarChart3, List, AlertCircle, Info, ChevronRight } from "lucide-react";
 import ScoreCard from "./ScoreCard";
 
-// Paper palette category colors
+// 5-category palette
 const TYPE_HEX = {
-  bias: "#c44030",
-  fallacy: "#b8860b",
-  tactic: "#2e7d6e",
+  structure: "#b8860b",
+  relevance: "#4a6fa5",
+  evidence:  "#2e7d6e",
+  framing:   "#7850a0",
+  language:  "#c44030",
   factcheck: "#7850a0",
 };
 
@@ -36,7 +38,7 @@ export default function InsightsPanel({
   };
 
   const getTypeBadgeStyle = (type) => {
-    const hex = TYPE_HEX[type] || TYPE_HEX.bias;
+    const hex = TYPE_HEX[type] || TYPE_HEX.structure;
     return {
       backgroundColor: `${hex}15`,
       color: hex,
@@ -66,24 +68,38 @@ export default function InsightsPanel({
   const renderSummary = () => (
     <div className={`p-5 ${isMobile ? "grid grid-cols-2 gap-3" : "space-y-4"}`}>
       <ScoreCard
-        label="Neutrality"
-        score={results?.scores?.bias ?? 0}
-        type="bias"
-        description="Measures emotional nudges and loaded language"
-        compact={isMobile}
-      />
-      <ScoreCard
         label="Soundness"
-        score={results?.scores?.fallacies ?? 0}
-        type="fallacy"
-        description="Identifies gaps in logical reasoning"
+        score={results?.scores?.structure ?? 0}
+        type="structure"
+        description="Formal logic quality: valid reasoning, no contradictions"
         compact={isMobile}
       />
       <ScoreCard
-        label="Transparency"
-        score={results?.scores?.tactic ?? 0}
-        type="tactic"
-        description="Detects hidden persuasive techniques"
+        label="Relevance"
+        score={results?.scores?.relevance ?? 0}
+        type="relevance"
+        description="Premise-conclusion connection: stays on topic"
+        compact={isMobile}
+      />
+      <ScoreCard
+        label="Evidence"
+        score={results?.scores?.evidence ?? 0}
+        type="evidence"
+        description="Quality and sufficiency of supporting evidence"
+        compact={isMobile}
+      />
+      <ScoreCard
+        label="Framing"
+        score={results?.scores?.framing ?? 0}
+        type="framing"
+        description="Fair representation without distortion"
+        compact={isMobile}
+      />
+      <ScoreCard
+        label="Language"
+        score={results?.scores?.language ?? 0}
+        type="language"
+        description="Neutral word choice without manipulation"
         compact={isMobile}
       />
       <ScoreCard
@@ -123,7 +139,7 @@ export default function InsightsPanel({
         <div className="space-y-3">
           {results.findings.map((finding) => {
             const isSelected = selectedFinding?.id === finding.id;
-            const typeColor = TYPE_HEX[finding.type] || TYPE_HEX.bias;
+            const typeColor = TYPE_HEX[finding.type] || TYPE_HEX.structure;
 
             return (
               <div

@@ -7,9 +7,11 @@
 
 :root {
   --brand: 196 64 48;
-  --type-bias: 196 64 48;
-  --type-fallacy: 184 134 11;
-  --type-tactic: 46 125 110;
+  --type-structure: 184 134 11;
+  --type-relevance: 74 111 165;
+  --type-evidence: 46 125 110;
+  --type-framing: 120 80 160;
+  --type-language: 196 64 48;
 }
 
 .dock-panel {
@@ -49,21 +51,33 @@
   box-shadow: none;
 }
 
-.dock-item--active.dock-item--bias {
-  border-color: #c44030;
-  background-color: rgba(196, 64, 48, 0.06);
-  box-shadow: none;
-}
-
-.dock-item--active.dock-item--fallacy {
+.dock-item--active.dock-item--structure {
   border-color: #b8860b;
   background-color: rgba(184, 134, 11, 0.06);
   box-shadow: none;
 }
 
-.dock-item--active.dock-item--tactic {
+.dock-item--active.dock-item--relevance {
+  border-color: #4a6fa5;
+  background-color: rgba(74, 111, 165, 0.06);
+  box-shadow: none;
+}
+
+.dock-item--active.dock-item--evidence {
   border-color: #2e7d6e;
   background-color: rgba(46, 125, 110, 0.06);
+  box-shadow: none;
+}
+
+.dock-item--active.dock-item--framing {
+  border-color: #7850a0;
+  background-color: rgba(120, 80, 160, 0.06);
+  box-shadow: none;
+}
+
+.dock-item--active.dock-item--language {
+  border-color: #c44030;
+  background-color: rgba(196, 64, 48, 0.06);
   box-shadow: none;
 }
 
@@ -83,16 +97,24 @@
   color: #1a1a1a;
 }
 
-.dock-item--active.dock-item--bias .dock-icon {
-  color: #c44030;
-}
-
-.dock-item--active.dock-item--fallacy .dock-icon {
+.dock-item--active.dock-item--structure .dock-icon {
   color: #b8860b;
 }
 
-.dock-item--active.dock-item--tactic .dock-icon {
+.dock-item--active.dock-item--relevance .dock-icon {
+  color: #4a6fa5;
+}
+
+.dock-item--active.dock-item--evidence .dock-icon {
   color: #2e7d6e;
+}
+
+.dock-item--active.dock-item--framing .dock-icon {
+  color: #7850a0;
+}
+
+.dock-item--active.dock-item--language .dock-icon {
+  color: #c44030;
 }
 
 .dock-label {

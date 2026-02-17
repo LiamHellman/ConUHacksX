@@ -4,8 +4,17 @@
       "Bash(wc:*)",
       "WebSearch",
       "WebFetch(domain:ai.google.dev)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx vite build:*)",
+      "Bash(node -e \"\nconst { analyzeWithLLM } = require\\(''./llm.js''\\);\n\")",
+      "Bash(node --input-type=module -e \"import { analyzeWithLLM } from ''./llm.js''; console.log\\(''Import OK''\\);\")",
+      "Bash(timeout 5 bash:*)",
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(lsof:*)",
+      "Bash(taskkill:*)"
     ]
   },
-  "outputStyle": "Learning"
+  "outputStyle": "Explanatory"
 }

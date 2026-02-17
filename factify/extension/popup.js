@@ -24,18 +24,22 @@ const transcriptSection = document.getElementById('transcriptSection');
 const transcriptText = document.getElementById('transcriptText');
 
 // Options
-const optBias = document.getElementById('optBias');
-const optFallacy = document.getElementById('optFallacy');
-const optTactic = document.getElementById('optTactic');
+const optStructure = document.getElementById('optStructure');
+const optRelevance = document.getElementById('optRelevance');
+const optEvidence = document.getElementById('optEvidence');
+const optFraming = document.getElementById('optFraming');
+const optLanguage = document.getElementById('optLanguage');
 
 let currentSelectedText = '';
 let currentYouTubeTabId = null;
 
 // Default options state
 const defaultOptions = {
-  bias: true,
-  fallacy: true,
-  tactic: true
+  structure: true,
+  relevance: true,
+  evidence: true,
+  framing: true,
+  language: true
 };
 
 // Check if a URL is a YouTube video page
@@ -191,12 +195,14 @@ youtubeTranscribeBtn.addEventListener('click', async () => {
 
     // Step 3: Automatically analyze the transcript
     setYouTubeBtnState('Analyzing...', true, true);
-    setYouTubeStatus('Analyzing transcript for bias, fallacies, and manipulation...', false);
+    setYouTubeStatus('Analyzing transcript for reasoning issues...', false);
 
     const settings = {
-      detectBias: optBias.classList.contains('active'),
-      detectFallacies: optFallacy.classList.contains('active'),
-      detectTactics: optTactic.classList.contains('active')
+      detectStructure: optStructure.classList.contains('active'),
+      detectRelevance: optRelevance.classList.contains('active'),
+      detectEvidence: optEvidence.classList.contains('active'),
+      detectFraming: optFraming.classList.contains('active'),
+      detectLanguage: optLanguage.classList.contains('active')
     };
 
     const analyzeResponse = await fetch(`${API_URL}/api/analyze`, {
@@ -224,26 +230,30 @@ youtubeTranscribeBtn.addEventListener('click', async () => {
 async function loadOptions() {
   const result = await chrome.storage.local.get(['factifyOptions']);
   const options = result.factifyOptions || defaultOptions;
-  
+
   // Apply saved state to buttons
-  optBias.classList.toggle('active', options.bias);
-  optFallacy.classList.toggle('active', options.fallacy);
-  optTactic.classList.toggle('active', options.tactic !== false);
+  optStructure.classList.toggle('active', options.structure !== false);
+  optRelevance.classList.toggle('active', options.relevance !== false);
+  optEvidence.classList.toggle('active', options.evidence !== false);
+  optFraming.classList.toggle('active', options.framing !== false);
+  optLanguage.classList.toggle('active', options.language !== false);
 }
 
 // Save options to storage
 async function saveOptions() {
   const options = {
-    bias: optBias.classList.contains('active'),
-    fallacy: optFallacy.classList.contains('active'),
-    tactic: optTactic.classList.contains('active')
+    structure: optStructure.classList.contains('active'),
+    relevance: optRelevance.classList.contains('active'),
+    evidence: optEvidence.classList.contains('active'),
+    framing: optFraming.classList.contains('active'),
+    language: optLanguage.classList.contains('active')
   };
   await chrome.storage.local.set({ factifyOptions: options });
 }
 
 // Set up click handlers for option buttons
 function setupOptionButtons() {
-  [optBias, optFallacy, optTactic].forEach(btn => {
+  [optStructure, optRelevance, optEvidence, optFraming, optLanguage].forEach(btn => {
     btn.addEventListener('click', () => {
       btn.classList.toggle('active');
       saveOptions();
@@ -254,15 +264,17 @@ function setupOptionButtons() {
 // Filter analysis results based on which category toggles are active
 function filterResults(data, settings) {
   if (!data || !data.findings) return data;
-  
+
   const activeCategories = [];
-  if (settings.detectBias) activeCategories.push('bias');
-  if (settings.detectFallacies) activeCategories.push('fallacy');
-  if (settings.detectTactics) activeCategories.push('tactic');
-  
+  if (settings.detectStructure) activeCategories.push('structure');
+  if (settings.detectRelevance) activeCategories.push('relevance');
+  if (settings.detectEvidence) activeCategories.push('evidence');
+  if (settings.detectFraming) activeCategories.push('framing');
+  if (settings.detectLanguage) activeCategories.push('language');
+
   // If all are active, no filtering needed
-  if (activeCategories.length === 3) return data;
-  
+  if (activeCategories.length === 5) return data;
+
   return {
     ...data,
     findings: data.findings.filter(f => activeCategories.includes(f.category))
@@ -299,9 +311,11 @@ analyzeBtn.addEventListener('click', async () => {
   
   try {
     const settings = {
-      detectBias: optBias.classList.contains('active'),
-      detectFallacies: optFallacy.classList.contains('active'),
-      detectTactics: optTactic.classList.contains('active')
+      detectStructure: optStructure.classList.contains('active'),
+      detectRelevance: optRelevance.classList.contains('active'),
+      detectEvidence: optEvidence.classList.contains('active'),
+      detectFraming: optFraming.classList.contains('active'),
+      detectLanguage: optLanguage.classList.contains('active')
     };
     
     // Also show loading state on the page
@@ -350,8 +364,8 @@ function displayResults(data) {
   let score = '--';
   if (data.overall) {
     // Average of all scores from the API
-    const { fallacyScore, biasScore, tacticScore, verifiabilityScore } = data.overall;
-    score = Math.round((fallacyScore + biasScore + tacticScore + verifiabilityScore) / 4);
+    const { structureScore, relevanceScore, evidenceScore, framingScore, languageScore, verifiabilityScore } = data.overall;
+    score = Math.round((structureScore + relevanceScore + evidenceScore + framingScore + languageScore + verifiabilityScore) / 6);
   } else if (data.credibilityScore !== undefined) {
     score = data.credibilityScore;
   } else if (data.score !== undefined) {
@@ -377,14 +391,18 @@ function displayResults(data) {
     data.findings.forEach(finding => {
       const category = finding.category || 'general';
       const categoryLabels = {
-        'fallacy': 'Logical Fallacy',
-        'bias': 'Bias Detected',
-        'tactic': 'Persuasion Tactic'
+        'structure': 'Structure Issue',
+        'relevance': 'Relevance Issue',
+        'evidence': 'Evidence Issue',
+        'framing': 'Framing Issue',
+        'language': 'Language Issue'
       };
       const dotColors = {
-        'bias': '#c44030',
-        'fallacy': '#b8860b',
-        'tactic': '#2e7d6e'
+        'structure': '#b8860b',
+        'relevance': '#4a6fa5',
+        'evidence': '#2e7d6e',
+        'framing': '#7850a0',
+        'language': '#c44030'
       };
       const dotColor = dotColors[category] || '#6b6b6b';
       findingsHtml += `

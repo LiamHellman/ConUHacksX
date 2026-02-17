@@ -43,8 +43,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // Perform analysis via API
 async function doAnalysis(text) {
   const result = await chrome.storage.local.get(['factifyOptions']);
-  const options = result.factifyOptions || { bias: true, fallacy: true, tactic: true };
-  
+  const options = result.factifyOptions || { structure: true, relevance: true, evidence: true, framing: true, language: true };
+
   const response = await fetch(`${API_URL}/api/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -52,15 +52,13 @@ async function doAnalysis(text) {
   });
   if (!response.ok) throw new Error('Analysis failed');
   const data = await response.json();
-  
+
   // Filter findings based on active category toggles
   if (data.findings) {
-    const activeCategories = [];
-    if (options.bias) activeCategories.push('bias');
-    if (options.fallacy) activeCategories.push('fallacy');
-    if (options.tactic) activeCategories.push('tactic');
-    
-    if (activeCategories.length < 3) {
+    const allCategories = ['structure', 'relevance', 'evidence', 'framing', 'language'];
+    const activeCategories = allCategories.filter(c => options[c] !== false);
+
+    if (activeCategories.length < 5) {
       data.findings = data.findings.filter(f => activeCategories.includes(f.category));
     }
   }

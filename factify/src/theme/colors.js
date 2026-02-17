@@ -1,9 +1,11 @@
 // src/theme/colors.js — Paper editorial palette
 export const TYPE_OKLCH = {
-  bias:      { L: 0.55, C: 0.18, h: 25  },   // muted red #c44030
-  fallacy:   { L: 0.60, C: 0.14, h: 80  },   // dark gold #b8860b
-  tactic:    { L: 0.52, C: 0.10, h: 165 },   // teal #2e7d6e
-  factcheck: { L: 0.50, C: 0.12, h: 280 },   // kept for compat
+  structure: { L: 0.60, C: 0.14, h: 80  },   // dark gold #b8860b
+  relevance: { L: 0.52, C: 0.10, h: 230 },   // muted blue #4a6fa5
+  evidence:  { L: 0.52, C: 0.10, h: 165 },   // teal #2e7d6e
+  framing:   { L: 0.50, C: 0.12, h: 280 },   // muted purple #7850a0
+  language:  { L: 0.55, C: 0.18, h: 25  },   // muted red #c44030
+  factcheck: { L: 0.50, C: 0.12, h: 280 },   // alias for verifiability
 };
 
 // --- OKLCH -> OKLab
@@ -56,15 +58,17 @@ export const TYPE_SOLID = Object.fromEntries(
   Object.entries(TYPE_RGB).map(([k, rgb]) => [k, rgbCss(rgb)])
 );
 
-// Optional: CSS variable payload, so components can just use var(--type-bias)
+// Optional: CSS variable payload, so components can just use var(--type-structure) etc.
 export function applyThemeVars(root = document.documentElement) {
   // Set OKLab-derived values (for blendedBg etc.)
   for (const [k, rgb] of Object.entries(TYPE_RGB)) {
     root.style.setProperty(`--type-${k}`, `${rgb.r} ${rgb.g} ${rgb.b}`);
   }
   // Paper palette hard overrides (exact hex conversions)
-  root.style.setProperty('--type-bias', '196 64 48');      // #c44030
-  root.style.setProperty('--type-fallacy', '184 134 11');   // #b8860b
-  root.style.setProperty('--type-tactic', '46 125 110');    // #2e7d6e
-  root.style.setProperty('--brand', '196 64 48');           // accent red
+  root.style.setProperty('--type-structure', '184 134 11');   // #b8860b
+  root.style.setProperty('--type-relevance', '74 111 165');   // #4a6fa5
+  root.style.setProperty('--type-evidence',  '46 125 110');   // #2e7d6e
+  root.style.setProperty('--type-framing',   '120 80 160');   // #7850a0
+  root.style.setProperty('--type-language',  '196 64 48');    // #c44030
+  root.style.setProperty('--brand', '196 64 48');             // accent red
 }

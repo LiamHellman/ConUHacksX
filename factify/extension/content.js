@@ -4,11 +4,13 @@ let resultsPanel = null;
 let isProcessingClick = false;
 let highlights = []; // Track highlighted elements for cleanup
 
-// Highlight colors matching the paper editorial palette
+// Highlight colors matching the 5-category palette
 const HIGHLIGHT_COLORS = {
-  fallacy: { bg: 'rgba(184, 134, 11, 0.15)', border: 'rgba(184, 134, 11, 0.6)' },
-  bias: { bg: 'rgba(196, 64, 48, 0.12)', border: 'rgba(196, 64, 48, 0.6)' },
-  tactic: { bg: 'rgba(46, 125, 110, 0.15)', border: 'rgba(46, 125, 110, 0.6)' }
+  structure: { bg: 'rgba(184, 134, 11, 0.15)', border: 'rgba(184, 134, 11, 0.6)' },
+  relevance: { bg: 'rgba(74, 111, 165, 0.12)', border: 'rgba(74, 111, 165, 0.6)' },
+  evidence:  { bg: 'rgba(46, 125, 110, 0.15)', border: 'rgba(46, 125, 110, 0.6)' },
+  framing:   { bg: 'rgba(120, 80, 160, 0.12)', border: 'rgba(120, 80, 160, 0.6)' },
+  language:  { bg: 'rgba(196, 64, 48, 0.12)', border: 'rgba(196, 64, 48, 0.6)' }
 };
 
 // Listen for text selection
@@ -120,13 +122,11 @@ async function directAnalysis(text) {
     // Filter findings by active option toggles
     try {
       const result = await chrome.storage.local.get(['factifyOptions']);
-      const opts = result.factifyOptions || { bias: true, fallacy: true, tactic: true };
+      const opts = result.factifyOptions || { structure: true, relevance: true, evidence: true, framing: true, language: true };
       if (data.findings) {
-        const active = [];
-        if (opts.bias) active.push('bias');
-        if (opts.fallacy) active.push('fallacy');
-        if (opts.tactic) active.push('tactic');
-        if (active.length < 3) {
+        const allCategories = ['structure', 'relevance', 'evidence', 'framing', 'language'];
+        const active = allCategories.filter(c => opts[c] !== false);
+        if (active.length < 5) {
           data.findings = data.findings.filter(f => active.includes(f.category));
         }
       }
@@ -170,8 +170,8 @@ function showResultsPanel(loading, data, error) {
     // Calculate credibility score from the API response
     let score = '--';
     if (data.overall) {
-      const { fallacyScore, biasScore, tacticScore, verifiabilityScore } = data.overall;
-      score = Math.round((fallacyScore + biasScore + tacticScore + verifiabilityScore) / 4);
+      const { structureScore, relevanceScore, evidenceScore, framingScore, languageScore, verifiabilityScore } = data.overall;
+      score = Math.round((structureScore + relevanceScore + evidenceScore + framingScore + languageScore + verifiabilityScore) / 6);
     } else if (data.credibilityScore !== undefined) {
       score = data.credibilityScore;
     } else if (data.score !== undefined) {
@@ -200,9 +200,11 @@ function showResultsPanel(loading, data, error) {
     // Handle the findings array format from the API
     if (data.findings && data.findings.length > 0) {
       const categoryLabels = {
-        'fallacy': 'Logical Fallacy',
-        'bias': 'Bias Detected',
-        'tactic': 'Persuasion Tactic'
+        'structure': 'Structure Issue',
+        'relevance': 'Relevance Issue',
+        'evidence': 'Evidence Issue',
+        'framing': 'Framing Issue',
+        'language': 'Language Issue'
       };
       data.findings.forEach((finding, index) => {
         const category = finding.category || 'general';
@@ -294,7 +296,7 @@ function addFindingClickHandlers() {
 // Clear any active finding selection
 function clearFindingSelection() {
   document.querySelectorAll('.factify-highlight').forEach(el => {
-    el.classList.remove('factify-dimmed', 'factify-selected-bias', 'factify-selected-fallacy', 'factify-selected-tactic');
+    el.classList.remove('factify-dimmed', 'factify-selected-structure', 'factify-selected-relevance', 'factify-selected-evidence', 'factify-selected-framing', 'factify-selected-language');
   });
 }
 
@@ -320,7 +322,7 @@ function scrollToHighlight(findingId, category) {
   });
 
   // Un-dim and apply category class to matching spans
-  const selClass = `factify-selected-${category || 'tactic'}`;
+  const selClass = `factify-selected-${category || 'structure'}`;
   matchingEls.forEach(el => {
     el.classList.remove('factify-dimmed');
     el.classList.add(selClass);
@@ -441,7 +443,7 @@ function buildHighlightSpans(findings) {
     if (!quote || quote.trim().length < 2) return;
 
     const findingId = finding.id || `finding-${idx}`;
-    const category = finding.category || 'tactic';
+    const category = finding.category || 'structure';
 
     let pos = -1;
     let matchLen = quote.length;
@@ -510,7 +512,7 @@ function buildHighlightSpans(findings) {
         // but store ALL finding IDs so every panel item can target this span
         const primary = covering[0];
         const { category, finding } = primary;
-        const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.tactic;
+        const colors = HIGHLIGHT_COLORS[category] || HIGHLIGHT_COLORS.structure;
         const allIds = covering.map(c => c.findingId);
         const allLabels = covering.map(c => {
           const f = c.finding;
@@ -523,7 +525,7 @@ function buildHighlightSpans(findings) {
         if (uniqueCategories.length > 1) {
           // Multi-category: thicker dashed border
           const borderColors = uniqueCategories.map(cat => {
-            const c = HIGHLIGHT_COLORS[cat] || HIGHLIGHT_COLORS.tactic;
+            const c = HIGHLIGHT_COLORS[cat] || HIGHLIGHT_COLORS.structure;
             return c.border;
           });
           borderStyle = `border-bottom: 3px solid ${borderColors[0]}; border-image: linear-gradient(to right, ${borderColors.join(', ')}) 1;`;
