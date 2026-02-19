@@ -3,9 +3,10 @@
 
 // ─── Scheme parameters ─────────────────────────────
 // 5 hues at 72° equidistant, uniform lightness & chroma.
-const SCHEME_L = 0.58;
-const SCHEME_C = 0.10;
+const SCHEME_L = 0.48;
+const SCHEME_C = 0.08;
 const DARK_SCHEME_L = 0.72; // boosted lightness for dark backgrounds
+const DARK_SCHEME_C = 0.10;
 
 // ─── Raw OKLCH definitions ─────────────────────────
 // Hues: 25 → 97 → 169 → 241 → 313  (Δ72°)
@@ -168,7 +169,7 @@ export const TYPE_OKLAB = Object.fromEntries(
 // ═══════════════════════════════════════════════════
 
 const RAW_OKLCH_DARK = Object.fromEntries(
-  Object.entries(RAW_OKLCH).map(([k, { C, h }]) => [k, { L: DARK_SCHEME_L, C, h }])
+  Object.entries(RAW_OKLCH).map(([k, { C, h }]) => [k, { L: DARK_SCHEME_L, C: DARK_SCHEME_C, h }])
 );
 
 const TYPE_OKLCH_DARK = Object.fromEntries(
