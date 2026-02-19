@@ -1,6 +1,12 @@
 // server/llm.js
 import { GoogleGenAI } from "@google/genai";
 
+// ─── Developer toggle ────────────────────────────────────────────────────────
+// Flip USE_NLP_SERVICE to true to route /api/analyze through the Python NLP
+// micro-service instead of Gemini.  Not exposed to users.
+const USE_NLP_SERVICE = false;
+const NLP_SERVICE_URL = process.env.NLP_SERVICE_URL ?? 'http://localhost:8000';
+
 let ai = null;
 
 function getClient() {
@@ -152,6 +158,8 @@ function clampFindingsToText(text, findings) {
 }
 
 export async function analyzeWithLLM(text, settings = {}) {
+  if (USE_NLP_SERVICE) return _analyzeWithNLPService(text, settings);
+
   const maxFindings = Math.max(1, Math.min(Number(settings.maxFindings ?? 10), 12));
   const temperature = Math.max(0, Math.min(Number(settings.temperature ?? 0.2), 1));
 
@@ -241,6 +249,37 @@ export async function analyzeWithLLM(text, settings = {}) {
     evidence:  parsed.overall?.evidenceScore ?? 0,
     framing:   parsed.overall?.framingScore ?? 0,
     language:  parsed.overall?.languageScore ?? 0,
+    factcheck: parsed.overall?.verifiabilityScore ?? 0,
+  };
+
+  parsed.findings = (parsed.findings || []).map((f) => ({
+    ...f,
+    type: f.category,
+    originalText: f.quote,
+  }));
+
+  return parsed;
+}
+
+async function _analyzeWithNLPService(text, settings = {}) {
+  const resp = await fetch(`${NLP_SERVICE_URL}/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, max_findings: settings.maxFindings ?? 10 }),
+  });
+  if (!resp.ok) throw new Error(`NLP service: ${await resp.text()}`);
+  const parsed = await resp.json();
+
+  // Apply the same hardening + shape transformation as the Gemini path so
+  // both paths produce identical output for the frontend.
+  parsed.findings = clampFindingsToText(text, parsed.findings || []);
+
+  parsed.scores = {
+    structure: parsed.overall?.structureScore     ?? 0,
+    relevance: parsed.overall?.relevanceScore     ?? 0,
+    evidence:  parsed.overall?.evidenceScore      ?? 0,
+    framing:   parsed.overall?.framingScore       ?? 0,
+    language:  parsed.overall?.languageScore      ?? 0,
     factcheck: parsed.overall?.verifiabilityScore ?? 0,
   };
 
