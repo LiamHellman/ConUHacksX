@@ -18,15 +18,35 @@
   --color-accent: #c44030;
   --color-accent-hover: #d4593a;
 
-  --color-structure: #b8860b;
-  --color-relevance: #4a6fa5;
-  --color-evidence: #2e7d6e;
-  --color-framing: #7850a0;
-  --color-language: #c44030;
+  /* Pentachromal OKLCH scheme — L=0.58 C=0.10, 72° hue spacing */
+  --color-structure: #8b7a2b;
+  --color-relevance: #3c81b0;
+  --color-evidence: #2d8d70;
+  --color-framing: #8f68a4;
+  --color-language: #ae615c;
 
   --font-serif: 'DM Serif Display', Georgia, serif;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ── Dark palette overrides ── */
+html.dark {
+  --color-cream: #1c1917;
+  --color-cream-dark: #141210;
+  --color-cream-darker: #0f0e0c;
+  --color-white: #252220;
+
+  --color-text-primary: #e8e0d4;
+  --color-text-body: #c4bcae;
+  --color-text-muted: #8a8478;
+  --color-text-faint: #5a5550;
+
+  --color-rule: #3a3632;
+  --color-rule-light: #2e2b27;
+
+  --color-accent: #d4593a;
+  --color-accent-hover: #e06a48;
 }
 
 * {

@@ -1,16 +1,8 @@
 import { useState } from "react";
 import { BarChart3, List, AlertCircle, Info, ChevronRight } from "lucide-react";
 import ScoreCard from "./ScoreCard";
-
-// 5-category palette
-const TYPE_HEX = {
-  structure: "#b8860b",
-  relevance: "#4a6fa5",
-  evidence:  "#2e7d6e",
-  framing:   "#7850a0",
-  language:  "#c44030",
-  factcheck: "#7850a0",
-};
+import { TYPE_HEX, TYPE_HEX_DARK } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function InsightsPanel({
   results,
@@ -20,6 +12,8 @@ export default function InsightsPanel({
   isAnalyzing,
   isMobile = false,
 }) {
+  const { theme } = useTheme();
+  const hexMap = theme === 'dark' ? TYPE_HEX_DARK : TYPE_HEX;
   const [activeTab, setActiveTab] = useState("summary");
   const [expandedFindingId, setExpandedFindingId] = useState(null);
 
@@ -29,16 +23,18 @@ export default function InsightsPanel({
   ];
 
   const getSeverityBadge = (severity) => {
+    const mutedHex = hexMap.structure;
+    const langHex = hexMap.language;
     const styles = {
-      low: { backgroundColor: "rgba(154,154,154,0.10)", color: "#6b6b6b" },
-      medium: { backgroundColor: "rgba(184,134,11,0.10)", color: "#b8860b" },
-      high: { backgroundColor: "rgba(196,64,48,0.10)", color: "#c44030" },
+      low: { backgroundColor: "rgba(var(--type-structure) / 0.08)", color: "var(--color-text-muted)" },
+      medium: { backgroundColor: `${mutedHex}18`, color: mutedHex },
+      high: { backgroundColor: `${langHex}18`, color: langHex },
     };
     return styles[severity] || styles.low;
   };
 
   const getTypeBadgeStyle = (type) => {
-    const hex = TYPE_HEX[type] || TYPE_HEX.structure;
+    const hex = hexMap[type] || hexMap.structure;
     return {
       backgroundColor: `${hex}15`,
       color: hex,
@@ -139,7 +135,7 @@ export default function InsightsPanel({
         <div className="space-y-3">
           {results.findings.map((finding) => {
             const isSelected = selectedFinding?.id === finding.id;
-            const typeColor = TYPE_HEX[finding.type] || TYPE_HEX.structure;
+            const typeColor = hexMap[finding.type] || hexMap.structure;
 
             return (
               <div

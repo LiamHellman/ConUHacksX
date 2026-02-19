@@ -1,16 +1,6 @@
 import { useRef, useEffect, useState } from "react";
-
-/**
- * 5-category editorial palette (RGB for highlight blending):
- */
-const TYPE_COLORS = {
-  structure: { r: 184, g: 134, b: 11  },   // #b8860b
-  relevance: { r: 74,  g: 111, b: 165 },   // #4a6fa5
-  evidence:  { r: 46,  g: 125, b: 110 },   // #2e7d6e
-  framing:   { r: 120, g: 80,  b: 160 },   // #7850a0
-  language:  { r: 196, g: 64,  b: 48  },   // #c44030
-  factcheck: { r: 120, g: 80,  b: 160 },   // alias
-};
+import { TYPE_OKLAB, TYPE_OKLAB_DARK, TYPE_HEX, TYPE_HEX_DARK, CATEGORIES, oklabToSrgb } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 function severityAlpha(sev) {
   switch (sev) {
@@ -25,30 +15,35 @@ function severityAlpha(sev) {
 }
 
 /**
- * Simple blending for overlapping findings on paper/white background.
- * Returns an { r, g, b, baseAlpha } for use in rgba().
+ * OKLab-space blending for overlapping findings on paper/white background.
+ * Blending in OKLab produces perceptually linear intermediate colors
+ * (e.g. blue + gold → green, not gray).
+ * Returns { r, g, b, baseAlpha } for use in rgba().
  */
-function blendedBg(findings) {
+function blendedBg(findings, oklabMap) {
   const cands = (findings || []).filter(Boolean);
   if (cands.length === 0) return null;
 
-  let rSum = 0, gSum = 0, bSum = 0, wSum = 0;
+  let Lsum = 0, aSum = 0, bSum = 0, wSum = 0;
   let alphaComp = 1;
 
   for (const f of cands) {
-    const col = TYPE_COLORS[f.type] || TYPE_COLORS.factcheck;
+    const lab = oklabMap[f.type] || oklabMap.factcheck;
     const w = severityAlpha(f.severity);
-    rSum += col.r * w;
-    gSum += col.g * w;
-    bSum += col.b * w;
+    Lsum += lab.L * w;
+    aSum += lab.a * w;
+    bSum += lab.b * w;
     wSum += w;
     alphaComp *= 1 - w;
   }
 
+  // Convert blended OKLab back to sRGB
+  const rgb = oklabToSrgb({ L: Lsum / wSum, a: aSum / wSum, b: bSum / wSum });
+
   return {
-    r: Math.round(rSum / wSum),
-    g: Math.round(gSum / wSum),
-    b: Math.round(bSum / wSum),
+    r: rgb.r,
+    g: rgb.g,
+    b: rgb.b,
     baseAlpha: Math.min(0.20, 1 - alphaComp),
   };
 }
@@ -83,17 +78,8 @@ function pickPrimary(findings) {
   return best;
 }
 
-const BORDER_COLORS = {
-  structure: "#b8860b",
-  relevance: "#4a6fa5",
-  evidence:  "#2e7d6e",
-  framing:   "#7850a0",
-  language:  "#c44030",
-  factcheck: "#7850a0",
-};
-
-function borderColorForType(type) {
-  return BORDER_COLORS[type] || "#b8860b";
+function borderColorForType(type, hexMap) {
+  return hexMap[type] || hexMap.structure;
 }
 
 export default function DocumentViewer({
@@ -102,6 +88,9 @@ export default function DocumentViewer({
   selectedFinding,
   onSelectFinding,
 }) {
+  const { theme } = useTheme();
+  const oklabMap = theme === 'dark' ? TYPE_OKLAB_DARK : TYPE_OKLAB;
+  const hexMap = theme === 'dark' ? TYPE_HEX_DARK : TYPE_HEX;
   const containerRef = useRef(null);
   const [renderSegments, setRenderSegments] = useState([]);
 
@@ -162,7 +151,7 @@ export default function DocumentViewer({
 
   // Bottom-border accent on selected text (editorial style)
   const selectedBorderColor = hasSelection
-    ? borderColorForType(selectedFinding.type)
+    ? borderColorForType(selectedFinding.type, hexMap)
     : "transparent";
 
   return (
@@ -171,15 +160,9 @@ export default function DocumentViewer({
         <h2 className="text-lg font-semibold text-text-primary" style={{ fontFamily: "var(--font-serif)" }}>Document</h2>
         {spans && spans.length > 0 && (
           <div className="document-legend flex items-center gap-3 text-xs flex-wrap">
-            {[
-              { label: "Structure", color: "#b8860b" },
-              { label: "Relevance", color: "#4a6fa5" },
-              { label: "Evidence",  color: "#2e7d6e" },
-              { label: "Framing",   color: "#7850a0" },
-              { label: "Language",  color: "#c44030" },
-            ].map(({ label, color }) => (
-              <span key={label} className="flex items-center gap-1.5">
-                <span className="w-2 h-2" style={{ backgroundColor: color }} />
+            {CATEGORIES.map(({ key, label }) => (
+              <span key={key} className="flex items-center gap-1.5">
+                <span className="w-2 h-2" style={{ backgroundColor: hexMap[key] }} />
                 <span className="text-text-muted">{label}</span>
               </span>
             ))}
@@ -208,7 +191,7 @@ export default function DocumentViewer({
                 if (!segIsSelected(seg)) {
                   const fList = seg.span.findings || [];
                   const primary = seg.span.primary || pickPrimary(fList);
-                  const mix = blendedBg(fList);
+                  const mix = blendedBg(fList, oklabMap);
 
                   if (!mix) {
                     out.push(<span key={`h-${i}`}>{seg.text}</span>);
@@ -262,7 +245,7 @@ export default function DocumentViewer({
                     {group.map(({ seg: gSeg, idx }) => {
                       const fList = gSeg.span.findings || [];
                       const primary = gSeg.span.primary || pickPrimary(fList);
-                      const mix = blendedBg(fList);
+                      const mix = blendedBg(fList, oklabMap);
 
                       if (!mix) return <span key={`sel-inner-${idx}`}>{gSeg.text}</span>;
 

@@ -1,14 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-
-// 5-category palette
-const TYPE_HEX = {
-  structure: "#b8860b",
-  relevance: "#4a6fa5",
-  evidence:  "#2e7d6e",
-  framing:   "#7850a0",
-  language:  "#c44030",
-  factcheck: "#7850a0",
-};
+import { TYPE_HEX, TYPE_HEX_DARK } from "../../theme/colors";
+import { useTheme } from "../../theme/ThemeContext";
 
 export default function ScoreCard({
   label,
@@ -18,9 +10,11 @@ export default function ScoreCard({
   max = 100,
   compact = false,
 }) {
+  const { theme } = useTheme();
+  const hexMap = theme === 'dark' ? TYPE_HEX_DARK : TYPE_HEX;
   const resolvedType = type || "factcheck";
 
-  const typeColor = TYPE_HEX[resolvedType] || TYPE_HEX.factcheck;
+  const typeColor = hexMap[resolvedType] || hexMap.factcheck;
 
   // Circle geometry — smaller in compact mode
   const r = compact ? 22 : 36;
@@ -49,7 +43,7 @@ export default function ScoreCard({
   return (
     <div
       className={`scorecard border bg-white ${compact ? "p-3" : "p-5"}`}
-      style={{ borderColor: "#ddd6ca" }}
+      style={{ borderColor: "var(--color-rule-light)" }}
     >
       <div className={`scorecard-row flex items-center ${compact ? "flex-col text-center gap-2" : "gap-5"}`}>
         {/* Circular progress — thin SVG ring */}
@@ -59,7 +53,7 @@ export default function ScoreCard({
               cx={cx}
               cy={cx}
               r={r}
-              stroke="#ede7db"
+              stroke="var(--color-cream-dark)"
               strokeWidth={compact ? 3 : 4}
               fill="none"
             />

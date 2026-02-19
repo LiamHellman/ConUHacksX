@@ -1,13 +1,5 @@
 import { ArrowRight, GitBranch, Compass, BarChart2, Frame, Type } from "lucide-react";
-
-// 5-category palette
-const CATEGORY_COLORS = {
-  structure: "#b8860b",
-  relevance: "#4a6fa5",
-  evidence:  "#2e7d6e",
-  framing:   "#7850a0",
-  language:  "#c44030",
-};
+import { TYPE_HEX } from "../../theme/colors";
 
 export default function ControlBar({
   checks,
@@ -22,35 +14,35 @@ export default function ControlBar({
       key: "structure",
       icon: <GitBranch size={16} />,
       label: "Structure",
-      color: CATEGORY_COLORS.structure,
+      color: TYPE_HEX.structure,
       isActive: checks.structure,
     },
     {
       key: "relevance",
       icon: <Compass size={16} />,
       label: "Relevance",
-      color: CATEGORY_COLORS.relevance,
+      color: TYPE_HEX.relevance,
       isActive: checks.relevance,
     },
     {
       key: "evidence",
       icon: <BarChart2 size={16} />,
       label: "Evidence",
-      color: CATEGORY_COLORS.evidence,
+      color: TYPE_HEX.evidence,
       isActive: checks.evidence,
     },
     {
       key: "framing",
       icon: <Frame size={16} />,
       label: "Framing",
-      color: CATEGORY_COLORS.framing,
+      color: TYPE_HEX.framing,
       isActive: checks.framing,
     },
     {
       key: "language",
       icon: <Type size={16} />,
       label: "Language",
-      color: CATEGORY_COLORS.language,
+      color: TYPE_HEX.language,
       isActive: checks.language,
     },
   ];

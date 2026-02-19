@@ -6,11 +6,11 @@ let highlights = []; // Track highlighted elements for cleanup
 
 // Highlight colors matching the 5-category palette
 const HIGHLIGHT_COLORS = {
-  structure: { bg: 'rgba(184, 134, 11, 0.15)', border: 'rgba(184, 134, 11, 0.6)' },
-  relevance: { bg: 'rgba(74, 111, 165, 0.12)', border: 'rgba(74, 111, 165, 0.6)' },
-  evidence:  { bg: 'rgba(46, 125, 110, 0.15)', border: 'rgba(46, 125, 110, 0.6)' },
-  framing:   { bg: 'rgba(120, 80, 160, 0.12)', border: 'rgba(120, 80, 160, 0.6)' },
-  language:  { bg: 'rgba(196, 64, 48, 0.12)', border: 'rgba(196, 64, 48, 0.6)' }
+  structure: { bg: 'rgba(139, 122, 43, 0.15)', border: 'rgba(139, 122, 43, 0.6)' },
+  relevance: { bg: 'rgba(60, 129, 176, 0.12)', border: 'rgba(60, 129, 176, 0.6)' },
+  evidence:  { bg: 'rgba(45, 141, 112, 0.15)', border: 'rgba(45, 141, 112, 0.6)' },
+  framing:   { bg: 'rgba(143, 104, 164, 0.12)', border: 'rgba(143, 104, 164, 0.6)' },
+  language:  { bg: 'rgba(174, 97, 92, 0.12)', border: 'rgba(174, 97, 92, 0.6)' }
 };
 
 // Listen for text selection

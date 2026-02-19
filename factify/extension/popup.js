@@ -398,11 +398,11 @@ function displayResults(data) {
         'language': 'Language Issue'
       };
       const dotColors = {
-        'structure': '#b8860b',
-        'relevance': '#4a6fa5',
-        'evidence': '#2e7d6e',
-        'framing': '#7850a0',
-        'language': '#c44030'
+        'structure': '#8b7a2b',
+        'relevance': '#3c81b0',
+        'evidence': '#2d8d70',
+        'framing': '#8f68a4',
+        'language': '#ae615c'
       };
       const dotColor = dotColors[category] || '#6b6b6b';
       findingsHtml += `

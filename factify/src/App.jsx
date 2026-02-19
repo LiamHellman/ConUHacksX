@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ThemeProvider } from './theme/ThemeContext';
 import Header from './components/Layout/Header';
 import Hero from './components/Landing/Hero';
 import AnalysisPage from './components/Analysis/AnalysisPage';
@@ -36,18 +37,20 @@ function App() {
   }, [showAnalysis, isMobile]);
 
   return (
-    <div className="min-h-screen bg-cream">
-      <Header
-        showAnalysis={showAnalysis}
-        onBackToHome={() => setShowAnalysis(false)}
-      />
+    <ThemeProvider>
+      <div className="min-h-screen bg-cream">
+        <Header
+          showAnalysis={showAnalysis}
+          onBackToHome={() => setShowAnalysis(false)}
+        />
 
-      {showAnalysis ? (
-        <AnalysisPage />
-      ) : (
-        <Hero onGetStarted={() => setShowAnalysis(true)} />
-      )}
-    </div>
+        {showAnalysis ? (
+          <AnalysisPage />
+        ) : (
+          <Hero onGetStarted={() => setShowAnalysis(true)} />
+        )}
+      </div>
+    </ThemeProvider>
   );
 }
 

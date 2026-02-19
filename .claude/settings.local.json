@@ -13,7 +13,9 @@
       "Bash(netstat:*)",
       "Bash(ss:*)",
       "Bash(lsof:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(node:*)",
+      "Bash(xxd:*)"
     ]
   },
   "outputStyle": "Explanatory"

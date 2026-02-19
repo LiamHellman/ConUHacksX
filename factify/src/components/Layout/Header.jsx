@@ -1,6 +1,8 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Sun, Moon } from 'lucide-react';
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function Header({ showAnalysis, onBackToHome }) {
+  const { theme, toggleTheme } = useTheme();
   const handleLogoClick = () => {
     onBackToHome();
     setTimeout(() => {
@@ -33,6 +35,13 @@ export default function Header({ showAnalysis, onBackToHome }) {
         <span className="text-text-muted text-sm font-medium">
           Bias &amp; Fallacy Detection
         </span>
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="flex items-center justify-center w-8 h-8 border border-rule text-text-muted hover:text-text-primary hover:border-text-faint transition-colors"
+        >
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
       </nav>
     </header>
   );

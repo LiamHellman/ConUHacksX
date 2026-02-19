@@ -1,17 +1,8 @@
-﻿.dock-outer {
+.dock-outer {
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: visible;
-}
-
-:root {
-  --brand: 196 64 48;
-  --type-structure: 184 134 11;
-  --type-relevance: 74 111 165;
-  --type-evidence: 46 125 110;
-  --type-framing: 120 80 160;
-  --type-language: 196 64 48;
 }
 
 .dock-panel {
@@ -21,8 +12,8 @@
   width: fit-content;
   gap: 0.75rem;
   border-radius: 0;
-  background-color: #fff;
-  border: 1px solid #c8c0b4;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-rule);
   padding: 0.5rem 0.75rem;
   overflow: visible;
 }
@@ -33,8 +24,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 0;
-  background-color: #fff;
-  border: 1px solid #ddd6ca;
+  background-color: var(--color-white);
+  border: 1px solid var(--color-rule-light);
   box-shadow: none;
   cursor: pointer;
   outline: none;
@@ -42,42 +33,42 @@
 }
 
 .dock-item:hover {
-  border-color: #c44030;
+  border-color: var(--color-language, #ae615c);
 }
 
 .dock-item--active {
-  background-color: #fff;
-  border-color: #1a1a1a;
+  background-color: var(--color-white);
+  border-color: var(--color-text-primary);
   box-shadow: none;
 }
 
 .dock-item--active.dock-item--structure {
-  border-color: #b8860b;
-  background-color: rgba(184, 134, 11, 0.06);
+  border-color: var(--color-structure, #8b7a2b);
+  background-color: rgb(var(--type-structure, 139 122 43) / 0.06);
   box-shadow: none;
 }
 
 .dock-item--active.dock-item--relevance {
-  border-color: #4a6fa5;
-  background-color: rgba(74, 111, 165, 0.06);
+  border-color: var(--color-relevance, #3c81b0);
+  background-color: rgb(var(--type-relevance, 60 129 176) / 0.06);
   box-shadow: none;
 }
 
 .dock-item--active.dock-item--evidence {
-  border-color: #2e7d6e;
-  background-color: rgba(46, 125, 110, 0.06);
+  border-color: var(--color-evidence, #2d8d70);
+  background-color: rgb(var(--type-evidence, 45 141 112) / 0.06);
   box-shadow: none;
 }
 
 .dock-item--active.dock-item--framing {
-  border-color: #7850a0;
-  background-color: rgba(120, 80, 160, 0.06);
+  border-color: var(--color-framing, #8f68a4);
+  background-color: rgb(var(--type-framing, 143 104 164) / 0.06);
   box-shadow: none;
 }
 
 .dock-item--active.dock-item--language {
-  border-color: #c44030;
-  background-color: rgba(196, 64, 48, 0.06);
+  border-color: var(--color-language, #ae615c);
+  background-color: rgb(var(--type-language, 174 97 92) / 0.06);
   box-shadow: none;
 }
 
@@ -85,36 +76,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9a9a9a;
+  color: var(--color-text-faint);
   transition: color 0.2s ease;
 }
 
 .dock-item:hover .dock-icon {
-  color: #3d3d3d;
+  color: var(--color-text-body);
 }
 
 .dock-item--active .dock-icon {
-  color: #1a1a1a;
+  color: var(--color-text-primary);
 }
 
 .dock-item--active.dock-item--structure .dock-icon {
-  color: #b8860b;
+  color: var(--color-structure, #8b7a2b);
 }
 
 .dock-item--active.dock-item--relevance .dock-icon {
-  color: #4a6fa5;
+  color: var(--color-relevance, #3c81b0);
 }
 
 .dock-item--active.dock-item--evidence .dock-icon {
-  color: #2e7d6e;
+  color: var(--color-evidence, #2d8d70);
 }
 
 .dock-item--active.dock-item--framing .dock-icon {
-  color: #7850a0;
+  color: var(--color-framing, #8f68a4);
 }
 
 .dock-item--active.dock-item--language .dock-icon {
-  color: #c44030;
+  color: var(--color-language, #ae615c);
 }
 
 .dock-label {
@@ -124,12 +115,12 @@
   width: max-content;
   white-space: nowrap;
   border-radius: 0;
-  border: 1px solid #c8c0b4;
-  background-color: #fff;
+  border: 1px solid var(--color-rule);
+  background-color: var(--color-white);
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #1a1a1a;
+  color: var(--color-text-primary);
   transform: translateX(-50%);
   z-index: 50;
 }

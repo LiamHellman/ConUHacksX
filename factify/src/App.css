@@ -115,8 +115,8 @@
     display: flex;
     gap: 0.5rem;
     padding: 0.75rem 1rem;
-    background: #f5f0e8;
-    border-bottom: 1px solid #c8c0b4;
+    background: var(--color-cream);
+    border-bottom: 1px solid var(--color-rule);
   }
   .mobile-tab-button {
     flex: 1 1 0;
@@ -124,7 +124,7 @@
     border-radius: 0;
     border: 1px solid transparent;
     background: transparent;
-    color: #3d3d3d;
+    color: var(--color-text-body);
     font-size: 0.9rem;
     font-weight: 600;
   }
@@ -164,11 +164,11 @@
     width: 100% !important;
     min-width: 0 !important;
     border-right: none !important;
-    border-bottom: 1px solid #c8c0b4 !important;
+    border-bottom: 1px solid var(--color-rule) !important;
   }
   .border-l, .md\:border-l {
     border-left: none !important;
-    border-top: 1px solid #c8c0b4 !important;
+    border-top: 1px solid var(--color-rule) !important;
   }
   .text-6xl, .text-7xl { font-size: 2rem !important; }
   .prose {
