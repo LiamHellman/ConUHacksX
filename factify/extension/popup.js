@@ -143,7 +143,64 @@ function setYouTubeBtnState(text, loading, disabled) {
 async function getTranscriptFromPageContext(tabId) {
   const results = await chrome.scripting.executeScript({
     target: { tabId },
+    world: 'MAIN',
     func: async () => {
+      function extractBalancedArray(source, marker) {
+        const markerIdx = source.indexOf(marker);
+        if (markerIdx === -1) return null;
+
+        const arrStart = source.indexOf("[", markerIdx);
+        if (arrStart === -1) return null;
+
+        let depth = 0;
+        let inString = false;
+        let escaped = false;
+
+        for (let i = arrStart; i < source.length; i++) {
+          const ch = source[i];
+
+          if (inString) {
+            if (escaped) {
+              escaped = false;
+            } else if (ch === "\\") {
+              escaped = true;
+            } else if (ch === "\"") {
+              inString = false;
+            }
+            continue;
+          }
+
+          if (ch === "\"") {
+            inString = true;
+          } else if (ch === "[") {
+            depth++;
+          } else if (ch === "]") {
+            depth--;
+            if (depth === 0) {
+              return source.slice(arrStart, i + 1);
+            }
+          }
+        }
+        return null;
+      }
+
+      function parseTracksFromScripts() {
+        const scripts = Array.from(document.scripts || []);
+        for (const script of scripts) {
+          const content = script.textContent || "";
+          if (!content.includes("\"captionTracks\"")) continue;
+
+          const arrayText = extractBalancedArray(content, "\"captionTracks\":");
+          if (!arrayText) continue;
+
+          try {
+            const tracks = JSON.parse(arrayText);
+            if (Array.isArray(tracks) && tracks.length > 0) return tracks;
+          } catch (_) {}
+        }
+        return null;
+      }
+
       function chooseTrack(tracks) {
         if (!Array.isArray(tracks) || tracks.length === 0) return null;
         const english = tracks.find((t) => /^en(-|$)/i.test(t.languageCode || ""));
@@ -152,8 +209,11 @@ async function getTranscriptFromPageContext(tabId) {
         return nonAsr || tracks[0] || null;
       }
 
-      const tracks =
+      let tracks =
         window?.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (!Array.isArray(tracks) || tracks.length === 0) {
+        tracks = parseTracksFromScripts();
+      }
       const chosen = chooseTrack(tracks);
       if (!chosen?.baseUrl) {
         return { ok: false, error: "No captions found in page context" };
