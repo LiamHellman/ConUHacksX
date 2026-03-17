@@ -5,6 +5,7 @@
   const MODAL_ID = "factify-youtube-modal";
   let currentVideoId = null;
   let isBusy = false;
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   function getVideoIdFromUrl(url = window.location.href) {
     try {
@@ -92,13 +93,10 @@
     setButtonState("Transcribing...", true);
 
     try {
-      let transcript = await getTranscriptFromCaptions();
-      if (!transcript || transcript.length < 30) {
-        transcript = await getTranscriptViaApi(videoUrl);
-      }
+      const transcript = await getBrowserTranscript();
 
       if (!transcript || transcript.length < 30) {
-        throw new Error("No transcript available for this video.");
+        throw new Error("No transcript available in browser for this video.");
       }
 
       setButtonState("Ready", false);
@@ -221,6 +219,84 @@
     return fetchCaptionTranscriptViaBackground(url.toString());
   }
 
+  function collectTranscriptSegmentsFromDom() {
+    const nodes = Array.from(
+      document.querySelectorAll(
+        "ytd-transcript-segment-renderer .segment-text, ytd-transcript-segment-renderer yt-formatted-string.segment-text",
+      ),
+    );
+
+    const parts = nodes
+      .map((n) => (n.textContent || "").replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+
+    return parts.join(" ").replace(/\s+/g, " ").trim();
+  }
+
+  async function tryOpenTranscriptPanel() {
+    // Already open
+    if (collectTranscriptSegmentsFromDom().length > 30) return true;
+
+    // Direct "Show transcript" button path
+    const allButtons = Array.from(document.querySelectorAll("button, tp-yt-paper-button"));
+    const showTranscriptButton = allButtons.find((el) => {
+      const text = (el.textContent || "").trim().toLowerCase();
+      const label = (el.getAttribute("aria-label") || "").trim().toLowerCase();
+      return text.includes("show transcript") || label.includes("show transcript");
+    });
+
+    if (showTranscriptButton) {
+      showTranscriptButton.click();
+      await sleep(1200);
+      if (collectTranscriptSegmentsFromDom().length > 30) return true;
+    }
+
+    // Overflow menu path: click "More actions", then "Show transcript"
+    const moreActionsBtn = allButtons.find((el) => {
+      const label = (el.getAttribute("aria-label") || "").toLowerCase();
+      return label.includes("more actions") || label.includes("action menu");
+    });
+
+    if (moreActionsBtn) {
+      moreActionsBtn.click();
+      await sleep(350);
+
+      const menuItems = Array.from(
+        document.querySelectorAll("ytd-menu-service-item-renderer, tp-yt-paper-item"),
+      );
+      const transcriptItem = menuItems.find((el) =>
+        (el.textContent || "").toLowerCase().includes("show transcript"),
+      );
+
+      if (transcriptItem) {
+        transcriptItem.click();
+        await sleep(1200);
+        if (collectTranscriptSegmentsFromDom().length > 30) return true;
+      }
+    }
+
+    return false;
+  }
+
+  async function getTranscriptFromPanel() {
+    await tryOpenTranscriptPanel();
+    return collectTranscriptSegmentsFromDom();
+  }
+
+  async function getBrowserTranscript() {
+    try {
+      const captions = await getTranscriptFromCaptions();
+      if (captions && captions.length >= 30) return captions;
+    } catch (_) {}
+
+    try {
+      const panel = await getTranscriptFromPanel();
+      if (panel && panel.length >= 30) return panel;
+    } catch (_) {}
+
+    return "";
+  }
+
   function getTranscriptViaApi(url) {
     return new Promise((resolve, reject) => {
       try {
@@ -309,12 +385,13 @@
     if (request.action === "getYouTubeTranscript") {
       (async () => {
         try {
-          let transcript = await getTranscriptFromCaptions();
+          const transcript = await getBrowserTranscript();
           if (!transcript || transcript.length < 30) {
-            transcript = await getTranscriptViaApi(window.location.href);
-          }
-          if (!transcript || transcript.length < 30) {
-            sendResponse({ ok: false, error: "No transcript available for this video." });
+            sendResponse({
+              ok: false,
+              error:
+                "No in-browser transcript available for this video. Try opening YouTube's transcript panel manually, then run again.",
+            });
           } else {
             sendResponse({ ok: true, transcript });
           }

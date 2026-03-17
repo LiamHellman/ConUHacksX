@@ -247,6 +247,84 @@ function fetchCaptionTranscript(captionUrl) {
   });
 }
 
+async function getTranscriptFromTranscriptPanel(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: 'MAIN',
+    func: async () => {
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      const normalize = (s) => (s || '').replace(/\s+/g, ' ').trim();
+
+      const collect = () => {
+        const selectors = [
+          'ytd-transcript-segment-renderer .segment-text',
+          'ytd-transcript-segment-renderer yt-formatted-string.segment-text',
+          'ytd-transcript-body-renderer [class*="segment-text"]',
+        ];
+        const nodes = Array.from(document.querySelectorAll(selectors.join(',')));
+        const text = nodes.map((n) => normalize(n.textContent)).filter(Boolean).join(' ');
+        return normalize(text);
+      };
+
+      const click = (el) => {
+        if (!el) return;
+        el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+        el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+        el.click();
+      };
+
+      const findByText = (selector, needle) => {
+        const items = Array.from(document.querySelectorAll(selector));
+        return items.find((el) => normalize(el.textContent).toLowerCase().includes(needle));
+      };
+
+      if (collect().length >= 30) {
+        return { ok: true, transcript: collect() };
+      }
+
+      const showTranscriptButton = findByText(
+        'button, tp-yt-paper-button, yt-button-shape button, ytd-button-renderer button',
+        'show transcript',
+      );
+      if (showTranscriptButton) {
+        click(showTranscriptButton);
+        await sleep(1200);
+      } else {
+        const moreActionsButtons = Array.from(
+          document.querySelectorAll('button[aria-label], yt-button-shape button[aria-label]'),
+        ).filter((el) => {
+          const label = normalize(el.getAttribute('aria-label')).toLowerCase();
+          return label.includes('more actions') || label.includes('action menu');
+        });
+
+        if (moreActionsButtons.length > 0) {
+          click(moreActionsButtons[0]);
+          await sleep(500);
+          const transcriptMenuItem = findByText(
+            'ytd-menu-service-item-renderer, tp-yt-paper-item, ytd-menu-navigation-item-renderer',
+            'show transcript',
+          );
+          if (transcriptMenuItem) {
+            click(transcriptMenuItem);
+            await sleep(1200);
+          }
+        }
+      }
+
+      for (let i = 0; i < 8; i++) {
+        const text = collect();
+        if (text.length >= 30) return { ok: true, transcript: text };
+        await sleep(350);
+      }
+
+      return { ok: false, error: 'Transcript panel text not found' };
+    }
+  });
+
+  return results?.[0]?.result || { ok: false, error: 'No result from transcript panel extraction' };
+}
+
 // YouTube Transcribe & Analyze button
 youtubeTranscribeBtn.addEventListener('click', async () => {
   if (!currentYouTubeTabId) return;
@@ -281,28 +359,16 @@ youtubeTranscribeBtn.addEventListener('click', async () => {
           throw new Error(pageResult?.error || 'Page context transcript extraction failed');
         }
       } catch (pageErr) {
-        console.log('[Factify Popup] Page context transcript failed, trying API:', pageErr);
-
-        // Step 1c: Last resort fallback is server transcription.
-        setYouTubeStatus('Using server transcription (this may take a moment)...', false);
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const apiResponse = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage(
-            { action: 'transcribeYouTube', url: tab.url },
-            (resp) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-                return;
-              }
-              if (!resp || !resp.ok) {
-                reject(new Error(resp?.error || 'Transcription API failed'));
-                return;
-              }
-              resolve(resp);
-            }
+        console.log('[Factify Popup] Page context transcript failed:', pageErr);
+        setYouTubeStatus('Trying transcript panel extraction...', false);
+        const panelResult = await getTranscriptFromTranscriptPanel(currentYouTubeTabId);
+        if (panelResult?.ok && panelResult.transcript) {
+          transcript = panelResult.transcript;
+        } else {
+          throw new Error(
+            'Could not extract transcript in-browser for this video. Open YouTube transcript manually and retry.'
           );
-        });
-        transcript = apiResponse.transcript || '';
+        }
       }
     }
 
