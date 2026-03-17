@@ -8,6 +8,8 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import OpenAI from "openai";
+import ytdl from "@distube/ytdl-core";
+import { pipeline } from "stream/promises";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,9 +29,22 @@ const upload = multer({ dest: "uploads/" });
 function extractVideoId(url) {
   try {
     const u = new URL(url);
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1);
-    if (u.searchParams.has('v')) return u.searchParams.get('v');
-    const m = u.pathname.match(/\/(embed|v)\/([^/?]+)/);
+    const host = u.hostname.replace(/^www\./, "");
+
+    // https://youtu.be/<id>
+    if (host === "youtu.be") {
+      const id = u.pathname.replace(/^\/+/, "").split("/")[0];
+      if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+    }
+
+    // https://youtube.com/watch?v=<id>
+    const v = u.searchParams.get("v");
+    if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+
+    // https://youtube.com/shorts/<id>
+    // https://youtube.com/embed/<id>
+    // https://youtube.com/v/<id>
+    const m = u.pathname.match(/\/(shorts|embed|v)\/([a-zA-Z0-9_-]{11})(?:[/?]|$)/);
     if (m) return m[2];
   } catch (_) {}
   if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
@@ -113,6 +128,50 @@ async function fetchYouTubeTranscript(videoId) {
   return segments.join(' ');
 }
 
+/**
+ * Fallback when captions are unavailable: download audio and transcribe via Whisper.
+ */
+async function transcribeYouTubeAudio(videoId) {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error(
+      "No captions available and OPENAI_API_KEY is missing for Whisper fallback"
+    );
+  }
+
+  const uploadsDir = path.resolve(__dirname, "uploads");
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+
+  const tempAudioPath = path.join(
+    uploadsDir,
+    `yt_${videoId}_${Date.now()}.webm`,
+  );
+
+  try {
+    const audioStream = ytdl(`https://www.youtube.com/watch?v=${videoId}`, {
+      quality: "highestaudio",
+      filter: "audioonly",
+      highWaterMark: 1 << 25,
+    });
+
+    await pipeline(audioStream, fs.createWriteStream(tempAudioPath));
+
+    const transcription = await whisperClient.audio.transcriptions.create({
+      file: fs.createReadStream(tempAudioPath),
+      model: "whisper-1",
+    });
+
+    const text = typeof transcription?.text === "string" ? transcription.text.trim() : "";
+    if (!text) throw new Error("Whisper returned an empty transcript");
+    return text;
+  } finally {
+    if (fs.existsSync(tempAudioPath)) {
+      try {
+        fs.unlinkSync(tempAudioPath);
+      } catch (_) {}
+    }
+  }
+}
+
 // Middleware
 app.use(
   cors({
@@ -133,9 +192,19 @@ app.post("/api/youtube", async (req, res) => {
 
   try {
     console.log(`🚀 Fetching transcript for video: ${videoId}`);
-    const transcript = await fetchYouTubeTranscript(videoId);
-    console.log(`✅ Transcript fetched: ${transcript.length} chars`);
-    return res.json({ transcript });
+    try {
+      const transcript = await fetchYouTubeTranscript(videoId);
+      console.log(`✅ Captions transcript fetched: ${transcript.length} chars`);
+      return res.json({ transcript, source: "captions" });
+    } catch (captionError) {
+      console.warn(
+        "⚠️ Caption scraping failed, attempting Whisper fallback:",
+        captionError.message,
+      );
+      const transcript = await transcribeYouTubeAudio(videoId);
+      console.log(`✅ Whisper transcript fetched: ${transcript.length} chars`);
+      return res.json({ transcript, source: "whisper" });
+    }
   } catch (error) {
     console.error("❌ YouTube Route Error:", error.message);
     res.status(500).json({

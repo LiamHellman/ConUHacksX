@@ -6,11 +6,12 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "@google/genai": "^1.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "multer": "^2.0.2",
-    "@google/genai": "^1.0.0",
     "openai": "^6.16.0"
   },
   "engines": {
