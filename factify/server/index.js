@@ -172,6 +172,17 @@ async function transcribeYouTubeAudio(videoId) {
   }
 }
 
+function isYouTubeBotBlockError(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  return (
+    msg.includes("sign in to confirm you're not a bot") ||
+    msg.includes("confirm you’re not a bot") ||
+    msg.includes("not a bot") ||
+    msg.includes("429") ||
+    msg.includes("too many requests")
+  );
+}
+
 // Middleware
 app.use(
   cors({
@@ -201,9 +212,20 @@ app.post("/api/youtube", async (req, res) => {
         "⚠️ Caption scraping failed, attempting Whisper fallback:",
         captionError.message,
       );
-      const transcript = await transcribeYouTubeAudio(videoId);
-      console.log(`✅ Whisper transcript fetched: ${transcript.length} chars`);
-      return res.json({ transcript, source: "whisper" });
+      try {
+        const transcript = await transcribeYouTubeAudio(videoId);
+        console.log(`✅ Whisper transcript fetched: ${transcript.length} chars`);
+        return res.json({ transcript, source: "whisper" });
+      } catch (whisperError) {
+        if (isYouTubeBotBlockError(whisperError)) {
+          return res.status(502).json({
+            error: "YouTube blocked server-side transcription for this video.",
+            details:
+              "Sign in to confirm you're not a bot. This video can't be downloaded from the backend right now. Try another video with captions, use the extension's in-browser transcript extraction, or paste transcript text manually.",
+          });
+        }
+        throw whisperError;
+      }
     }
   } catch (error) {
     console.error("❌ YouTube Route Error:", error.message);

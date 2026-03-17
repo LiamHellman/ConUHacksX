@@ -140,6 +140,57 @@ function setYouTubeBtnState(text, loading, disabled) {
   youtubeTranscribeBtn.disabled = !!disabled;
 }
 
+async function getTranscriptFromPageContext(tabId) {
+  const results = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: async () => {
+      function chooseTrack(tracks) {
+        if (!Array.isArray(tracks) || tracks.length === 0) return null;
+        const english = tracks.find((t) => /^en(-|$)/i.test(t.languageCode || ""));
+        if (english) return english;
+        const nonAsr = tracks.find((t) => !String(t.vssId || "").includes(".asr"));
+        return nonAsr || tracks[0] || null;
+      }
+
+      const tracks =
+        window?.ytInitialPlayerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      const chosen = chooseTrack(tracks);
+      if (!chosen?.baseUrl) {
+        return { ok: false, error: "No captions found in page context" };
+      }
+
+      const url = new URL(chosen.baseUrl);
+      url.searchParams.set("fmt", "json3");
+
+      const response = await fetch(url.toString(), { credentials: "include" });
+      if (!response.ok) {
+        return { ok: false, error: `Caption fetch failed (${response.status})` };
+      }
+
+      const payload = await response.json();
+      const chunks = [];
+      (payload.events || []).forEach((event) => {
+        (event.segs || []).forEach((seg) => {
+          if (typeof seg.utf8 === "string") chunks.push(seg.utf8);
+        });
+      });
+
+      const transcript = chunks
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .replace(/\u200b/g, "")
+        .trim();
+
+      if (!transcript || transcript.length < 30) {
+        return { ok: false, error: "Transcript is empty from captions" };
+      }
+      return { ok: true, transcript };
+    }
+  });
+
+  return results?.[0]?.result || { ok: false, error: "No result from page script" };
+}
+
 // YouTube Transcribe & Analyze button
 youtubeTranscribeBtn.addEventListener('click', async () => {
   if (!currentYouTubeTabId) return;
@@ -162,27 +213,41 @@ youtubeTranscribeBtn.addEventListener('click', async () => {
       }
     } catch (contentErr) {
       contentScriptError = contentErr?.message || 'Content transcript extraction failed';
-      console.log('[Factify Popup] Content script transcript failed, trying API:', contentErr);
-      // Fallback: ask background script to use the server API
-      setYouTubeStatus('Using server transcription (this may take a moment)...', false);
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const apiResponse = await new Promise((resolve, reject) => {
-        chrome.runtime.sendMessage(
-          { action: 'transcribeYouTube', url: tab.url },
-          (resp) => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(chrome.runtime.lastError.message));
-              return;
+      console.log('[Factify Popup] Content script transcript failed, trying page context:', contentErr);
+
+      // Step 1b: Try running extraction directly in YouTube page context.
+      setYouTubeStatus('Trying in-browser caption extraction...', false);
+      try {
+        const pageResult = await getTranscriptFromPageContext(currentYouTubeTabId);
+        if (pageResult?.ok && pageResult.transcript) {
+          transcript = pageResult.transcript;
+        } else {
+          throw new Error(pageResult?.error || 'Page context transcript extraction failed');
+        }
+      } catch (pageErr) {
+        console.log('[Factify Popup] Page context transcript failed, trying API:', pageErr);
+
+        // Step 1c: Last resort fallback is server transcription.
+        setYouTubeStatus('Using server transcription (this may take a moment)...', false);
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const apiResponse = await new Promise((resolve, reject) => {
+          chrome.runtime.sendMessage(
+            { action: 'transcribeYouTube', url: tab.url },
+            (resp) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+                return;
+              }
+              if (!resp || !resp.ok) {
+                reject(new Error(resp?.error || 'Transcription API failed'));
+                return;
+              }
+              resolve(resp);
             }
-            if (!resp || !resp.ok) {
-              reject(new Error(resp?.error || 'Transcription API failed'));
-              return;
-            }
-            resolve(resp);
-          }
-        );
-      });
-      transcript = apiResponse.transcript || '';
+          );
+        });
+        transcript = apiResponse.transcript || '';
+      }
     }
 
     if (!transcript || transcript.trim().length < 30) {

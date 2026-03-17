@@ -29,7 +29,10 @@
       "matches": [
         "*://www.youtube.com/watch*",
         "*://youtube.com/watch*",
-        "*://m.youtube.com/watch*"
+        "*://m.youtube.com/watch*",
+        "*://www.youtube.com/shorts/*",
+        "*://youtube.com/shorts/*",
+        "*://m.youtube.com/shorts/*"
       ],
       "js": ["content-youtube.js"],
       "css": ["content.css"]
