@@ -20,10 +20,74 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then((transcript) => sendResponse({ ok: true, transcript }))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
+  } else if (request.action === 'fetchCaptionTranscript') {
+    fetchCaptionTranscript(request.url)
+      .then((transcript) => sendResponse({ ok: true, transcript }))
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
   }
   // We only keep the channel open for transcribeYouTube.
   return false;
 });
+
+function decodeCaptionEntities(text) {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
+function parseXmlCaptionText(xml) {
+  const parts = [];
+  const textRegex = /<text[^>]*>([\s\S]*?)<\/text>/g;
+  let match;
+  while ((match = textRegex.exec(xml)) !== null) {
+    const value = decodeCaptionEntities(match[1]).replace(/<[^>]+>/g, '').trim();
+    if (value) parts.push(value);
+  }
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function parseJson3CaptionText(payload) {
+  const chunks = [];
+  (payload.events || []).forEach((event) => {
+    (event.segs || []).forEach((seg) => {
+      if (typeof seg.utf8 === 'string') chunks.push(seg.utf8);
+    });
+  });
+  return chunks.join(' ').replace(/\s+/g, ' ').replace(/\u200b/g, '').trim();
+}
+
+async function fetchCaptionTranscript(captionUrl) {
+  if (!captionUrl || typeof captionUrl !== 'string') {
+    throw new Error('Missing caption URL');
+  }
+
+  const url = new URL(captionUrl);
+  if (!url.searchParams.get('fmt')) url.searchParams.set('fmt', 'json3');
+
+  const res = await fetch(url.toString(), { credentials: 'omit' });
+  if (!res.ok) throw new Error(`Caption request failed (${res.status})`);
+
+  const contentType = res.headers.get('content-type') || '';
+  let transcript = '';
+
+  if (contentType.includes('application/json') || url.searchParams.get('fmt') === 'json3') {
+    const payload = await res.json();
+    transcript = parseJson3CaptionText(payload);
+  } else {
+    const xml = await res.text();
+    transcript = parseXmlCaptionText(xml);
+  }
+
+  if (!transcript || transcript.length < 30) {
+    throw new Error('Caption transcript was empty');
+  }
+  return transcript;
+}
 
 // Context menu for right-click analysis
 chrome.runtime.onInstalled.addListener(() => {

@@ -4,7 +4,11 @@
   "version": "1.1.0",
   "description": "Analyze any text for reasoning issues across structure, relevance, evidence, framing, and language",
   "permissions": ["activeTab", "tabs", "storage", "contextMenus", "scripting"],
-  "host_permissions": ["https://factify-api.onrender.com/*"],
+  "host_permissions": [
+    "https://factify-api.onrender.com/*",
+    "*://*.youtube.com/*",
+    "*://*.googlevideo.com/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Factify",

@@ -144,7 +144,7 @@ async function getTranscriptFromPageContext(tabId) {
   const results = await chrome.scripting.executeScript({
     target: { tabId },
     world: 'MAIN',
-    func: async () => {
+    func: () => {
       function extractBalancedArray(source, marker) {
         const markerIdx = source.indexOf(marker);
         if (markerIdx === -1) return null;
@@ -216,39 +216,35 @@ async function getTranscriptFromPageContext(tabId) {
       }
       const chosen = chooseTrack(tracks);
       if (!chosen?.baseUrl) {
-        return { ok: false, error: "No captions found in page context" };
+        return { ok: false, error: "No captions found in page context", captionUrl: "" };
       }
 
       const url = new URL(chosen.baseUrl);
       url.searchParams.set("fmt", "json3");
-
-      const response = await fetch(url.toString(), { credentials: "include" });
-      if (!response.ok) {
-        return { ok: false, error: `Caption fetch failed (${response.status})` };
-      }
-
-      const payload = await response.json();
-      const chunks = [];
-      (payload.events || []).forEach((event) => {
-        (event.segs || []).forEach((seg) => {
-          if (typeof seg.utf8 === "string") chunks.push(seg.utf8);
-        });
-      });
-
-      const transcript = chunks
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .replace(/\u200b/g, "")
-        .trim();
-
-      if (!transcript || transcript.length < 30) {
-        return { ok: false, error: "Transcript is empty from captions" };
-      }
-      return { ok: true, transcript };
+      return { ok: true, captionUrl: url.toString() };
     }
   });
 
-  return results?.[0]?.result || { ok: false, error: "No result from page script" };
+  return results?.[0]?.result || { ok: false, error: "No result from page script", captionUrl: "" };
+}
+
+function fetchCaptionTranscript(captionUrl) {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { action: 'fetchCaptionTranscript', url: captionUrl },
+      (resp) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        if (!resp?.ok) {
+          reject(new Error(resp?.error || 'Caption transcript fetch failed'));
+          return;
+        }
+        resolve(resp.transcript || '');
+      }
+    );
+  });
 }
 
 // YouTube Transcribe & Analyze button
@@ -279,8 +275,8 @@ youtubeTranscribeBtn.addEventListener('click', async () => {
       setYouTubeStatus('Trying in-browser caption extraction...', false);
       try {
         const pageResult = await getTranscriptFromPageContext(currentYouTubeTabId);
-        if (pageResult?.ok && pageResult.transcript) {
-          transcript = pageResult.transcript;
+        if (pageResult?.ok && pageResult.captionUrl) {
+          transcript = await fetchCaptionTranscript(pageResult.captionUrl);
         } else {
           throw new Error(pageResult?.error || 'Page context transcript extraction failed');
         }

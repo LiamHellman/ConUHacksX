@@ -190,6 +190,25 @@
     return nonAsr || tracks[0] || null;
   }
 
+  function fetchCaptionTranscriptViaBackground(captionUrl) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { action: "fetchCaptionTranscript", url: captionUrl },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+            return;
+          }
+          if (!response?.ok) {
+            reject(new Error(response?.error || "Caption transcript fetch failed"));
+            return;
+          }
+          resolve(response.transcript || "");
+        }
+      );
+    });
+  }
+
   async function getTranscriptFromCaptions() {
     const tracks = parseCaptionTracksFromDom();
     if (!tracks || tracks.length === 0) return "";
@@ -199,24 +218,7 @@
 
     const url = new URL(chosen.baseUrl);
     url.searchParams.set("fmt", "json3");
-
-    const response = await fetch(url.toString(), { credentials: "include" });
-    if (!response.ok) throw new Error(`Caption fetch failed (${response.status})`);
-
-    const payload = await response.json();
-    const chunks = [];
-
-    (payload.events || []).forEach((event) => {
-      (event.segs || []).forEach((seg) => {
-        if (typeof seg.utf8 === "string") chunks.push(seg.utf8);
-      });
-    });
-
-    return chunks
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .replace(/\u200b/g, "")
-      .trim();
+    return fetchCaptionTranscriptViaBackground(url.toString());
   }
 
   function getTranscriptViaApi(url) {
